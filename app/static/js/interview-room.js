@@ -12,7 +12,7 @@
     'answer-timer', 'record', 'send', 'retry', 'replay', 'answer-preview', 'retry-upload', 'resume-flow', 'question-progress',
     'question-text', 'transcript', 'camera-toggle', 'mic-toggle', 'mirror-toggle', 'captions-toggle', 'chat-toggle',
     'avatar-motion-toggle', 'fullscreen', 'leave-room', 'leave-dialog', 'cancel-leave', 'confirm-leave', 'room-tools',
-    'device-status', 'device-requirement', 'preflight-description', 'preflight-title', 'verification-status', 'preflight-body',
+    'device-status', 'device-requirement', 'preflight-description', 'preflight-title', 'verification-status', 'preflight-body', 'preflight-readiness',
     'panel-members', 'participant-count', 'voice-mode', 'text-mode', 'use-text', 'use-voice', 'answer-mode-status', 'text-answer-area', 'text-answer', 'send-text', 'stop-audio',
     'interruption', 'interruption-status', 'retry-question', 'skip-question', 'realtime-mode', 'auto-send', 'barge-in', 'live-review', 'live-transcript'];
   const elements = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
@@ -29,6 +29,7 @@
   const resultFlows = new Map();
   const waits = new Map();
   const sentLatency = new Set();
+  const noticeTimers = new Map();
 
   let state = null, current = null, stream = null, audioContext = null;
   let micSource = null, micAnalyser = null, audioSource = null, audioAnalyser = null;
@@ -63,11 +64,44 @@
     return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
   }
   function status(text) {node('room-status').textContent = text;}
-  function showError(id, cause) {
-    node(id).textContent = cause?.message || String(cause);
-    node(id).hidden = false;
+  function hideNoticeLater(id) {
+    clearTimeout(noticeTimers.get(id));
+    noticeTimers.set(id, setTimeout(() => {
+      node(id).classList.add('is-leaving');
+      noticeTimers.set(id, setTimeout(() => clearError(id), 160));
+    }, node(id).dataset.tone === 'warning' ? 7000 : 4000));
   }
-  function clearError(id) {node(id).hidden = true; node(id).textContent = '';}
+  function showError(id, cause, tone = 'warning') {
+    if (id === 'preflight-error' && !node('preflight').open) id = 'room-error';
+    const notice = node(id);
+    const text = cause?.message || String(cause);
+    if (!notice.hidden && notice.dataset.message === text && notice.dataset.tone === tone) return;
+    clearError('room-error'); clearError('preflight-error');
+    notice.dataset.tone = tone;
+    notice.dataset.message = text;
+    notice.setAttribute('role', tone === 'warning' ? 'alert' : 'status');
+    notice.textContent = text;
+    notice.hidden = false;
+    notice.showPopover?.();
+    hideNoticeLater(id);
+  }
+  function clearError(id) {
+    clearTimeout(noticeTimers.get(id)); noticeTimers.delete(id);
+    node(id).hidePopover?.();
+    node(id).hidden = true; node(id).textContent = '';
+    node(id).classList.remove('is-leaving');
+  }
+  function notify(text) {
+    if (['room-error', 'preflight-error'].some(id => !node(id).hidden && node(id).dataset.tone === 'warning')) return;
+    showError(node('preflight').open ? 'preflight-error' : 'room-error', text, 'info');
+  }
+  for (const id of ['room-error', 'preflight-error']) {
+    node(id).addEventListener('pointerenter', () => {
+      clearTimeout(noticeTimers.get(id));
+      node(id).classList.remove('is-leaving');
+    });
+    node(id).addEventListener('pointerleave', () => {if (!node(id).hidden) hideNoticeLater(id);});
+  }
   function setPhase(next) {
     phase = next;
     room.classList.toggle('is-recording', next === 'recording');
@@ -213,6 +247,7 @@
     captionsEnabled = !captionsEnabled;
     buttonState('captions-toggle', captionsEnabled, 'Sembunyikan takarir', 'Tampilkan takarir');
     renderCaptions();
+    notify(captionsEnabled ? 'Takarir diaktifkan' : 'Takarir dinonaktifkan');
   });
   buttonState('captions-toggle', false, 'Sembunyikan takarir', 'Tampilkan takarir');
 
@@ -273,7 +308,7 @@
     buttonState('avatar-motion-toggle', motionEnabled, 'Jeda gerakan pewawancara', 'Aktifkan gerakan pewawancara');
     if (motionEnabled && available()) {scheduleBlink(); if (speaking) animateSpeech();}
   }
-  node('avatar-motion-toggle').addEventListener('click', () => {motionChosen = true; motionEnabled = !motionEnabled; renderMotion();});
+  node('avatar-motion-toggle').addEventListener('click', () => {motionChosen = true; motionEnabled = !motionEnabled; renderMotion(); notify(motionEnabled ? 'Gerakan pewawancara diaktifkan' : 'Gerakan pewawancara dijeda');});
   reducedMotion?.addEventListener?.('change', event => {if (!motionChosen) {motionEnabled = !event.matches; renderMotion();}});
   interviewerAudio.addEventListener('playing', () => {
     setSpeaking(true);
@@ -383,6 +418,7 @@
   }
   function cleanup() {
     lifecycle++;
+    clearError('room-error'); clearError('preflight-error');
     setChatActivity();
     clearInterval(recordingTimer); clearInterval(elapsedTimer); clearInterval(healthTimer);
     clearTimeout(pollTimer);
@@ -516,7 +552,18 @@
       node('focus-check').checked && (node('text-mode').checked || devicesVerified);
   }
   function checkReady() {
-    node('start').disabled = startPending || !preflightVerified();
+    const canStart = !startPending && preflightVerified();
+    const preflight = node('preflight');
+    for (const [key, value] of Object.entries({deviceReady: desktopSupported, microphoneReady: micReady && micOn(),
+      speakerReady: soundTested && node('speaker-check').checked, connectionReady: healthy && performance.now() - healthCheckedAt < 30000, ready: canStart})) {
+      const text = String(value);
+      if (preflight.dataset[key] !== text) preflight.dataset[key] = text;
+    }
+    const readiness = node('preflight-readiness');
+    const message = canStart ? 'Siap untuk mulai' : 'Lengkapi pemeriksaan di atas';
+    const label = window.PreptivaI18n?.t(message) ?? message;
+    if (readiness && readiness.textContent !== label) readiness.textContent = label;
+    node('start').disabled = !canStart;
     node('speaker-check').disabled = !desktopSupported || !soundTested || soundTesting;
     node('devices').disabled = !desktopSupported || acquiring;
     node('test-sound').disabled = !desktopSupported || soundTesting;
@@ -525,6 +572,7 @@
   }
   function renderDevices() {
     const video = cameraOn(), mic = micOn();
+    node('preflight').classList.toggle('has-camera', video);
     buttonState('camera-toggle', video, 'Matikan kamera', 'Aktifkan kamera');
     buttonState('mic-toggle', mic, 'Matikan mikrofon', 'Aktifkan mikrofon');
     node('camera-off-placeholder').hidden = video;
@@ -776,6 +824,7 @@
   node('open-preflight').addEventListener('click', openPreflight);
   node('close-preflight').addEventListener('click', () => {if (!startPending) node('preflight').close();});
   node('preflight').addEventListener('cancel', event => {if (startPending) event.preventDefault();});
+  node('preflight').addEventListener('close', () => clearError('preflight-error'));
 
   function toggleTrack(kind) {
     if (!desktopSupported || !available()) return;
@@ -789,6 +838,7 @@
     }
     if (!enabled && kind === 'video' && !active) node('camera-check').checked = false;
     renderDevices();
+    notify(kind === 'video' ? (enabled ? 'Kamera diaktifkan' : 'Kamera dinonaktifkan') : (enabled ? 'Mikrofon diaktifkan' : 'Mikrofon dinonaktifkan'));
   }
   node('camera-toggle').addEventListener('click', () => toggleTrack('video'));
   node('mic-toggle').addEventListener('click', () => toggleTrack('audio'));
@@ -800,7 +850,10 @@
   let savedMirror = false;
   try {savedMirror = sessionStorage.getItem('preptiva-mirror') === 'true';} catch {}
   mirror(savedMirror);
-  node('mirror-toggle').addEventListener('click', () => mirror(node('mirror-toggle').getAttribute('aria-pressed') !== 'true'));
+  node('mirror-toggle').addEventListener('click', () => {
+    const enabled = node('mirror-toggle').getAttribute('aria-pressed') !== 'true';
+    mirror(enabled); notify(enabled ? 'Cermin kamera diaktifkan' : 'Cermin kamera dinonaktifkan');
+  });
   async function fullscreen(forceOpen = false) {
     try {
       if (document.fullscreenElement) {if (!forceOpen) await document.exitFullscreen();}
@@ -932,7 +985,7 @@
     if (node('start').disabled || startPending || active || !available()) return;
     const token = lifecycle;
     startPending = true; startAbandoned = false; startRequestSent = false;
-    node('start').disabled = true; node('close-preflight').disabled = true;
+    checkReady(); node('close-preflight').disabled = true;
     clearError('preflight-error'); clearError('room-error');
     try {
       if (!node('text-mode').checked) await ensureAudioContext();

@@ -1,13 +1,15 @@
 <!doctype html>
 <html lang="{{ 'id' if request.query_params.get('lang', request.cookies.get('preptiva_ui_language', 'en')) == 'id' else 'en' }}">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="{{ '#f3f2f3' if page == 'room' else '#f0f1f4' if page in ('form', 'dashboard', 'history', 'result', 'profile', 'login', 'register') else '#153e35' }}"><title>{{ {'dashboard': 'Dashboard', 'history': 'Riwayat latihan', 'result': 'Hasil wawancara', 'profile': 'Profil saya', 'login': 'Masuk', 'register': 'Buat akun'}.get(page, 'Persiapkan langkah berikutnya') }} · Preptiva</title>
-<link rel="icon" type="image/svg+xml" sizes="any" href="/static/images/preptiva-symbol.svg">
-<link rel="apple-touch-icon" href="/static/images/preptiva-symbol.png">
+<link rel="icon" type="image/png" href="{{ asset_url('images/preptiva-brand-icon.png') }}">
+<link rel="apple-touch-icon" href="{{ asset_url('images/preptiva-brand-icon.png') }}">
 <link rel="stylesheet" href="{{ asset_url('css/app.css') }}">
 {% if page in ('form', 'dashboard', 'history', 'result', 'profile') %}<link rel="stylesheet" href="{{ asset_url('css/session-setup.css') }}"><link rel="stylesheet" href="{{ asset_url('css/custom-select.css') }}"><link rel="stylesheet" href="{{ asset_url('css/account-menu.css') }}">{% endif %}
 {% if page in ('dashboard', 'history', 'result', 'profile') %}<link rel="stylesheet" href="{{ asset_url('css/workspace.css') }}">{% endif %}
+{% if page == 'dashboard' %}<link rel="stylesheet" href="{{ asset_url('css/dashboard.css') }}">{% endif %}
 {% if page == 'profile' %}<link rel="stylesheet" href="{{ asset_url('css/profile.css') }}">{% endif %}
 {% if page == 'result' %}<link rel="stylesheet" href="{{ asset_url('css/result.css') }}">{% endif %}
+{% if page in ('form', 'dashboard', 'history', 'result', 'profile') %}<link rel="stylesheet" href="{{ asset_url('css/app-shell.css') }}"><link rel="stylesheet" href="{{ asset_url('css/default-avatar.css') }}">{% endif %}
 {% if page in ('login', 'register') %}<link rel="stylesheet" href="{{ asset_url('css/custom-select.css') }}"><link rel="stylesheet" href="{{ asset_url('css/auth.css') }}">{% endif %}
 {% if page == 'room' %}<link rel="stylesheet" href="{{ asset_url('css/interview-room.css') }}"><link rel="preload" as="image" href="/static/images/interviewers/office-background.png" fetchpriority="high">{% endif %}
 {% if page not in ('login', 'register') %}<link rel="stylesheet" href="{{ asset_url('css/site-footer.css') }}">{% endif %}
@@ -17,8 +19,8 @@
 {% from 'partials/setup-icons.html' import icon %}
 {% macro brand(href, modifier='') -%}
 <a class="brand{{ ' ' ~ modifier if modifier }}" href="{{ href }}">
-  <img class="brand-symbol" src="/static/images/preptiva-symbol.svg" alt="" width="36" height="36">
-  <span class="brand-name">Preptiva</span>
+  <img class="brand-symbol" src="{{ asset_url('images/preptiva-brand-icon.png') }}" alt="" width="36" height="36">
+  <img class="brand-name brand-wordmark" src="{{ asset_url('images/preptiva-brand-wordmark.png') }}" alt="Preptiva" width="4096" height="1335">
 </a>
 {%- endmacro %}
 <body class="{{ 'auth-page' if page in ('login', 'register') else 'meeting-page' if page == 'room' else 'setup-page workspace-page profile-page' if page == 'profile' else 'setup-page workspace-page result-page' if page == 'result' else 'setup-page workspace-page' if page in ('dashboard', 'history') else 'setup-page' if page == 'form' else '' }}" data-page="{{ page }}" data-sid="{{ sid }}">
@@ -27,7 +29,7 @@
 <header class="setup-header{{ ' workspace-header' if page in ('dashboard', 'history', 'result', 'profile') }}">
   {{ brand('/dashboard') }}
   <nav class="setup-nav" aria-label="Navigasi utama"><a href="/dashboard"{% if page == 'dashboard' %} aria-current="page"{% endif %}>Dashboard</a><a href="/simulasi/baru"{% if page == 'form' %} aria-current="page"{% endif %}>Simulasi baru</a><a href="/riwayat"{% if page in ('history', 'result') %} aria-current="page"{% endif %}>Riwayat</a></nav>
-  <div class="setup-account">{% include 'partials/language-switch.html' %}{% include 'partials/account-menu.html' %}</div>
+  <div class="setup-account">{% include 'partials/account-menu.html' %}</div>
 </header>
 {% endif %}
 {% if user and page not in ('form', 'room', 'dashboard', 'history', 'result', 'profile', 'login', 'register') %}

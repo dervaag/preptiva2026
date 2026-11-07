@@ -2,7 +2,7 @@
 <div class="meeting-room" id="meeting-room">
   <div class="meeting-workspace">
     <section class="meeting-stage-column" aria-label="Ruang wawancara">
-      <div id="room-error" class="meeting-alert" role="alert" hidden></div>
+      <div id="room-error" class="meeting-toast" role="alert" aria-atomic="true" popover="manual" hidden></div>
       <button id="retry-preparation" class="meeting-primary" type="button" hidden>Coba siapkan ulang</button>
       <div class="meeting-stage" id="room-stage" data-motion="on" data-speaking="false">
         <div class="meeting-stage-top"><span class="meeting-state" id="room-status" role="status">Menyiapkan sesi</span><div id="panel-members" class="meeting-panel-members" aria-label="Anggota panel" hidden></div></div>
@@ -50,23 +50,42 @@
 
 <audio id="interviewer-audio" preload="auto" hidden></audio>
 
-<dialog id="preflight" class="meeting-dialog" aria-labelledby="preflight-title" aria-describedby="preflight-description">
-  <div class="meeting-dialog-header"><div><h2 id="preflight-title">Cek perangkat</h2><p id="preflight-description" class="sr-only">Periksa perangkat, kamera, mikrofon, dan speaker sebelum mulai.</p></div><button id="close-preflight" class="meeting-icon-button" type="button" aria-label="Tutup pemeriksaan perangkat">{{ room_icon('close') }}</button></div>
+<dialog id="preflight" class="meeting-dialog meeting-preflight-dialog" aria-labelledby="preflight-title" aria-describedby="preflight-description">
+  <div class="meeting-dialog-header">
+    <div><h2 id="preflight-title" tabindex="-1" autofocus>Cek perangkat</h2><p id="preflight-description">Siapkan cara menjawab dan pastikan Anda nyaman sebelum masuk.</p></div>
+    <button id="close-preflight" class="meeting-icon-button" type="button" aria-label="Tutup pemeriksaan perangkat">{{ room_icon('close') }}</button>
+  </div>
   <div class="meeting-preflight-body" id="preflight-body">
     <div id="device-requirement" class="meeting-alert meeting-device-requirement" role="alert" hidden><strong>HP dan tablet tidak didukung.</strong><p>Buka sesi ini melalui PC atau laptop.</p></div>
-    <fieldset class="meeting-input-mode"><legend>Cara menjawab</legend><label class="meeting-check"><input id="voice-mode" name="answer_mode" type="radio" value="voice" autocomplete="off" checked>Rekam suara · gunakan kamera dan mikrofon</label><label class="meeting-check"><input id="text-mode" name="answer_mode" type="radio" value="text" autocomplete="off">Teks · tanpa kamera/mikrofon</label></fieldset>
-    <details class="meeting-voice-options"><summary>Pengaturan suara</summary><div><label class="meeting-check"><input id="realtime-mode" type="checkbox" checked>Transkrip realtime</label><label class="meeting-check"><input id="auto-send" type="checkbox">Kirim otomatis setelah jeda</label><p>Pengiriman otomatis melewati tinjauan transkrip.</p><label class="meeting-check"><input id="barge-in" type="checkbox">Sela suara interviewer</label><p>Gunakan headphone agar suara speaker tidak memulai jawaban.</p></div></details>
-    <div class="meeting-preflight-preview"><div class="meeting-preflight-video"><video id="preflight-camera" autoplay muted playsinline aria-label="Pratinjau kamera untuk verifikasi"></video></div><button id="devices" class="meeting-secondary" type="button" autofocus>{{ room_icon('camera') }}Aktifkan perangkat</button><label class="meeting-check"><input id="camera-check" type="checkbox">Kamera terlihat jelas</label></div>
+    <fieldset class="meeting-input-mode">
+      <legend>Cara menjawab</legend>
+      <label class="meeting-mode-card"><input id="voice-mode" name="answer_mode" type="radio" value="voice" autocomplete="off" checked><span><strong>Rekam suara</strong><small>Dengan kamera dan mikrofon</small></span></label>
+      <label class="meeting-mode-card"><input id="text-mode" name="answer_mode" type="radio" value="text" autocomplete="off"><span><strong>Ketik jawaban</strong><small>Tanpa kamera atau mikrofon</small></span></label>
+    </fieldset>
+    <div class="meeting-preflight-preview">
+      <div class="meeting-preview-heading"><h3>Kamera Anda</h3><span>Pratinjau lokal</span></div>
+      <div class="meeting-preflight-video">
+        <video id="preflight-camera" autoplay muted playsinline aria-label="Pratinjau kamera untuk verifikasi"></video>
+        <div class="meeting-preview-placeholder"><span>{{ room_icon('camera') }}</span><strong>Kamera belum aktif</strong><small>Aktifkan perangkat untuk melihat pratinjau.</small></div>
+      </div>
+      <button id="devices" class="meeting-secondary" type="button">{{ room_icon('camera') }}Aktifkan perangkat</button>
+      <label class="meeting-check meeting-camera-confirm"><input id="camera-check" type="checkbox">Kamera terlihat jelas</label>
+    </div>
     <div class="meeting-preflight-checklist">
+      <h3 class="meeting-checklist-title">Pemeriksaan perangkat</h3>
       <div class="meeting-verification-row meeting-device-verification"><span class="meeting-verification-icon">{{ room_icon('computer') }}</span><div><h3>Perangkat</h3><p id="device-status" role="status">Memeriksa…</p></div></div>
       <div class="meeting-verification-row meeting-microphone-row"><span class="meeting-verification-icon">{{ room_icon('mic') }}</span><div><h3>Mikrofon</h3><p id="mic-status">Ucapkan beberapa kata</p><meter id="mic-meter" min="0" max="100" value="0" aria-label="Level sinyal mikrofon"></meter></div></div>
       <div class="meeting-verification-row meeting-speaker-row"><span class="meeting-verification-icon">{{ room_icon('speaker') }}</span><div><div class="meeting-check-heading"><h3>Speaker</h3><button id="test-sound" class="meeting-text-button" type="button">Tes suara</button></div><label class="meeting-check"><input id="speaker-check" type="checkbox" disabled>Suara terdengar jelas</label></div></div>
-      <div class="meeting-verification-row"><span class="meeting-verification-icon">{{ room_icon('connection') }}</span><div><h3>Koneksi</h3><p id="connection-status">Memeriksa…</p><button id="connection-retry" class="meeting-text-button" type="button" hidden>Coba lagi</button></div></div>
+      <div class="meeting-verification-row meeting-connection-row"><span class="meeting-verification-icon">{{ room_icon('connection') }}</span><div><h3>Koneksi</h3><p id="connection-status">Memeriksa…</p><button id="connection-retry" class="meeting-text-button" type="button" hidden>Coba lagi</button></div></div>
     </div>
-    <div class="meeting-preflight-options"><label class="meeting-check"><input id="focus-check" type="checkbox">Saya memahami: pindah tab atau koneksi putus menjeda pertanyaan. Pilih Retry atau Next untuk melanjutkan.</label><label class="meeting-check meeting-fullscreen-option"><input id="fullscreen-check" type="checkbox">Gunakan fullscreen <span class="meeting-optional">(opsional)</span></label></div>
-    <div id="preflight-error" class="meeting-alert" role="alert" hidden></div>
+    <details class="meeting-voice-options"><summary>Pengaturan suara</summary><div><label class="meeting-check"><input id="realtime-mode" type="checkbox" checked>Transkrip realtime</label><label class="meeting-check"><input id="auto-send" type="checkbox">Kirim otomatis setelah jeda</label><p>Pengiriman otomatis melewati tinjauan transkrip.</p><label class="meeting-check"><input id="barge-in" type="checkbox">Sela suara interviewer</label><p>Gunakan headphone agar suara speaker tidak memulai jawaban.</p></div></details>
+    <div class="meeting-preflight-options">
+      <label class="meeting-check meeting-session-confirm"><input id="focus-check" type="checkbox"><span><strong>Saya siap mengikuti sesi</strong><small>Pindah tab atau koneksi putus menjeda pertanyaan. Lanjutkan dengan Retry atau Next.</small></span></label>
+      <label class="meeting-check meeting-fullscreen-option"><input id="fullscreen-check" type="checkbox"><span>Gunakan fullscreen<small class="meeting-optional">Opsional</small></span></label>
+    </div>
+    <div id="preflight-error" class="meeting-toast" role="alert" aria-atomic="true" popover="manual" hidden></div>
   </div>
-  <div class="meeting-dialog-footer"><p id="verification-status">Video tetap lokal. Audio dikirim saat Anda mulai menjawab.</p><button id="start" class="meeting-primary" type="button" disabled>Mulai wawancara</button></div>
+  <div class="meeting-dialog-footer"><div class="meeting-ready-note"><span id="preflight-readiness" role="status">Lengkapi pemeriksaan di atas</span><p id="verification-status">Video tetap lokal. Audio dikirim saat Anda mulai menjawab.</p></div><button id="start" class="meeting-primary" type="button" disabled>Mulai wawancara</button></div>
 </dialog>
 
 <dialog id="leave-dialog" class="meeting-dialog meeting-leave-dialog" aria-labelledby="leave-title"><div class="meeting-dialog-header"><div><h2 id="leave-title">Keluar dari sesi?</h2><p>Sesi yang ditutup tidak dapat dilanjutkan. Jawaban yang sudah dikirim tetap tersimpan.</p></div></div><div class="meeting-dialog-footer"><button id="cancel-leave" class="meeting-secondary" type="button" autofocus>Tetap di sini</button><button id="confirm-leave" class="meeting-danger" type="button">Keluar dari sesi</button></div></dialog>

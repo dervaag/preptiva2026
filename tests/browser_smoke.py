@@ -25,12 +25,30 @@ os.environ['SECRET_KEY'] = 'isolated-browser-test-secret'
 
 import uvicorn
 from playwright.sync_api import sync_playwright
+from pypdf import PdfWriter
+from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 from app.main import app
 from app.db import init_db, SessionLocal
 from app.models import User
 from app.security import hash_password
 from app.ai import speech, orchestrator
 from app.storage import audio_dir
+
+
+def cv_pdf(text):
+    writer = PdfWriter()
+    page = writer.add_blank_page(width=612, height=792)
+    page[NameObject('/Resources')] = DictionaryObject({NameObject('/Font'): DictionaryObject({
+        NameObject('/F1'): DictionaryObject({NameObject('/Type'): NameObject('/Font'),
+            NameObject('/Subtype'): NameObject('/Type1'), NameObject('/BaseFont'): NameObject('/Helvetica')})})})
+    lines = [line.replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)') for line in text.splitlines()]
+    stream = DecodedStreamObject()
+    stream.set_data(('BT /F1 10 Tf 40 740 Td 14 TL ' + ' T* '.join(f'({line}) Tj' for line in lines) + ' ET').encode('ascii'))
+    page[NameObject('/Contents')] = writer._add_object(stream)
+    output = io.BytesIO()
+    writer.write(output)
+    return {'name': 'synthetic-cv.pdf', 'mimeType': 'application/pdf', 'buffer': output.getvalue()}
+
 
 
 def wav(seconds):
@@ -126,7 +144,7 @@ def main():
                 page.set_viewport_size({'width':1440,'height':1100})
                 page.goto(f'http://127.0.0.1:{port}/simulasi/baru')
                 page.locator('#setup-context > summary').click()
-                page.locator('[name=cv_text]').fill('Lulusan baru Akuntansi. Proyek kuliah koperasi kampus, organisasi mahasiswa, dan magang administrasi. ' * 4)
+                page.locator('[name=cv_pdf]').set_input_files(cv_pdf('Lulusan baru Akuntansi. Proyek kuliah koperasi kampus, organisasi mahasiswa, dan magang administrasi. ' * 4))
                 choose('career_stage', 'fresh_graduate')
                 page.locator('[name=job_role]').fill('Accountant'); page.locator('[name=industry]').fill('Finance')
                 page.locator('[name=job_description]').fill('Prepare accurate reports and coordinate financial information with colleagues.')

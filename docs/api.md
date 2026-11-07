@@ -105,7 +105,7 @@ Buat sesi wawancara baru.
 | `age` | integer | ✓ | 15–80 |
 | `job_role` | string | ✓ | mis. "Backend Developer" |
 | `level` | `junior`/`middle`/`senior`/`manager` | ✓ | |
-| `job_description` | string | ✓ | min 30 karakter |
+| `job_description` | string | ✓ | min 5 kata, maks 40.000 karakter |
 | `industry` | string | ✓ | |
 | `company` | string | – | opsional |
 | `question_count` | integer | – | `3`, `5`, atau `7` (default 7) |
@@ -117,6 +117,8 @@ Buat sesi wawancara baru.
 | `cv_pdf` | file | * | PDF CV (maks 5 MB) |
 
 \* Salah satu dari `cv_text`, `cv_pdf`, atau `use_last_cv=true` wajib ada.
+
+Form web memakai unggahan PDF atau CV tersimpan; halaman profil hanya menerima unggahan PDF untuk mengganti CV. Input `cv_text` tetap didukung API untuk kompatibilitas.
 
 **Response 200:**
 ```json

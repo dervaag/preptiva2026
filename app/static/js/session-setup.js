@@ -147,7 +147,7 @@
   panelInputs.forEach(input => input.addEventListener('change', validatePanel));
   renderMode();
   form.addEventListener('reset', event => queueMicrotask(() => {
-    if (!event.defaultPrevented) {renderMode(); validateCv();}
+    if (!event.defaultPrevented) {renderMode(); validateCv(); validateJd();}
   }));
   form.querySelectorAll('[name=interviewer]').forEach(input => input.addEventListener('change', () => {
     document.querySelector('#setup-persona-description').textContent = input.dataset.description;
@@ -157,22 +157,33 @@
   });
   function validateCv() {
     const pdf = form.elements.cv_pdf;
-    const text = form.elements.cv_text;
+    const saved = form.elements.use_last_cv;
     const file = pdf.files[0];
-    pdf.setCustomValidity(file?.size > 5 * 1024 * 1024 ? ui('PDF maksimal 5 MB.') : '');
-    const hasCv = !!file || form.elements.use_last_cv.checked || text.value.trim().length >= 200;
-    text.setCustomValidity(hasCv ? '' : ui('Unggah PDF atau tempel teks CV minimal 200 karakter.'));
+    let message = '';
+    if (file) {
+      if (!/\.pdf$/i.test(file.name) || (file.type && file.type !== 'application/pdf')) message = 'Unggah CV dalam format PDF.';
+      else if (file.size > 5 * 1024 * 1024) message = 'PDF maksimal 5 MB.';
+    } else if (saved.disabled || !saved.checked) message = 'Unggah PDF atau gunakan CV terakhir yang tersimpan.';
+    pdf.setCustomValidity(message ? ui(message) : '');
   }
-  ['cv_pdf', 'cv_text', 'use_last_cv'].forEach(name => {
+  ['cv_pdf', 'use_last_cv'].forEach(name => {
     form.elements[name].addEventListener('input', validateCv);
     form.elements[name].addEventListener('change', validateCv);
   });
+  function validateJd() {
+    const text = form.elements.job_description;
+    const words = text.value.trim().split(/\s+/).filter(Boolean);
+    text.setCustomValidity(words.length < 5 ? ui('Deskripsi pekerjaan minimal 5 kata.') : '');
+  }
+  form.elements.job_description.addEventListener('input', validateJd);
+  form.elements.job_description.addEventListener('change', validateJd);
   form.addEventListener('invalid', event => {
     const section = event.target.closest('details');
     if (section) section.open = true;
   }, true);
   validateCv();
-  window.addEventListener('preptiva:languagechange', () => {validateCv(); validatePanel();});
+  validateJd();
+  window.addEventListener('preptiva:languagechange', () => {validateCv(); validatePanel(); validateJd();});
   function dispose() {disposed = true; generation++; stopCamera(); stopMic();}
   window.addEventListener('pagehide', dispose);
   window.addEventListener('pageshow', () => {disposed = false;});

@@ -158,8 +158,6 @@
     node('workspace-data').hidden = false;
     node('workspace-loading').hidden = true;
     renderTrend(assessed);
-    const recent = [...sessions].sort((first, second) => byCreated(second, first)).slice(0, 5);
-    node('recent-sessions').innerHTML = recent.length ? sessionRows(recent) : emptyState('Belum ada latihan', 'Mulai sesi pertama Anda.');
     node('workspace-data').hidden = false;
     node('workspace-loading').hidden = true;
     await loadFocus(assessed.at(-1));

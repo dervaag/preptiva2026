@@ -1,11 +1,10 @@
 {% from 'partials/custom-select.html' import select_field %}
 <div class="workspace-heading profile-heading"><div><h1>Profil saya</h1><p>Kelola data pribadi dan CV untuk latihan berikutnya.</p></div></div>
 <div class="profile-layout">
-  <aside class="ws-panel profile-sidebar">
-    <div class="profile-identity"><span class="profile-avatar" data-account-initial data-ui-content>{{ user.name[:1].upper() }}</span><h2 data-account-name data-ui-content>{{ user.name }}</h2><p data-account-email data-ui-content>{{ user.email }}</p></div>
-    <nav class="profile-nav" aria-label="Bagian profil"><a href="#profile-personal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg>Data pribadi</a><a href="#profile-cv">{{ icon('file') }}CV saya</a></nav>
-    <p class="profile-sidebar-note">Data ini menjadi isian awal saat membuat simulasi baru.</p>
-  </aside>
+  <section class="profile-overview" aria-label="Informasi akun">
+    <div class="profile-identity"><span class="profile-avatar" aria-hidden="true">{% include 'partials/default-avatar.html' %}</span><div><h2 data-account-name data-ui-content>{{ user.name }}</h2><p data-account-email data-ui-content>{{ user.email }}</p></div></div>
+    <a class="profile-practice-link" href="/simulasi/baru"><span>Simulasi baru</span>{{ icon('arrow') }}</a>
+  </section>
   <div class="profile-sections">
     <section class="ws-panel" id="profile-personal">
       <div class="profile-section-heading"><h2>Data pribadi</h2><p>Informasi akun dan profil kandidat Anda.</p></div>
@@ -16,21 +15,21 @@
           {{ select_field('gender', 'Gender', [('male', 'Laki-laki'), ('female', 'Perempuan')], user.gender or 'male') }}
           <label class="setup-field" for="profile-age">Usia<input id="profile-age" name="age" type="number" value="{{ user.age or '' }}" required min="15" max="80" inputmode="numeric"></label>
         </div>
+        <p class="profile-form-note">Data ini menjadi isian awal saat membuat simulasi baru.</p>
         <div class="profile-error" id="profile-personal-error" role="alert" hidden></div>
         <div class="profile-form-actions"><span class="profile-save-status" id="profile-personal-status" role="status"></span><button class="ws-button" type="submit">Simpan perubahan</button></div>
       </form>
     </section>
     <section class="ws-panel" id="profile-cv">
-      <div class="profile-section-heading"><div><h2>CV saya</h2><p>Unggah PDF atau kelola CV dalam bentuk teks.</p></div><span id="profile-cv-state" class="profile-cv-state">{{ 'CV tersimpan' if user.last_cv_text else 'Belum ada CV tersimpan' }}</span></div>
+      <div class="profile-section-heading"><div><h2>CV saya</h2><p>Unggah CV dalam format PDF.</p></div><span id="profile-cv-state" class="profile-cv-state" data-saved="{{ 'true' if user.last_cv_text else 'false' }}">{{ 'CV tersimpan' if user.last_cv_text else 'Belum ada CV tersimpan' }}</span></div>
       <form id="profile-cv-form" class="profile-form">
-        <label class="profile-upload" for="profile-cv-pdf">{{ icon('file') }}<span><strong>Pilih PDF</strong><small>PDF berteks, maksimal 5 MB dan 30 halaman.</small></span><input id="profile-cv-pdf" name="cv_pdf" type="file" accept="application/pdf,.pdf"></label>
+        <label class="profile-upload" for="profile-cv-pdf"><span class="profile-upload-icon">{{ icon('file') }}</span><strong>Pilih PDF</strong><small>PDF berteks, maksimal 5 MB dan 30 halaman.</small><input id="profile-cv-pdf" name="cv_pdf" type="file" accept="application/pdf,.pdf" required></label>
         <div class="profile-file-selection" id="profile-file-selection" hidden><span id="profile-file-name" data-ui-content></span><button id="profile-clear-file" type="button">Batal</button></div>
-        <label class="setup-field profile-cv-text-label" for="profile-cv-text">Teks CV<textarea id="profile-cv-text" name="cv_text" rows="9" maxlength="60000" placeholder="Tempel pengalaman, pendidikan, dan keahlian Anda di sini.">{{ user.last_cv_text or '' }}</textarea></label>
-        <div class="profile-cv-meta"><span>Minimal 200 karakter.</span><span id="profile-cv-count" data-ui-content>{{ (user.last_cv_text or '')|length }} / 60.000</span></div>
+        <p class="profile-form-note">CV tersimpan bisa dipakai kembali saat membuat simulasi baru. Unggah PDF baru untuk menggantinya.</p>
         <div class="profile-error" id="profile-cv-error" role="alert" hidden></div>
         <div class="profile-form-actions"><button id="profile-delete-cv" class="profile-delete" type="button"{{ ' disabled' if not user.last_cv_text }}>Hapus CV</button><span id="profile-cv-status" class="profile-save-status" role="status"></span><button class="ws-button" type="submit">Simpan CV</button></div>
       </form>
     </section>
   </div>
 </div>
-<dialog class="profile-confirm" id="profile-delete-dialog" aria-labelledby="profile-delete-title"><h2 id="profile-delete-title">Hapus CV tersimpan?</h2><p>Anda dapat mengunggah atau menambahkan CV baru kapan saja.</p><div id="profile-delete-error" class="profile-error" role="alert" hidden></div><div class="profile-confirm-actions"><button id="profile-cancel-delete" type="button" class="ws-button ws-button--secondary" autofocus>Batal</button><button id="profile-confirm-delete" type="button" class="ws-button profile-delete-confirm">Hapus CV</button></div></dialog>
+<dialog class="profile-confirm" id="profile-delete-dialog" aria-labelledby="profile-delete-title"><h2 id="profile-delete-title">Hapus CV tersimpan?</h2><p>Anda dapat mengunggah PDF CV baru kapan saja.</p><div id="profile-delete-error" class="profile-error" role="alert" hidden></div><div class="profile-confirm-actions"><button id="profile-cancel-delete" type="button" class="ws-button ws-button--secondary" autofocus>Batal</button><button id="profile-confirm-delete" type="button" class="ws-button profile-delete-confirm">Hapus CV</button></div></dialog>

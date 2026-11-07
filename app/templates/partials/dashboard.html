@@ -1,9 +1,33 @@
-<div class="workspace-heading">
-  <div><h1>Halo, {{ user.name.split()[0] }}</h1><p>Sejauh ini, latihan Anda.</p></div>
+<div class="workspace-heading dashboard-welcome">
+  <div><span class="dashboard-eyebrow">Persiapan yang baik dimulai dari sini.</span><h1>Halo, {{ user.name.split()[0] }}</h1><p>Latih jawaban, kenali kekuatan, dan siapkan langkah berikutnya.</p></div>
   <a class="ws-button" href="/simulasi/baru"><span>Simulasi baru</span>{{ icon('arrow') }}</a>
 </div>
+<section class="dashboard-next" aria-labelledby="next-title">
+  <div class="dashboard-section-heading"><div><h2 id="next-title">Langkah berikutnya</h2><p>Pilih yang ingin Anda siapkan hari ini.</p></div></div>
+  <div class="dashboard-actions">
+    <article class="dashboard-action dashboard-action--practice">
+      <span class="dashboard-card-label">Latihan wawancara</span>
+      <h3>Lebih siap saat giliran Anda.</h3>
+      <p>Berlatih dengan pewawancara pilihan, sesuai posisi yang Anda tuju.</p>
+      <a class="dashboard-card-link" href="/simulasi/baru"><span>Mulai simulasi</span>{{ icon('arrow') }}</a>
+    </article>
+    <article class="dashboard-action dashboard-action--profile">
+      <span class="dashboard-card-label">Profil &amp; CV</span>
+      <h3>Pengalaman Anda, titik awalnya.</h3>
+      <p>Simpan CV dan detail diri agar persiapan latihan berikutnya lebih mudah.</p>
+      <a class="dashboard-card-link" href="/profile"><span>Lengkapi profil</span>{{ icon('arrow') }}</a>
+    </article>
+    <article class="dashboard-action dashboard-action--review">
+      <span class="dashboard-card-label">Umpan balik</span>
+      <h3>Temukan yang bisa ditingkatkan.</h3>
+      <p>Buka kembali hasil latihan dan pelajari masukan dari pewawancara.</p>
+      <a class="dashboard-card-link" href="/riwayat"><span>Tinjau hasil latihan</span>{{ icon('arrow') }}</a>
+    </article>
+  </div>
+</section>
 {% include 'partials/workspace-state.html' %}
 <div id="workspace-data" hidden>
+  <div class="dashboard-section-heading dashboard-overview-heading"><div><h2>Ringkasan latihan</h2><p>Setiap sesi, satu langkah lebih siap.</p></div><span class="dashboard-section-note">Dari latihan Anda</span></div>
   <section class="ws-stats" aria-label="Ringkasan latihan">
     <article class="ws-stat"><h2>Sesi selesai</h2><div class="ws-stat-value" id="stat-completed">-</div><p>Seluruh latihan Anda</p></article>
     <article class="ws-stat ws-stat--average"><h2>Rata-rata skor</h2><div class="ws-stat-value"><span id="stat-average">-</span><small>/100</small></div><p>Dari sesi yang dinilai</p></article>
@@ -23,10 +47,4 @@
       <div id="focus-content"></div>
     </section>
   </div>
-
-  <section class="ws-panel ws-sessions" aria-labelledby="recent-title">
-    <div class="ws-panel-heading"><h2 id="recent-title">Sesi terakhir</h2><a class="ws-text-link" href="/riwayat">Lihat semua {{ icon('arrow') }}</a></div>
-    {% include 'partials/session-columns.html' %}
-    <div id="recent-sessions" class="ws-session-list"></div>
-  </section>
 </div>

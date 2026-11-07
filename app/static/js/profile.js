@@ -4,18 +4,24 @@
   const node = id => document.getElementById(id);
   const ui = value => window.PreptivaI18n?.t(value) ?? value;
   const personal = node('profile-personal-form'), cv = node('profile-cv-form');
-  const pdf = node('profile-cv-pdf'), cvText = node('profile-cv-text');
+  const pdf = node('profile-cv-pdf');
   const dialog = node('profile-delete-dialog');
   let hasCv = !node('profile-delete-cv').disabled;
   function error(id, cause) {node(id).textContent = cause?.message || String(cause); node(id).hidden = false;}
-  function updateCount() {const locale=window.PreptivaI18n?.locale || 'en-GB';node('profile-cv-count').textContent = `${cvText.value.length.toLocaleString(locale)} / ${(60000).toLocaleString(locale)}`;}
+  function validatePdf() {
+    const file = pdf.files[0];
+    const message = !file ? ui('Pilih file PDF CV terlebih dahulu.') :
+      (!/\.pdf$/i.test(file.name) || (file.type && file.type !== 'application/pdf')) ? ui('Unggah CV dalam format PDF.') :
+      file.size > 5*1024*1024 ? ui('PDF maksimal 5 MB.') : '';
+    pdf.setCustomValidity(message);
+    return !message;
+  }
   function updateCv(data) {
     hasCv = data.has_cv;
-    cvText.value = data.cv_text; cvText.defaultValue = data.cv_text;
-    pdf.value = '';pdf.setCustomValidity('');node('profile-file-selection').hidden = true;
+    pdf.value = '';validatePdf();node('profile-file-selection').hidden = true;
     node('profile-delete-cv').disabled = !hasCv;
     node('profile-cv-state').textContent = hasCv ? 'CV tersimpan' : 'Belum ada CV tersimpan';
-    updateCount();
+    node('profile-cv-state').dataset.saved = String(hasCv);
   }
   personal.addEventListener('input', () => {node('profile-personal-status').textContent = ''; node('profile-personal-error').hidden = true;});
   personal.addEventListener('change', () => {node('profile-personal-status').textContent = '';});
@@ -37,24 +43,24 @@
   });
   pdf.addEventListener('change', () => {
     const file = pdf.files[0];
-    pdf.setCustomValidity(file?.size > 5*1024*1024 ? ui('PDF maksimal 5 MB.') : '');
+    validatePdf();
     node('profile-file-name').textContent = file?.name || '';node('profile-file-selection').hidden = !file;
     node('profile-cv-status').textContent = '';node('profile-cv-error').hidden = true;
     if(file && !pdf.checkValidity())pdf.reportValidity();
   });
-  node('profile-clear-file').addEventListener('click', () => {pdf.value='';pdf.setCustomValidity('');node('profile-file-selection').hidden=true;});
-  cvText.addEventListener('input', () => {updateCount();node('profile-cv-status').textContent='';node('profile-cv-error').hidden=true;});
+  pdf.addEventListener('invalid', () => error('profile-cv-error',pdf.validationMessage));
+  node('profile-clear-file').addEventListener('click', () => {pdf.value='';validatePdf();node('profile-file-selection').hidden=true;node('profile-cv-error').hidden=true;});
   cv.addEventListener('submit', async event => {
     event.preventDefault();
     const button = cv.querySelector('[type=submit]');
     if(button.disabled)return;
     node('profile-cv-error').hidden=true;
-    if(!pdf.files.length && cvText.value.trim().length<200){error('profile-cv-error',ui('Unggah PDF atau tempel teks CV minimal 200 karakter.'));cvText.focus();return;}
+    if(!validatePdf()){pdf.reportValidity();return;}
     const label=button.textContent;
     button.disabled=true;node('profile-delete-cv').disabled=true;button.textContent='Menyimpan…';cv.setAttribute('aria-busy','true');
     try {
       const form=new FormData();
-      if(pdf.files.length)form.append('cv_pdf',pdf.files[0]);else form.append('cv_text',cvText.value);
+      form.append('cv_pdf',pdf.files[0]);
       updateCv(await api('/api/profile',{method:'PATCH',body:form}));node('profile-cv-status').textContent='CV disimpan.';
     } catch(cause){error('profile-cv-error',cause);}
     finally{button.disabled=false;node('profile-delete-cv').disabled=!hasCv;button.textContent=label;cv.removeAttribute('aria-busy');}
@@ -67,6 +73,6 @@
     catch(cause){error('profile-delete-error',cause);}
     finally{button.disabled=false;}
   });
-  window.addEventListener('preptiva:languagechange', () => {updateCount();pdf.setCustomValidity(pdf.files[0]?.size>5*1024*1024 ? ui('PDF maksimal 5 MB.') : '');});
-  updateCount();
+  window.addEventListener('preptiva:languagechange', validatePdf);
+  validatePdf();
 })();

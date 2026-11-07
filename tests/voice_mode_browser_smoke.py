@@ -64,8 +64,8 @@ def main():
             page.wait_for_url('**/dashboard')
             page.goto(f'http://127.0.0.1:{port}/simulasi/baru')
             page.locator('#setup-context > summary').click()
-            page.locator('[name=cv_text]').fill(
-                'Lulusan baru Akuntansi. Proyek kuliah koperasi kampus dan organisasi mahasiswa. ' * 4)
+            page.locator('[name=cv_pdf]').set_input_files(fixture.cv_pdf(
+                'Lulusan baru Akuntansi. Proyek kuliah koperasi kampus dan organisasi mahasiswa. ' * 4))
             page.locator('#setup-select-career_stage-trigger').click()
             page.locator('#setup-select-career_stage-menu [data-value="fresh_graduate"]').click()
             page.locator('[name=job_role]').fill('Accountant')

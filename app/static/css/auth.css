@@ -13,7 +13,7 @@
 .auth-shell {display: grid; grid-template-columns: 1fr 1fr; min-height: calc(100svh - 48px); border: 1px solid #e3e4ea; border-radius: 24px; background: #fff; overflow: hidden;}
 .auth-entry {padding: 38px clamp(30px, 5.3vw, 88px) 36px; display: flex; flex-direction: column; min-width: 0;}
 .auth-page .brand--auth {gap: 8px; font-size: 26px; font-family: inherit; align-self: flex-start; flex-shrink: 0;}
-.auth-page .brand--auth .brand-symbol {width: 30px; height: 30px;}
+.auth-page .brand--auth .brand-symbol {width: 38px; height: 38px;}
 .auth-page .brand--auth .brand-name {font-size: inherit;}
 .auth-form-panel {max-width: 440px; width: 100%; margin: auto; padding: 45px 0 32px;}
 .auth-heading {margin-bottom: 30px;}
@@ -54,7 +54,7 @@
 .auth-account-switch a:hover {color: #64250e;}
 .auth-visual {position: relative; display: flex; flex-direction: column; justify-content: flex-end; min-width: 0; min-height: 640px; margin: 14px 14px 14px 0; overflow: hidden; border-radius: 18px; background: linear-gradient(155deg, #fae4d1 3%, #f7b780 46%, #ed8c51 68%, #bc491e 100%);}
 .auth-symbol-stage {position: absolute; inset: 0 0 24%; display: grid; place-items: center; overflow: hidden;}
-.auth-symbol-stage img {display: block; width: min(82%, 510px); height: auto; aspect-ratio: 1; mix-blend-mode: multiply; transform: rotate(-9deg);}
+.auth-symbol-stage img {display: block; width: min(82%, 510px); height: auto; aspect-ratio: 1;}
 .auth-visual-copy {position: relative; padding: 28px 38px 34px; color: #fff; background: linear-gradient(0deg, #7d2f19 0%, #7d2f19e8 58%, #7d2f1900 100%); padding-top: 100px;}
 .auth-visual-copy h2 {font: 500 clamp(29px, 3.1vw, 45px)/1.15 'DM Sans', sans-serif; letter-spacing: -.045em; margin: 0;}
 .auth-visual-copy p {max-width: 340px; font-size: 12px; line-height: 1.8; margin-top: 20px; padding-top: 18px; border-top: 1px solid #eeb69b70; color: #fff1e6;}

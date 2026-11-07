@@ -1,11 +1,11 @@
 {% from 'partials/setup-icons.html' import icon %}
-{% macro select_field(name, label, options, value, translation='') -%}
+{% macro select_field(name, label, options, value, translation='', required=false) -%}
 {% set selected = namespace(value=options[0][0], label=options[0][1]) %}
 {% for key, text in options %}{% if key == value %}{% set selected.value = key %}{% set selected.label = text %}{% endif %}{% endfor %}
 <div class="setup-field setup-select" data-select="{{ name }}">
-  <span class="setup-select-label" id="setup-select-{{ name }}-label">{{ label }}{% if translation %} <span class="setup-field-translation">{{ translation }}</span>{% endif %}</span>
+  <span class="setup-select-label" id="setup-select-{{ name }}-label">{{ label }}{% if required %} <span class="setup-required" aria-hidden="true">*</span>{% endif %}{% if translation %} <span class="setup-field-translation">{{ translation }}</span>{% endif %}</span>
   <input class="setup-select-input" type="hidden" name="{{ name }}" value="{{ selected.value }}">
-  <button class="setup-select-trigger" id="setup-select-{{ name }}-trigger" type="button" role="combobox" aria-haspopup="listbox" aria-expanded="false" aria-controls="setup-select-{{ name }}-menu" aria-labelledby="setup-select-{{ name }}-label setup-select-{{ name }}-value">
+  <button class="setup-select-trigger" id="setup-select-{{ name }}-trigger" type="button" role="combobox"{% if required %} aria-required="true"{% endif %} aria-haspopup="listbox" aria-expanded="false" aria-controls="setup-select-{{ name }}-menu" aria-labelledby="setup-select-{{ name }}-label setup-select-{{ name }}-value">
     <span class="setup-select-value" id="setup-select-{{ name }}-value">{{ selected.label }}</span>
     <span class="setup-select-chevron">{{ icon('chevron') }}</span>
   </button>

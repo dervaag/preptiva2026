@@ -1,12 +1,13 @@
 <details class="account-menu" id="account-menu">
   <summary aria-label="Menu akun">
-    <span class="account-avatar" data-account-initial data-ui-content>{{ user.name[:1].upper() }}</span>
+    <span class="account-avatar" aria-hidden="true">{% include 'partials/default-avatar.html' %}</span>
     <span class="account-menu-name" data-account-name data-ui-content>{{ user.name }}</span>
     {{ icon('chevron') }}
   </summary>
   <div class="account-popover">
     <div class="account-popover-identity"><strong data-account-name data-ui-content>{{ user.name }}</strong><span data-account-email data-ui-content>{{ user.email }}</span></div>
     <a href="/profile"{% if page == 'profile' %} aria-current="page"{% endif %}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg><span>Profil saya</span></a>
+    <div class="account-popover-language"><span>Bahasa website</span>{% include 'partials/language-switch.html' %}</div>
     <div class="account-popover-divider"></div>
     <button id="logout" type="button">{{ icon('logout') }}<span>Keluar</span></button>
   </div>

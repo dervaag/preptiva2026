@@ -4,17 +4,17 @@ Diperbarui: 5 November 2026.
 
 ## Cleansing konservatif
 
-`app/services/text.py` menangani teks PDF, teks CV yang ditempel, CV tersimpan yang dipakai ulang, dan job description sebelum disimpan ke sesi baru. Pipeline ekstraksi juga membersihkan input sesi lama saat dipersiapkan.
+Form simulasi baru dan profil menerima unggahan CV dalam PDF; form simulasi juga bisa memakai CV terakhir yang tersimpan. Tidak ada input CV teks di kedua halaman. `app/services/text.py` membersihkan teks hasil ekstraksi PDF, CV tersimpan yang dipakai ulang, input teks dari API yang masih didukung, dan job description sebelum disimpan ke sesi baru. Pipeline ekstraksi juga membersihkan input sesi lama saat dipersiapkan.
 
 - Normalisasi Unicode NFC, newline CRLF/CR, tab/spasi berlebih, non-breaking space, BOM, zero-width space, word joiner, soft hyphen, serta karakter kontrol.
 - Paragraf, baris, bullet, angka pencapaian, tanggal, nama, email, nomor telepon, C++, C#, dan istilah teknis tetap dipertahankan. Tidak melakukan stemming, lowercasing keseluruhan, terjemahan, penghapusan stopword, atau koreksi fakta.
 - PDF mempertahankan pemisahan halaman/paragraf. Nomor halaman berlabel Page/Halaman di margin dibuang. Baris margin pendek yang sama pada minimal tiga halaman dipertahankan di halaman pertama dan dihapus pada halaman berikutnya.
-- Pembersihan margin bersifat heuristik: periksa hasil pada CV dengan layout rumit. PDF hasil scan tanpa teks tetap memerlukan OCR di luar aplikasi atau input teks manual. Tidak ada OCR otomatis.
+- Pembersihan margin bersifat heuristik: periksa hasil pada CV dengan layout rumit. PDF hasil scan tanpa teks memerlukan OCR di luar aplikasi sebelum diunggah. Tidak ada OCR otomatis.
 - File PDF asli tidak ditulis ulang; sesi dan CV terakhir menyimpan teks bersih. Dokumen lama tidak dimigrasi massal.
 
 ## Batas input
 
-PDF maksimal 5 MB dan 30 halaman. Jumlah halaman berlebih ditolak, bukan diam-diam membaca hanya sepuluh halaman pertama. Teks CV minimal 200 dan maksimal 60.000 karakter setelah cleansing. JD minimal 30 dan maksimal 40.000 karakter. Input berlebih ditolak dengan pesan ralat; tidak dipotong diam-diam.
+PDF maksimal 5 MB dan 30 halaman. Jumlah halaman berlebih ditolak, bukan diam-diam membaca hanya sepuluh halaman pertama. Teks CV minimal 200 dan maksimal 60.000 karakter setelah cleansing. JD minimal 5 kata dan maksimal 40.000 karakter. Input berlebih ditolak dengan pesan ralat; tidak dipotong diam-diam.
 
 ## Kapan memakai chunking
 

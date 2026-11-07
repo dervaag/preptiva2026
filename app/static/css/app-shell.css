@@ -1,0 +1,49 @@
+.setup-header {
+  position: sticky;
+  top: 16px;
+  z-index: 90;
+  width: calc(100% - 64px);
+  max-width: 1280px;
+  height: 80px;
+  min-height: 0;
+  margin: 22px auto 0;
+  padding: 0 25px;
+  border: 2px solid #fff;
+  border-radius: 48px;
+  background: #eeeef1;
+  box-shadow: 0 5px 24px #25232d04;
+}
+.setup-header .brand {font-size: 25px; gap: 10px;}
+.setup-nav {gap: 7px;}
+.setup-nav a {padding: 13px 21px; border-radius: 30px; color: #55535e; font-size: 14px;}
+.setup-nav a[aria-current="page"] {background: #ff6a2b; color: #32180c; box-shadow: none;}
+.setup-nav a:hover {background: #e3e3e8;}
+.setup-nav a[aria-current="page"]:hover {background: #f85d1c;}
+.account-menu > summary {border-radius: 28px; gap: 10px;}
+.account-menu-name {font-size: 13px;}
+.setup-main, .workspace-main {padding: 28px 32px 24px;}
+.setup-main > .content, .workspace-main > .content {max-width: 1248px; margin: 0 auto; padding: 0;}
+[data-page="dashboard"] .workspace-main {padding-top: 0;}
+#main-content, #profile-personal, #profile-cv {scroll-margin-top: 120px;}
+
+@media (min-width: 961px) {
+  .setup-shell {height: calc(100dvh - 154px);}
+}
+@media (max-width: 1050px) {
+  .setup-header {padding-left: 22px; padding-right: 18px; gap: 12px;}
+  .setup-nav a {padding: 12px 15px; font-size: 13px;}
+  .account-menu-name {max-width: 90px;}
+}
+@media (min-width: 721px) and (max-width: 960px) {
+  .setup-preview {top: 120px;}
+}
+@media (max-width: 720px) {
+  .setup-header {position: relative; top: auto; width: calc(100% - 32px); height: auto; margin-top: 16px; padding: 13px 16px; border-radius: 28px; grid-template-columns: 1fr auto; gap: 12px;}
+  .setup-header .brand {font-size: 24px;}
+  .setup-nav {grid-column: 1 / -1; grid-row: 2; width: 100%; gap: 5px;}
+  .setup-nav a {flex: 1; padding: 11px 10px; text-align: center; font-size: 13px;}
+  .setup-account {grid-row: 1; grid-column: 2;}
+  .account-menu > summary {padding-right: 5px;}
+  .setup-main, .workspace-main {padding: 24px 20px 20px;}
+  #main-content, #profile-personal, #profile-cv {scroll-margin-top: 20px;}
+}
