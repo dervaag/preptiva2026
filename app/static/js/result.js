@@ -1,5 +1,18 @@
 'use strict';
 const resultChevron = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+// Native closed disclosures omit their contents from print/PDF in some browsers.
+// Preserve the user's screen state while making the complete report printable.
+let resultPrintClosed = [];
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeprint', () => {
+    resultPrintClosed = Array.from(document.querySelectorAll('#result-content details:not([open])'));
+    resultPrintClosed.forEach(detail => { detail.open = true; });
+  });
+  window.addEventListener('afterprint', () => {
+    resultPrintClosed.forEach(detail => { detail.open = false; });
+    resultPrintClosed = [];
+  });
+}
 function resultPoints(score) {return typeof score === 'number' && Number.isFinite(score) ? Math.round(Math.max(0, Math.min(5, score)) * 20) : null;}
 function resultList(items, empty) {
   return items?.length ? `<ul class="result-feedback-list">${items.map(item => `<li>${esc(item)}</li>`).join('')}</ul>` : `<p class="result-muted">${esc(empty)}</p>`;
@@ -14,6 +27,7 @@ function renderResult(r) {
   const statusLabels = {measured: 'Bukti cukup', insufficient: 'Bukti terbatas', not_assessed: 'Belum dinilai', unusable_transcript: 'Transkrip tidak dapat digunakan'};
   const scoreLabel = score === null ? 'Belum terukur' : r.label || 'Hasil latihan';
   return `${assessmentNotice(assessment)}
+    ${score === null ? '<section class="ws-panel result-score-explanation" role="status"><h2>Skor belum tersedia</h2><p>Jawaban Anda tetap tersimpan dan dapat dibaca di bawah. Belum ada kompetensi berbobot dengan bukti yang cukup dan terverifikasi untuk menghitung skor keseluruhan. Ini bukan nilai nol. Lihat alasan penilaian pada setiap jawaban untuk mengetahui bukti yang masih diperlukan.</p></section>' : ''}
     <section class="ws-panel result-overview" aria-label="Ringkasan hasil">
       <div class="result-score">
         <h2>Skor keseluruhan</h2>
@@ -51,9 +65,9 @@ function renderResult(r) {
     <section class="ws-panel result-answers"><div class="ws-panel-heading"><div><h2>Tinjau jawaban</h2><p>Pertanyaan, transkrip, dan umpan balik.</p></div><span class="result-answer-count">${items.length} jawaban</span></div>
       ${items.map((item, index) => {
         const feedback = item.feedback || {};
-        return `<details class="review-item result-answer"><summary><span class="result-step-number">${String(index + 1).padStart(2, '0')}</span><span class="result-answer-heading"><strong>${esc(item.question_text)}</strong><small>${esc([item.persona?.name, item.kind === 'follow_up' ? 'Pertanyaan lanjutan' : `Pertanyaan ${item.main_order}`, item.skipped ? 'Dilewati' : item.input_mode === 'text' ? 'Jawaban teks' : 'Jawaban suara'].filter(Boolean).join(' · '))}</small></span>${resultChevron}</summary><div class="result-answer-body">
+        return `<details class="review-item result-answer" open><summary><span class="result-step-number">${String(index + 1).padStart(2, '0')}</span><span class="result-answer-heading"><strong>${esc(item.question_text)}</strong><small>${esc([item.persona?.name, item.kind === 'follow_up' ? 'Pertanyaan lanjutan' : `Pertanyaan ${item.main_order}`, item.skipped ? 'Dilewati' : item.input_mode === 'text' ? 'Jawaban teks' : 'Jawaban suara'].filter(Boolean).join(' · '))}</small></span>${resultChevron}</summary><div class="result-answer-body">
           <h3>Jawaban Anda</h3><div class="transcript">${item.skipped ? 'Pertanyaan dilewati. Tidak ada jawaban yang dinilai.' : esc(item.transcript || 'Transkrip tidak tersedia.')}</div>
-          ${!item.skipped ? `${feedback.strengths?.length ? `<h3>Yang sudah baik</h3>${resultList(feedback.strengths, '')}` : ''}${feedback.improvements?.length ? `<h3>Saran perbaikan</h3>${resultList(feedback.improvements, '')}` : ''}${feedback.better_answer_tip ? `<div class="result-answer-tip"><h3>Untuk jawaban berikutnya</h3><p>${esc(feedback.better_answer_tip)}</p></div>` : ''}${Object.keys(item.competency_scores || {}).length ? `<details class="result-evidence"><summary>Rincian bukti penilaian ${resultChevron}</summary>${evidenceDetails(item.competency_scores, names)}</details>` : ''}${item.input_mode !== 'text' && Number.isFinite(item.wpm) ? `<p class="result-audio-meta">${item.wpm} kata/menit · ${item.filler_count ?? 0} kata pengisi. Konteks penyampaian, bukan penalti otomatis.</p>` : ''}` : ''}
+          ${!item.skipped ? `${feedback.strengths?.length ? `<h3>Yang sudah baik</h3>${resultList(feedback.strengths, '')}` : ''}${feedback.improvements?.length ? `<h3>Saran perbaikan</h3>${resultList(feedback.improvements, '')}` : ''}${feedback.better_answer_tip ? `<div class="result-answer-tip"><h3>Untuk jawaban berikutnya</h3><p>${esc(feedback.better_answer_tip)}</p></div>` : ''}${Object.keys(item.competency_scores || {}).length ? `<details class="result-evidence"${score === null ? ' open' : ''}><summary>Rincian bukti penilaian ${resultChevron}</summary>${evidenceDetails(item.competency_scores, names)}</details>` : ''}${item.input_mode !== 'text' && Number.isFinite(item.wpm) ? `<p class="result-audio-meta">${item.wpm} kata/menit · ${item.filler_count ?? 0} kata pengisi. Konteks penyampaian, bukan penalti otomatis.</p>` : ''}` : ''}
         </div></details>`;
       }).join('') || '<p class="result-muted">Belum ada jawaban tersimpan.</p>'}
     </section>

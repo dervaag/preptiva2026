@@ -154,6 +154,16 @@ class SystemTests(unittest.IsolatedAsyncioTestCase):
             response = await self.client.post('/api/sessions', data=data)
         return response
 
+    async def test_result_language_is_saved_separately_from_interview_language(self):
+        response = await self.create(language='en', feedback_language='id')
+        self.assertEqual(response.status_code, 200, response.text)
+        async with SessionLocal() as db:
+            session = await db.scalar(select(InterviewSession).where(InterviewSession.uuid == response.json()['session_id']))
+            self.assertEqual(session.script['settings']['language'], 'en')
+            self.assertEqual(session.script['settings']['feedback_language'], 'id')
+        invalid = await self.create(feedback_language='fr')
+        self.assertEqual(invalid.status_code, 422)
+
     async def test_mobile_device_cannot_start_session(self):
         sid, _, _ = await self.ready_session()
         mobile_headers = [

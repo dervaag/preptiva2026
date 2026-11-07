@@ -1,3 +1,4 @@
+from app.ai.closing import public_closing
 import asyncio
 import json
 import re
@@ -39,7 +40,8 @@ async def create_session(candidate_name: str = Form(..., min_length=2, max_lengt
     question_count: int = Form(7), interviewer: Literal['hr', 'user', 'manager'] = Form(...),
     panel: list[str] = Form([]), career_stage: Literal['auto', 'student', 'fresh_graduate', 'experienced', 'career_switcher'] = Form('auto'),
     language: Literal['id', 'en'] = Form('id'), consent: bool = Form(...), use_last_cv: bool = Form(False), use_job_rubric: bool = Form(False),
-    cv_text: str = Form(''), cv_pdf: Optional[UploadFile] = File(None), user=Depends(current_user), db=Depends(get_db)):
+    cv_text: str = Form(''), cv_pdf: Optional[UploadFile] = File(None), user=Depends(current_user), db=Depends(get_db),
+    feedback_language: Optional[Literal['id', 'en']] = Form(None)):
     if not consent or question_count not in (3, 5, 7):
         raise HTTPException(422, 'Persetujuan wajib; jumlah pertanyaan harus 3, 5, atau 7.')
     roles = panel or [interviewer]
@@ -70,7 +72,8 @@ async def create_session(candidate_name: str = Form(..., min_length=2, max_lengt
         job_role=job_role, level=level, industry=industry, company=company, job_description=jd, cv_text=cv,
         interviewer=interviewer, question_count=question_count, answer_seconds=settings.answer_seconds_for(level),
         max_followups=settings.followups_for(question_count),
-        script={'settings': {'language': language, 'retry_limit': settings.retry_limit, 'panel': roles,
+        script={'settings': {'language': language, 'feedback_language': feedback_language or language,
+                            'retry_limit': settings.retry_limit, 'panel': roles,
                             'career_stage': career_stage, 'dynamic_questions': True,
                             'streaming_voice': settings.realtime_voice_enabled,
                             'interruption_policy': 'retry_or_skip', 'evidence_policy': memory.VERSION},
@@ -278,7 +281,7 @@ async def _process_answer(sid, owner_id, question_id, content, filename, duratio
             'source_refs': response.get('source_refs', []),
             'response_interviewer': persona,
             'response_audio_url': audio_url, 'follow_up_question': public_question(follow, session),
-            'next_question': public_question(next_q, session), 'is_last': last, 'closing': session.script['closing'] if last else None}
+            'next_question': public_question(next_q, session), 'is_last': last, 'closing': public_closing(session) if last else None}
         answer.result_payload = result
         if capture:
             answer.result_payload = {**result, 'original_transcript':capture['transcript'], 'transcript_corrected':transcript != capture['transcript'],
@@ -499,7 +502,9 @@ async def result(session=Depends(owned_session), db=Depends(get_db)):
         panel_results.append({'interviewer': persona, 'total_score': score, 'competencies': measured})
     if graph_result:
         panel_results = graph_result['panel_results']
+    from app.ai.feedback import feedback_language as result_language
     return {'session_id': session.uuid, 'status': 'done', 'job_role': session.job_role, 'level': session.level,
+        'feedback_language': result_language(session),
         'panel_results': panel_results,
         'aggregation_policy': session.script.get('runtime', {}).get('aggregation_policy'),
         'coverage': coverage(competencies) if session.script.get('settings', {}).get('evidence_policy') else None,

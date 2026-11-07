@@ -1,4 +1,7 @@
 .result-page #result-content {display: grid; gap: 22px;}
+.result-score-explanation {padding: 22px 26px; border-left: 4px solid #c04b1f;}
+.result-score-explanation h2 {font-size: 16px;}
+.result-score-explanation p {font-size: 13px; line-height: 1.8; margin-top: 8px; color: #515562;}
 .result-back {display: inline-flex; align-items: center; gap: 6px; min-height: 36px; font-size: 12px; color: #686b76; margin-top: 5px;}
 .result-back svg {width: 16px; height: 16px;}
 .result-back:hover {color: #9c3a14;}
@@ -114,4 +117,12 @@
   .result-page .ws-panel-heading {padding: 20px;}.result-competency-list {padding: 0 20px;}.result-feedback-section {padding: 23px 20px;}.result-star {padding: 0 20px;}
   .result-next-list {padding: 0 20px 3px;}.result-answer > summary {padding: 19px 20px;gap:12px;}.result-answer-body {padding: 0 20px 22px;}.result-coverage-note {padding-left:20px;padding-right:20px;}
   .result-page .result-state {padding: 27px 20px;}
+}
+@media print {
+  .skip-link, .ws-header, .site-footer, .result-back, .result-heading .button {display: none !important;}
+  .result-page #result-content, .result-overview, .result-analysis {display: block;}
+  .result-page .ws-panel {margin-bottom: 16px; box-shadow: none;}
+  .result-answer-body, .result-page .transcript {overflow: visible; max-height: none;}
+  .result-answer > summary, .result-answer-body h3 {break-after: avoid;}
+  .result-page .transcript {white-space: pre-wrap;}
 }

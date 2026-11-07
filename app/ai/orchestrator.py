@@ -7,6 +7,8 @@ from app.ai.guidebook import role_context
 from app.ai.memory import validate_refs, reference_options, ReferenceValidationError
 from app.services.text import chunks
 from app.log import emit
+from app.ai.feedback import validate_review, validate_answer_feedback
+from app.ai.closing import closing_text, invites_questions
 
 
 class Question(BaseModel):
@@ -106,6 +108,8 @@ async def generate_set(context, slots, history):
     data = {**context, 'blueprint': slots, 'previous_questions_to_avoid': history}
     instruction = ('Create personalized interview questions and intro/closing in session language. ' + FOCUS[context['interviewer']] +
         ' Speak as the selected interviewer role, never as another panel member. If panel_members are supplied, introduce them briefly in the intro. '
+        'Never ask the candidate to ask you or the panel questions. There is no candidate Q&A phase. '
+        'A reflection slot (or legacy candidate_questions slot) must ask about the candidate own learning or work experience, not invite their questions. '
         ' Each question <=35 words and exactly one question per turn. Match role, level, industry and supplied CV/JD. '
         'Anchor each question in an actual candidate_profile anchor, including its anchor_id. Unknown background requires a neutral clarification. '
         'Student/fresh graduate questions must use actual academic, project, internship or volunteering evidence rather than assume employment or direct reports. '
@@ -118,6 +122,7 @@ async def generate_set(context, slots, history):
             validate_questions(result['questions'], slots, context['interviewer'], history, context.get('candidate_profile'))
             if not result.get('intro') or not result.get('closing'):
                 raise ValueError('Intro atau penutup kosong.')
+            result['closing'] = closing_text(context.get('language', 'id'))
             return result
         except (ValueError, KeyError) as exc:
             if attempt:
@@ -134,7 +139,7 @@ async def adapt_question(context):
         'When an answer is short, quote that entire answer exactly; never pad the quote or infer missing experience. '
         'Ask a new unresolved aspect of that example within the planned competency, without assuming undocumented tools, events or feedback. Never invent prior facts. '
         'Candidate corrections in the conversation override assumptions in the CV. For students/fresh graduates use academic/project examples and never assume employment. '
-        'Ask a concrete unresolved point or a new application of the assigned competency. Do not merely rephrase the planned question when the answer changes its assumptions. '
+        'Ask a concrete unresolved point or a new application of the assigned competency. Never invite the candidate to ask questions to you or the panel, even in a legacy candidate_questions slot. Do not merely rephrase the planned question when the answer changes its assumptions. '
         'Return {"question":{"slot":"...","category":"...","question_text":"one question <=35 words","anchor_id":"cv1","expected_points":["..."],"competencies":["..."],"source_refs":[{"turn_id":"q123","quote":"exact original excerpt"}]}}.')
     data = dict(context)
     data['allowed_source_refs'] = reference_options(context.get('context_packet', {}))
@@ -171,7 +176,10 @@ async def respond(context):
         'Candidate corrections override CV assumptions. Coursework, projects, internships and student organizations are valid experience. '
         ' Respond in session language, <=45 words; accept bilingual answers. Return {"action":"next|follow_up|redirect","response_text":"...","source_refs":[]}. '
         'A follow_up/redirect asks one short question <=25 words only when allow_followup=true. '
+        'Never ask the candidate to ask you or the panel questions; there is no candidate Q&A phase. '
         'For next, acknowledge briefly and never ask a question or invite another answer. If is_last=true, do not announce a next question.', data, tokens=300)
+        if isinstance(output, dict) and output.get('action') == 'next' and isinstance(output.get('response_text'), str) and invites_questions(output['response_text']):
+            return _acknowledge(context)
         if (isinstance(output, dict) and output.get('action') in ('follow_up', 'redirect')
                 and context.get('allow_followup') is False):
             # No probe may be inserted here, so discard its text and references together.
@@ -188,6 +196,7 @@ async def respond(context):
             result.source_refs = validate_refs(result.source_refs, context.get('context_packet', {}), required=result.action != 'next')
             reason = 'question_constraints'
             if result.action != 'next' and (result.response_text.count('?') > 1 or
+                    invites_questions(result.response_text) or
                     (context['interviewer'] == 'hr' and forbidden_hr(result.response_text))):
                 raise ValueError('Probe outside persona scope or multiple questions.')
         except ValueError as exc:
@@ -216,7 +225,7 @@ async def evaluate(context):
         'never require low-performance behaviors from levels 1 or 2 to award a higher score. '
         'Use score 1 or 2 only for explicit evidence of that anchor, never for missing detail. '
         'Missing/ambiguous evidence means partial or none; do not invent indicator matches. '
-        'Write rationale and next_level_gap in session language. '
+        'Write rationale and next_level_gap in feedback_language when supplied, otherwise session language. '
         'Do not output URLs or source citations; the application resolves these from the immutable rubric. ')
     shape = ('Return {"competency_scores":{"communication":{"score":1,"evidence":["exact transcript quote"]}},' if not context.get('competency_definitions') else
         'Return {"competency_scores":{"<requested competency key>":{"score":3,"evidence":["verbatim quote"],'
@@ -234,18 +243,23 @@ async def evaluate(context):
         'Insufficient evidence is not demonstrated low ability. Use sufficient with a low score only when a quote demonstrates the low performance. '
         'Quotes must be literal original-language excerpts from ONE supplied source turn, never joined across turns. '
         'Transcription confidence is unknown; never infer accent, speech quality or transcription accuracy from text. '
-        'Use numbers 1 to 5 for measured competencies. Leave unmeasured competencies out or mark evidence_sufficiency none with score null. Feedback in session language.')
+        'Use numbers 1 to 5 for measured competencies. Leave unmeasured competencies out or mark evidence_sufficiency none with score null. Feedback follows feedback_language when supplied, otherwise session language.')
+    output_language = context.get('feedback_language', context.get('language', 'id'))
+    instruction += (' All rationale, next_level_gap and feedback fields MUST be written in '
+                    + ('English.' if output_language == 'en' else 'Bahasa Indonesia.')
+                    + ' The interview is finished. Give direct explanations and actionable suggestions; '
+                    'do not ask the candidate questions or request another answer. Preserve evidence quotes exactly in their original language.')
     data = dict(context)
-    for attempt in range(2 if context.get('competency_definitions') else 1):
+    for attempt in range(2):
         result = await complete(instruction, data, deep=True, tokens=2200 if context.get('competency_definitions') else 1800)
-        if not context.get('competency_definitions'):
-            return result
         try:
-            validate_indicator_output(result, context)
+            validate_answer_feedback(result)
+            if context.get('competency_definitions'):
+                validate_indicator_output(result, context)
             return result
         except (ValueError,KeyError,TypeError) as exc:
             if attempt:
-                raise ValueError('Struktur bukti rubrik khusus belum valid; evaluasi dapat dicoba ulang.') from exc
+                raise ValueError('Struktur bukti atau feedback belum valid; evaluasi dapat dicoba ulang.') from exc
             data['repair_required'] = str(exc)
             data['previous_output'] = result
 
@@ -280,7 +294,23 @@ def validate_indicator_output(result, context):
 
 
 async def summarize(context):
-    return await complete('Write a useful practice interview review in session language based only on supplied evaluations. '
+    instruction = ('Write a useful practice interview review based only on supplied evaluations. '
         'Do not invent scores or evidence. Return {"summary":"...","strengths":[],"improvements":[], '
         '"study_recommendations":[{"topic":"...","reason":"...","action":"..."}]}. '
-        'This is practice feedback, not a prediction of job selection or personality diagnosis.', context, deep=True, tokens=1500)
+        'The interview has ended: return final feedback, never a new interview question, a request for input or an invitation to answer. '
+        'Use declarative explanations and imperative practice actions, without question marks. '
+        'Insufficient evidence means missing evidence in the answers, not proven lack of ability. '
+        'If coverage.measured is zero or total_score is null, explain that no overall score is available; do not infer low ability or confirmed potential. '
+        'This is practice feedback, not a prediction of job selection or personality diagnosis. '
+        'Write every summary, strength, improvement, recommendation topic, reason and action in '
+        + ('English.' if context.get('language') == 'en' else 'Bahasa Indonesia.'))
+    data = dict(context)
+    for attempt in range(2):
+        result = await complete(instruction, data, deep=True, tokens=1500)
+        try:
+            validate_review(result)
+            return result
+        except ValueError:
+            if attempt:
+                raise ValueError('Final feedback is incomplete or asks questions; retry evaluation.')
+            data['repair_required'] = 'Return all requested fields as final statements and practice actions. Do not ask questions.'

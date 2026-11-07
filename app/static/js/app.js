@@ -64,6 +64,7 @@ $('#session-form')?.addEventListener('submit', async event => {
   try {
     updateJobRubricOption();
     const form = new FormData(event.target);
+    form.set('feedback_language', window.PreptivaI18n?.language === 'en' ? 'en' : 'id');
     if (form.get('interview_mode') === 'panel' && form.getAll('panel').length < 2) throw new Error('Pilih minimal dua pewawancara untuk panel.');
     const data = await api('/api/sessions', {method:'POST', body:form}); location.assign(`/sesi/${data.session_id}/ruang`);
   }

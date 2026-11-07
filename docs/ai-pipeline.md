@@ -1,5 +1,9 @@
 # Pipeline AI
 
+Penutup sesi: tidak ada fase kandidat bertanya kepada panel. Blueprint baru memakai slot `reflection`, bukan `candidate_questions`; generator/adaptasi menolak ajakan agar kandidat mengajukan pertanyaan. Penutup baru memakai teks tetap Indonesia/Inggris yang menjelaskan sesi selesai dan hasil akan diproses. Payload penutup sesi lama dengan pertanyaan/ajakan Q&A diganti pada jalur state/akhir giliran dan endpoint suara, agar teks dan audio tidak bertentangan. Pertanyaan utama dan follow-up yang memang meminta jawaban kandidat tetap berjalan seperti biasa.
+
+Bahasa hasil: pertanyaan dan STT memakai `settings.language`, sedangkan alasan penilaian, feedback dan ringkasan memakai snapshot `settings.feedback_language` dari bahasa platform saat sesi dibuat (fallback sesi lama: bahasa wawancara). Jalur legacy dan LangGraph menggunakan kebijakan sama. Kutipan asli tidak diterjemahkan. Ringkasan menyatakan wawancara selesai, tidak meminta jawaban tambahan; keluaran feedback bertanda tanya diperbaiki sekali atau dinyatakan gagal agar dapat dicoba ulang. Lihat [hasil](results.md).
+
 Diperbarui: 7 November 2026. Pipeline aktif tidak menggunakan `mock.py`; `AI_MOCK` harus false. Isian form development boleh berupa contoh, tetapi seluruh isi wawancara memakai API nyata.
 
 ## Alur

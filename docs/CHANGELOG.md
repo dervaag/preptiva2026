@@ -1,5 +1,23 @@
 # Log perubahan
 
+## 2026-11-07 — Penutup tidak mengundang kandidat bertanya lalu menutup sesi
+
+- Mengganti slot baru `candidate_questions` menjadi `reflection` dan menolak ajakan Q&A di validasi pertanyaan/adaptasi. Tidak menambahkan fase kandidat bertanya kepada panel.
+- Memakai penutup bilingual yang menyatakan wawancara selesai dan hasil akan diproses. Penutup sesi lama yang mengundang pertanyaan diarahkan ke teks dan suara streaming yang sesuai, tanpa memutar audio lama yang bertentangan.
+- Tetap mempertahankan tanya jawab utama/follow-up serta finalisasi otomatis. Menambahkan regresi untuk penutup Indonesia/Inggris dan kompatibilitas audio sesi lama.
+
+## 2026-11-07 — Bahasa hasil mengikuti pilihan platform saat pembuatan sesi
+
+- Menyimpan `feedback_language` terpisah dari bahasa wawancara dan meneruskannya ke evaluasi, tinjauan panel serta ringkasan legacy/LangGraph. Sesi lama memakai fallback bahasa wawancara; bukti asli dipertahankan.
+- Memperjelas akhir wawancara di prompt evaluasi/ringkasan; feedback harus berupa penjelasan dan tindakan latihan, bukan pertanyaan baru. Validator menolak tanda tanya dengan satu perbaikan terbatas dan jalur kegagalan yang dapat dicoba ulang.
+- Memverifikasi snapshot bahasa, prompt bilingual, perbaikan pertanyaan, label UI dua arah dan PDF dengan data sintetis. Tidak mengubah atau menerjemahkan laporan produksi yang sudah tersimpan.
+
+## 2026-11-07 — Jawaban hasil langsung terlihat dan ikut tercetak
+
+- Membuka transkrip dan feedback tiap jawaban secara default; membuka alasan bukti ketika skor belum terukur dan menambahkan penjelasan Indonesia/Inggris tentang skor null.
+- Membuka disclosure selama print/PDF dan memulihkan pilihan pengguna setelahnya; menyederhanakan layout cetak. Skor dan data sesi tidak diubah.
+- Menambahkan smoke test Chrome dengan payload sintetis untuk visibilitas jawaban, bukti, mobile/desktop, escaping dan isi PDF. Lihat [hasil wawancara](results.md).
+
 ## 2026-11-07 — Seeder akun manual
 
 - Menambahkan `python -m app.scripts.seed_account --email ... --name ...` dengan password melalui prompt tersembunyi, secret environment sementara atau stdin; password tidak dimasukkan ke argumen command/kode.

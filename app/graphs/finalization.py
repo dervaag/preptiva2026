@@ -5,6 +5,7 @@ import json
 from sqlalchemy import select
 
 from app.ai import guidebook, orchestrator
+from app.ai.feedback import feedback_language
 from app.ai.job_rubric import evaluation_fields
 from app.ai.scoring import verified_scores
 from app.db import SessionLocal
@@ -97,7 +98,8 @@ async def finalize(sid, *, allow_uncertain=False):
                                'competencies': competencies,
                                'rubric': _rubric(current_session.script['assessment'], competencies),
                                'job_role': current_session.job_role, 'level': current_session.level,
-                               'language': current_session.script['settings']['language']}
+                               'language': current_session.script['settings']['language'],
+                               'feedback_language': feedback_language(current_session)}
                     async def evaluate(context=context, transcript=transcript, sources=sources,
                                        competencies=competencies):
                         raw = await orchestrator.evaluate(context)
@@ -125,7 +127,7 @@ async def finalize(sid, *, allow_uncertain=False):
         current_session, _, current_answers, _ = await _load(sid, source_hash)
         sources = _source_turns(current_answers)
         reviewed = await panel_scoring.review_differences(
-            differences, sources, current_session.script['settings']['language'])
+            differences, sources, feedback_language(current_session))
         return {'triggered': True, 'differences': differences, 'reviews': reviewed}
 
     async def aggregate(ctx):
@@ -143,7 +145,7 @@ async def finalize(sid, *, allow_uncertain=False):
                             for item in all_initial for unit in item['units'] if not unit['skipped']],
             'total_score': combined['total_score'], 'coverage': combined['coverage'],
             'aggregation_policy': policy, 'advisory_review': reviewed['reviews'],
-            'job_role': current_session.job_role, 'language': current_session.script['settings']['language']})
+            'job_role': current_session.job_role, 'language': feedback_language(current_session)})
 
     async def commit(ctx):
         combined = await ctx.result('aggregate')

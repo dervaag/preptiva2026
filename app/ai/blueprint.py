@@ -6,7 +6,7 @@ PERSONAS = {'hr': {'name': 'Rina', 'title': 'HR Interviewer'}, 'user': {'name': 
 FOCUS = {'hr': 'Learning potential, motivation, integrity, collaboration and adaptability. Never quiz coding, SQL, syntax or algorithms.',
          'user': 'Role-specific functional/technical practice, personal contribution, diagnosis, validation and trade-offs. Do not assume software roles.',
          'manager': 'Leadership, people development, priorities, risk, business impact and functional/technical investment trade-offs. No coding quizzes.'}
-SLOTS = ['opening', 'background', 'motivation', 'behavior', 'competency', 'decision', 'candidate_questions']
+SLOTS = ['opening', 'background', 'motivation', 'behavior', 'competency', 'decision', 'reflection']
 
 
 def blueprint(count, uuid, personas=None, guide=None, assessment=None):
@@ -47,6 +47,9 @@ def validate_questions(questions, slots, persona, history, profile=None):
     texts = []
     for q, slot in zip(questions, slots):
         text = q['question_text'].strip()
+        from app.ai.closing import invites_questions
+        if invites_questions(text):
+            raise ValueError('Gali pengalaman kandidat; jangan meminta kandidat bertanya kepada panel.')
         if not text or text.count('?') > 1 or q['slot'] != slot['slot']:
             raise ValueError('Pertanyaan kosong, ganda, atau urutan tidak sesuai.')
         if persona == 'hr' and forbidden_hr(text):

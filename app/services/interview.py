@@ -3,6 +3,7 @@ from app.models import InterviewQuestion, InterviewAnswer
 from app.ai.blueprint import PERSONAS
 from app.ai.scoring import aggregate, label
 from app.ai.guidebook import speaker, panel_roles
+from app.ai.closing import public_closing
 
 
 def public_question(q, session):
@@ -30,7 +31,7 @@ async def state(db, session):
             'panel': [{'key': p, **PERSONAS[p]} for p in panel_roles(session)],
             'job_role': session.job_role, 'level': session.level, 'question_count': session.question_count,
             'answer_seconds': session.answer_seconds, 'retry_limit': session.script.get('settings', {}).get('retry_limit', 2), 'max_followups': session.max_followups,
-            'script': {k: session.script.get(k) for k in ('intro', 'closing', 'fillers', 'settings')},
+            'script': {**{k: session.script.get(k) for k in ('intro', 'fillers', 'settings')}, 'closing': public_closing(session)},
             'questions': [public_question(q, session) for q in questions if q.kind == 'main'],
             'current_turn': public_question(current, session),
             'checkpoint': session.script.get('checkpoint', {}),

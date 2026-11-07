@@ -211,7 +211,8 @@ async def stream_speech(kind: str, item_id: int, session=Depends(owned_session),
         answer, question = result
         text, persona = answer.response_text, guidebook.speaker(session, question.main_order)
     elif kind in ('intro','closing') and item_id == 0:
-        text = session.script.get(kind, {}).get('text', '')
+        from app.ai.closing import public_closing
+        text = public_closing(session).get('text', '') if kind == 'closing' else session.script.get(kind, {}).get('text', '')
         if not text:
             raise HTTPException(404, 'Suara tidak tersedia.')
         persona = guidebook.panel_roles(session)[0] if kind == 'intro' else guidebook.speaker(session, session.question_count)

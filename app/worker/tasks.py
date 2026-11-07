@@ -4,6 +4,7 @@ from app.db import SessionLocal
 from app.models import InterviewSession, InterviewQuestion, InterviewAnswer, SessionCompetency, now
 from app.ai import orchestrator, speech
 from app.ai import guidebook
+from app.ai.feedback import feedback_language
 from app.ai.blueprint import blueprint, PERSONAS
 from app.ai.scoring import verified_scores, aggregate, coverage
 from app.ai.job_rubric import evaluation_fields
@@ -229,7 +230,8 @@ async def _finalize_session(ctx, sid):
                     **evaluation_fields(session.script['assessment'], main.competencies),
                     'question': main.question_text, 'transcript': transcript, 'source_turns': source_turns,
                     'competencies': main.competencies, 'rubric': rubric,
-                    'job_role': session.job_role, 'level': session.level, 'language': session.script['settings']['language']})
+                    'job_role': session.job_role, 'level': session.level, 'language': session.script['settings']['language'],
+                    'feedback_language': feedback_language(session)})
                 scores = verified_scores(evaluation['competency_scores'], transcript, main.competencies, source_turns, assessment=session.script['assessment'])
                 evaluations.append(scores)
                 for a in group_answers:
@@ -244,7 +246,7 @@ async def _finalize_session(ctx, sid):
                              'answer_turn_ids': [t['turn_id'] for t in source_turns], 'competencies': list(scores)})
             total, competencies = aggregate(evaluations, session.script['assessment']['weights'], session.script['assessment'])
             review = await orchestrator.summarize({'evaluations': [{'scores': a.competency_scores, 'feedback': a.feedback} for a in answers],
-                'total_score': total, 'coverage': coverage(competencies), 'job_role': session.job_role, 'language': session.script['settings']['language']})
+                'total_score': total, 'coverage': coverage(competencies), 'job_role': session.job_role, 'language': feedback_language(session)})
             for c in competencies:
                 stored = await db.get(SessionCompetency, (sid, c['key']))
                 stored.score = c['score']

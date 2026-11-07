@@ -1,4 +1,5 @@
 """A durable answer graph. Browser interruptions remain explicit domain transitions."""
+from app.ai.closing import public_closing
 import asyncio
 import hashlib
 import json
@@ -237,7 +238,7 @@ async def process(sid, owner_id, question_id, content=b'', filename='', duration
                 'source_refs': decision.get('source_refs', []), 'response_interviewer': persona,
                 'response_audio_url': f'/api/sessions/{sid}/speech/response/{answer.id}' if streaming and not skip else prepared['audio_url'],
                 'follow_up_question': public_question(follow, session), 'next_question': public_question(next_q, session),
-                'is_last': last, 'closing': session.script['closing'] if last else None,
+                'is_last': last, 'closing': public_closing(session) if last else None,
                 'coordinator': {'version': decision.get('version'), 'handoff': decision.get('handoff')}}
             for key in ('original_transcript', 'transcript_corrected', 'capture_model', 'capture_item_ids'):
                 if key in payload: result[key] = payload[key]

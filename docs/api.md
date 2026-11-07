@@ -1,5 +1,7 @@
 # Referensi API
 
+Pembaruan bahasa hasil, 7 November 2026: `POST /api/sessions` menerima form opsional `feedback_language=id|en`. Browser mengisinya dari bahasa platform saat sesi dibuat; jika tidak dikirim, server memakai `language` wawancara. Nilai disimpan di snapshot sesi. `GET /api/sessions/{sid}/result` menyertakan `feedback_language`; untuk sesi lama field ini menggunakan fallback bahasa wawancara. Mengganti bahasa UI kemudian tidak memicu terjemahan/penilaian ulang hasil tersimpan. Lihat [kebijakan hasil](results.md).
+
 Base URL: `http://localhost:8000`
 
 ## Implementasi 7 November 2026

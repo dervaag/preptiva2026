@@ -1,6 +1,8 @@
 'use strict';
 (() => {
   const dictionary = {
+    'Skor belum tersedia':'No overall score available',
+    'Jawaban Anda tetap tersimpan dan dapat dibaca di bawah. Belum ada kompetensi berbobot dengan bukti yang cukup dan terverifikasi untuk menghitung skor keseluruhan. Ini bukan nilai nol. Lihat alasan penilaian pada setiap jawaban untuk mengetahui bukti yang masih diperlukan.':'Your answers are saved and shown below. No weighted competency has enough verified evidence to calculate an overall score yet. This is not a score of zero. Check the assessment reasons under each answer to see what evidence is still needed.',
     'Coba siapkan ulang':'Retry preparation', 'PERSIAPAN TERTUNDA':'PREPARATION PENDING',
     'Persiapan tertunda':'Preparation pending', 'Persiapan belum selesai. Coba siapkan ulang.':'Preparation is incomplete. Try again.',
     'Cara menjawab':'Answer mode', 'Rekam suara · gunakan kamera dan mikrofon':'Record audio · use camera and microphone',
