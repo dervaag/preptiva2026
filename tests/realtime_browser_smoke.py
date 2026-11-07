@@ -84,13 +84,19 @@ def main():
             base=f'/api/sessions/{sid}'
             page.wait_for_function("document.querySelector('#room-status').textContent==='SIAP DIMULAI'")
             page.evaluate("() => {const original=RealtimeVoice.prototype.initialize;RealtimeVoice.prototype.initialize=function(){window.testVoice=this;return original.call(this)};}")
-            page.locator('#devices').click();page.locator('#test-sound').click()
-            for selector in ('#camera-check','#speaker-check','#focus-check'):page.locator(selector).check()
+            assert page.locator('#voice-mode').is_checked()
+            page.locator('#text-mode').check();page.locator('#focus-check').check()
             assert page.locator('#realtime-mode').is_checked()
             assert not page.locator('#auto-send').is_checked();assert not page.locator('#barge-in').is_checked()
-            page.locator('#barge-in').check()  # Deliberate opt-in; exercised on question 3.
             page.wait_for_function("!document.querySelector('#start').disabled");page.locator('#start').click()
             def answer_ready():page.wait_for_function("!document.querySelector('#record-controls').hidden && !document.querySelector('#record').disabled && !document.querySelector('#record').hidden")
+            page.wait_for_selector('#text-answer-area')
+            page.locator('#use-voice').click()
+            answer_ready()
+            assert page.locator('#voice-mode').is_checked() and not page.locator('#text-mode').is_checked()
+            assert page.locator('#realtime-mode').is_checked()
+            assert stats['connections']==0  # Switching mode does not start a recording.
+            report['text_to_realtime_voice']=True
             answer_ready();page.locator('#record').click()
             page.wait_for_function("!document.querySelector('#transcript').hidden && document.querySelector('#transcript').textContent.includes('Saya mengukur')")
             # Visibility interruption cancels the capture and immediately permits a new lease on Retry.
@@ -105,7 +111,9 @@ def main():
             page.wait_for_function("document.querySelector('#question-progress').textContent.includes('2 / 3')")
             answer_ready()
             # VAD can send when opted in; leave microphone muted after speech to test next-question barge-in.
-            page.evaluate("document.querySelector('#auto-send').checked=true")
+            # Enable barge-in only for the intended scenario, so a fresh fake-mic onset
+            # cannot start the earlier Retry recording before its explicit click.
+            page.evaluate("document.querySelector('#auto-send').checked=true;document.querySelector('#barge-in').checked=true")
             page.locator('#record').click()
             page.wait_for_function("document.querySelector('#room-status').textContent.includes('JEDA BICARA')")
             page.evaluate("document.querySelector('#camera').srcObject.getAudioTracks()[0].enabled=false")

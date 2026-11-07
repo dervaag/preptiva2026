@@ -1,5 +1,12 @@
 # Log perubahan
 
+## 2026-11-07 — Pilihan jawaban suara dan kembali dari mode teks
+
+- Memisahkan pilihan **Rekam suara saya** (default) dan **Ketik jawaban** dari checklist kesiapan, serta menampilkan mode aktif di dekat jawaban.
+- Menambahkan **Gunakan mikrofon** pada jawaban teks agar pengguna dapat kembali ke rekaman dalam sesi yang sama. Perekaman tetap dimulai melalui **Mulai rekam suara**; draf teks dan rekaman selesai dipertahankan ketika berganti mode pada pertanyaan yang sama.
+- Izin mikrofon yang ditolak mempertahankan mode teks. Izin yang baru datang setelah tab/offline menghentikan pertanyaan tidak dapat melewati Retry/Next. Sela suara otomatis tidak aktif saat mode teks dipilih.
+- Verifikasi: Chrome sintetis untuk izin ditolak/terlambat, panel dengan jawaban audio/teks/audio, preservasi draf dan layout 390/768/1440px; regresi interview tunggal/panel serta sintaks JavaScript lulus. Tidak menggunakan akun atau suara pengguna.
+
 ## 2026-11-07 — Draf rubrik Engineering Manager dan alur validasi asesor
 
 - Menambahkan profil latihan EM/Manager opt-in dengan lima kompetensi, 25 jangkar, bobot usulan dan pemetaan sumber/tugas. Seluruh indikator disusun internal, ahli belum meninjau, dan validated tetap false.
