@@ -11,6 +11,7 @@ DM Sans mengikuti teks logo. Latar abu-abu, tipografi charcoal, dan aksen oranye
 - Mirror menyimpan preferensi di sessionStorage dengan key yang sama dengan ruang wawancara. Fullscreen hanya membuka panel preview.
 - Preview di form bersifat opsional. Pemeriksaan perangkat dan konfirmasi speaker di ruang wawancara tetap berlaku setelah sesi disiapkan.
 - Persona HR, bahasa Indonesia, dan tujuh pertanyaan tetap menjadi default. Pergantian persona memperbarui deskripsi, tanpa panggilan API. Format Panel menyediakan 2–3 pewawancara dengan input `panel` berulang; format tunggal menonaktifkan input panel. Jumlah pertanyaan tetap total seluruh sesi.
+- Kartu avatar dipakai pada kedua format. Format tunggal memakai radio; Panel memakai checkbox dengan penanda kotak dan warna oranye pada setiap anggota terpilih. Klik seluruh kartu atau Space mengubah pilihannya tanpa melepas anggota lain.
 - Bagian Detail kandidat & posisi menyimpan nama, gender, usia, latar pengalaman (`career_stage`), CV PDF/teks/CV terakhir, posisi, level, industri, perusahaan dan JD. Bagian otomatis terbuka saat validasi membutuhkan input di dalamnya.
 - PDF dibatasi 5 MB pada browser. Teks CV memerlukan 200 karakter jika tidak memakai PDF/CV tersimpan. Validasi server tetap menjadi acuan, termasuk ekstraksi dan cleansing PDF/CV/JD.
 - Consent tetap wajib. POST multipart menggunakan field API yang sama. Loading dan kegagalan submit mempertahankan label serta ikon tombol.
@@ -48,5 +49,7 @@ Keyboard: Enter/Space membuka atau memilih; panah dan Home/End memindahkan pilih
 Tes dropdown memeriksa pointer, sentuhan mobile, keyboard, dismissal, FormData/reset, dan menu di dekat batas viewport. Tidak mengirim sesi atau memanggil provider. Screen-reader dan browser non-Chromium belum diuji.
 
 `tests/browser_smoke.py` juga disesuaikan agar alur wawancara lengkap melewati form baru. Perangkat fisik dan browser selain Chromium belum diuji pada perubahan ini.
+
+URL CSS/JavaScript menyertakan hash isi file melalui `app/assets.py`, sehingga cache versi sebelumnya tidak mencampur HTML baru dengan controller lama. `tests/panel_setup_smoke.py` menyiapkan cache lama di Chrome, lalu memeriksa pemilihan 2/3 anggota, keyboard, validasi minimum, perpindahan ke format tunggal, serta layout 320–1440 px dengan database sementara dan tanpa provider.
 
 Pengukuran kontras perubahan ini: helper text 5.31:1, teks CTA 6.03:1, fokus 6.73:1, ikon perangkat 5.11:1. Border input memakai #858a97 di atas putih. Gate ini berlaku pada halaman form baru, bukan audit menyeluruh halaman lain.

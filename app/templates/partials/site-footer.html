@@ -1,0 +1,19 @@
+<footer class="site-footer{{ ' site-footer--compact' if page == 'room' }}" role="contentinfo" aria-label="Footer Preptiva">
+  {% if page != 'room' %}
+  <div class="site-footer-main">
+    <div class="site-footer-identity">
+      {{ brand('/dashboard', 'brand--site-footer') }}
+      <p class="site-footer-tagline">Ruang latihan wawancara Anda.</p>
+    </div>
+    <nav class="site-footer-nav" aria-label="Navigasi footer">
+      <a href="/dashboard">Dashboard</a>
+      <a href="/simulasi/baru">Simulasi baru</a>
+      <a href="/riwayat">Riwayat latihan</a>
+    </nav>
+  </div>
+  {% endif %}
+  <div class="site-footer-bottom">
+    <p class="site-footer-copyright">© 2026 Preptiva</p>
+    <p class="site-footer-note">Skor latihan, bukan prediksi hasil seleksi.</p>
+  </div>
+</footer>

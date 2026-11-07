@@ -1,5 +1,18 @@
 {% from 'partials/setup-icons.html' import icon %}
 {% from 'partials/custom-select.html' import select_field %}
+{% set personas = [
+  ('hr', 'Rina', 'HR', 'Rina · HR. Menggali motivasi, kolaborasi, dan potensi belajar Anda.'),
+  ('user', 'Andi', 'User', 'Andi · Calon atasan langsung. Menggali praktik teknis/fungsional, pemecahan masalah, dan cara belajar sesuai posisi.'),
+  ('manager', 'Pak Hendra', 'Manager', 'Pak Hendra · Manager. Menggali kepemimpinan, pengambilan keputusan, dan dampak bisnis.')
+] %}
+{% macro persona_card(value, name, role, description, is_panel=false) -%}
+<label class="setup-persona setup-persona--{{ value }}{{ ' setup-persona--panel' if is_panel }}">
+  <input type="{{ 'checkbox' if is_panel else 'radio' }}" name="{{ 'panel' if is_panel else 'interviewer' }}" value="{{ value }}" data-description="{{ description }}"{% if (is_panel and value in ('hr', 'user')) or (not is_panel and value == 'hr') %} checked{% endif %}{% if is_panel %} disabled{% endif %}>
+  <span class="setup-persona-check" aria-hidden="true">{{ icon('check') }}</span>
+  <span class="setup-persona-avatar" aria-hidden="true"><svg viewBox="0 0 64 64"><path d="M12 64V53a20 20 0 0 1 40 0v11Z" fill="currentColor"/><ellipse cx="32" cy="26" rx="12" ry="15" fill="#dca77e"/><path d="M20 25v-5a12 12 0 0 1 24 0v5l-4-7-16 2Z" fill="#554436"/></svg></span>
+  <strong>{{ name }}</strong><span class="setup-persona-role">{{ role }}</span>
+</label>
+{%- endmacro %}
 <div class="setup-shell">
   <section class="setup-preview" id="setup-preview-panel" aria-labelledby="setup-title">
     <div class="setup-preview-heading">
@@ -35,26 +48,17 @@
           <div class="setup-mode-field">{{ select_field('interview_mode', 'Format wawancara', [('single', 'Satu pewawancara'), ('panel', 'Panel · 2–3 pewawancara')], 'single') }}</div>
           <div id="single-personas">
           <fieldset class="setup-personas"><legend class="sr-only">Persona pewawancara</legend>
-            {% for value, name, role, description in [
-              ('hr', 'Rina', 'HR', 'Rina · HR. Menggali motivasi, kolaborasi, dan potensi belajar Anda.'),
-              ('user', 'Andi', 'User', 'Andi · Calon atasan langsung. Menggali praktik teknis/fungsional, pemecahan masalah, dan cara belajar sesuai posisi.'),
-              ('manager', 'Pak Hendra', 'Manager', 'Pak Hendra · Manager. Menggali kepemimpinan, pengambilan keputusan, dan dampak bisnis.')
-            ] %}
-            <label class="setup-persona setup-persona--{{ value }}">
-              <input type="radio" name="interviewer" value="{{ value }}" data-description="{{ description }}" {{ 'checked' if value == 'hr' }}>
-              <span class="setup-persona-check" aria-hidden="true">✓</span>
-              <span class="setup-persona-avatar" aria-hidden="true"><svg viewBox="0 0 64 64"><path d="M12 64V53a20 20 0 0 1 40 0v11Z" fill="currentColor"/><ellipse cx="32" cy="26" rx="12" ry="15" fill="#dca77e"/><path d="M20 25v-5a12 12 0 0 1 24 0v5l-4-7-16 2Z" fill="#554436"/></svg></span>
-              <strong>{{ name }}</strong><span class="setup-persona-role">{{ role }}</span>
-            </label>
+            {% for value, name, role, description in personas %}
+            {{ persona_card(value, name, role, description) }}
             {% endfor %}
           </fieldset>
           <p class="setup-helper setup-persona-description" id="setup-persona-description">Rina · HR. Menggali motivasi, kolaborasi, dan potensi belajar Anda.</p>
           </div>
-          <fieldset id="panel-personas" class="setup-panel-options" hidden>
+          <fieldset id="panel-personas" class="setup-panel-options" aria-describedby="setup-panel-description" hidden>
             <legend class="sr-only">Anggota panel</legend>
-            <div class="setup-panel-choices">
-              {% for value, name, role in [('hr', 'Rina', 'HR'), ('user', 'Andi', 'User'), ('manager', 'Pak Hendra', 'Manager')] %}
-              <label class="setup-panel-choice"><input type="checkbox" name="panel" value="{{ value }}" {{ 'checked' if value in ('hr', 'user') }} disabled aria-describedby="setup-panel-description"><span><strong>{{ name }}</strong><small>{{ role }}</small></span></label>
+            <div class="setup-personas">
+              {% for value, name, role, description in personas %}
+              {{ persona_card(value, name, role, description, true) }}
               {% endfor %}
             </div>
             <p class="setup-helper" id="setup-panel-description">Pilih 2–3 pewawancara. Jumlah pertanyaan adalah total untuk seluruh panel.</p>

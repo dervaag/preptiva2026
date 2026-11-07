@@ -1,5 +1,12 @@
 # Log perubahan
 
+## 2026-11-07 — Perbaikan pilihan panel dan cache antarmuka
+
+- Menyamakan kartu avatar format tunggal dan panel. Panel memakai checkbox terpisah pada setiap kartu, warna pilihan oranye, serta jarak 20 px dari dropdown.
+- Menambahkan hash isi pada URL CSS/JavaScript agar browser mengambil controller dan style yang sesuai HTML terbaru. Tes Chrome mereproduksi mode Panel yang tetap menampilkan radio tunggal ketika bundle lama sudah tersimpan di cache.
+- Menambahkan tes cache dan pemilihan beberapa anggota dengan data sementara tanpa panggilan AI. Selector tes form lama dibatasi ke kelompok tunggal karena kartu kini dipakai di kedua format.
+- Verifikasi: 52 tes backend, Chrome untuk cache lama, pemilihan panel, payload form, dropdown dan keyboard lulus. Layout 320–1440 px diperiksa; server lokal juga memuat tiga checkbox aktif dengan jarak 20 px.
+
 ## 2026-11-07 — Integrasi panel pada antarmuka Preptiva
 
 - Menggabungkan pembaruan backend sampai `9ac2f90` dengan logo, form, ruang wawancara, dashboard, dan riwayat yang sudah diperbarui secara lokal. Checkpoint UI sebelum integrasi: `40844ca`.

@@ -13,6 +13,7 @@ from app.db import init_db, SessionLocal
 from app.models import User
 from app.api import auth, sessions, dashboard
 from app.log import request_var
+from app.assets import asset_url
 
 
 @asynccontextmanager
@@ -57,6 +58,7 @@ app.include_router(sessions.router)
 app.include_router(dashboard.router)
 app.mount('/static', StaticFiles(directory=ROOT / 'app/static'), name='static')
 templates = Jinja2Templates(directory=ROOT / 'app/templates')
+templates.env.globals['asset_url'] = asset_url
 
 
 @app.get('/health')

@@ -67,16 +67,8 @@
 .setup-section-content {margin-top: 19px;}
 .setup-page fieldset {padding: 0; margin: 0; border: 0; min-width: 0;}
 .setup-personas {display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;}
-.setup-mode-field {margin-bottom: 20px;}
+.setup-mode-field {margin: 0 0 20px;}
 .setup-page #panel-personas {padding: 0; margin: 0 0 18px;}
-.setup-panel-choices {display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;}
-.setup-panel-choice {display: flex; align-items: center; gap: 7px; min-height: 64px; padding: 10px 8px; border: 1px solid #b7bac5; border-radius: 10px; cursor: pointer;}
-.setup-panel-choice:hover {background: #faf9f8; border-color: #7b7b86;}
-.setup-panel-choice:has(input:checked) {border-color: #a6340d; background: #fff0e8;}
-.setup-panel-choice:has(input:focus-visible) {outline: 3px solid #a6340d; outline-offset: 3px;}
-.setup-panel-choice input {width: 16px; height: 16px; margin: 0; accent-color: #a6340d;}
-.setup-panel-choice strong, .setup-panel-choice small {display: block; font-size: 11px; line-height: 1.5; overflow-wrap: anywhere;}
-.setup-panel-choice small {font-size: 10px; color: var(--setup-muted); font-weight: 400;}
 .setup-persona {position: relative; min-height: 139px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border: 1px solid #e3e3e9; border-radius: 13px; padding: 17px 6px 13px; cursor: pointer;}
 .setup-persona:hover {background: #faf9f8; border-color: #a5a4ac;}
 .setup-persona:has(input:checked) {border-color: #39333a; box-shadow: inset 0 0 0 1px #39333a;}
@@ -90,6 +82,10 @@
 .setup-persona-role {font-size: 11px; color: var(--setup-muted); font-weight: 400;}
 .setup-persona-check {display: none; position: absolute; top: 9px; right: 9px; width: 17px; height: 17px; border-radius: 50%; color: #fff; background: #b94011; font-size: 11px; align-items: center; justify-content: center;}
 .setup-persona:has(input:checked) .setup-persona-check {display: flex;}
+.setup-persona-check svg {width: 12px; height: 12px;}
+.setup-persona--panel .setup-persona-check {display: flex; width: 19px; height: 19px; border: 1px solid #858a97; border-radius: 5px; background: #fff; color: transparent;}
+.setup-persona--panel:has(input:checked) {border-color: #b94011; background: #fff7f2; box-shadow: inset 0 0 0 1px #b94011;}
+.setup-persona--panel:has(input:checked) .setup-persona-check {border-color: #b94011; background: #b94011; color: #fff;}
 .setup-helper {font-size: 11px; line-height: 1.8; color: var(--setup-muted); margin-top: 10px;}
 .setup-persona-description {min-height: 40px; margin-top: 14px;}
 .setup-field {display: block; color: var(--setup-ink); font-size: 12px; font-weight: 450; line-height: 1.6;}
@@ -186,7 +182,6 @@
 }
 
 @media (max-width: 380px) {
-  .setup-panel-choice {flex-direction: column; align-items: flex-start; padding: 9px 7px;}
   .setup-header {margin: 0 16px;}
   .setup-account-name {display: none;}
   .setup-preview, .setup-options-scroll {padding-left: 17px; padding-right: 17px;}

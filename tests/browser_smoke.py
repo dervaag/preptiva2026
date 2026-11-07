@@ -110,7 +110,7 @@ def main():
                 page.locator(f'#setup-select-{name}-menu [data-value="{value}"]').click()
             page.goto(f'http://127.0.0.1:{port}/login')
             page.locator('[name=email]').fill('demo@interview.local'); page.locator('[name=password]').fill('demo1234')
-            page.get_by_role('button',name='Masuk ke workspace').click(); page.wait_for_url('**/dashboard')
+            page.get_by_role('button',name='Masuk',exact=True).click(); page.wait_for_url('**/dashboard')
             page.wait_for_function("document.querySelector('#stat-completed').textContent === '0'")
             artifacts = Path(os.environ.get('PREPTIVA_BROWSER_ARTIFACTS', str(Path(temporary.name) / 'artifacts')))
             artifacts.mkdir(parents=True, exist_ok=True)

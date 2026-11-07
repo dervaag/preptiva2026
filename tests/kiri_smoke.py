@@ -99,7 +99,7 @@ def main(url=URL):
             assert get('/api/me')['status'] == 401
             page.locator('[name=email]').fill(email)
             page.locator('[name=password]').fill(password)
-            page.get_by_role('button',name='Masuk ke workspace').click()
+            page.get_by_role('button',name='Masuk',exact=True).click()
             page.wait_for_url('**/dashboard')
             assert get('/api/me')['data']['id'] == created_id
             assert not page_errors, 'Kesalahan JavaScript pada browser'

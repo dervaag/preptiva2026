@@ -19,12 +19,20 @@ const page = document.body.dataset.page;
 $('#logout')?.addEventListener('click', async () => {try {await postJSON('/api/auth/logout'); location.assign('/login');} catch (e) {toast(e.message);}});
 $('#today') && ($('#today').textContent = new Intl.DateTimeFormat('id-ID', {day:'numeric',month:'long',year:'numeric'}).format(new Date()));
 $('#auth-form')?.addEventListener('submit', async event => {
-  event.preventDefault(); const button = event.target.querySelector('button[type=submit]'); button.disabled = true;
+  event.preventDefault(); const button = event.target.querySelector('button[type=submit]');
+  if (button.disabled) return;
+  const originalLabel = button.textContent;
+  button.disabled = true; button.textContent = 'Memproses…';
+  event.target.setAttribute('aria-busy', 'true');
   $('#auth-error').hidden = true;
   const data = Object.fromEntries(new FormData(event.target));
   if (page === 'register') {data.age = Number(data.age); data.agree = !!data.agree;}
   try {await postJSON(`/api/auth/${page}`, data); location.assign('/dashboard');}
-  catch (error) {showError('#auth-error', error); button.disabled = false;}
+  catch (error) {
+    showError('#auth-error', error instanceof TypeError ? 'Koneksi terputus. Coba lagi.' : error);
+    button.disabled = false; button.textContent = originalLabel;
+    event.target.removeAttribute('aria-busy');
+  }
 });
 $('#session-form')?.addEventListener('submit', async event => {
   event.preventDefault(); const button = event.target.querySelector('button[type=submit]'); button.disabled = true;

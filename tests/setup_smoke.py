@@ -106,7 +106,7 @@ def main():
         expect(page.locator('#setup-camera-toggle')).to_have_attribute('aria-pressed', 'false')
         expect(page.locator('#setup-mic-toggle')).to_have_attribute('aria-pressed', 'true')
 
-        page.locator('.setup-persona:has(input[value="user"])').click()
+        page.locator('#single-personas .setup-persona:has(input[value="user"])').click()
         expect(page.locator('#setup-persona-description')).to_contain_text('Andi')
         page.locator('[data-select="language"] [role=combobox]').click()
         page.get_by_role('option', name='English', exact=True).click()

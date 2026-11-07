@@ -1,0 +1,50 @@
+{% from 'partials/custom-select.html' import select_field %}
+{% macro password_field(name, label, confirmation=false) -%}
+<div class="auth-field">
+  <label for="auth-{{ name }}">{{ label }}</label>
+  <div class="auth-password-wrap">
+    <input id="auth-{{ name }}" name="{{ name }}" type="password" required minlength="8" maxlength="72" autocomplete="{{ 'new-password' if page == 'register' else 'current-password' }}"{% if page == 'register' and not confirmation %} aria-describedby="auth-password-hint"{% endif %}>
+    <button class="auth-password-toggle" type="button" data-password-toggle="auth-{{ name }}" data-password-label="{{ 'konfirmasi password' if confirmation else 'password' }}" aria-label="Tampilkan {{ 'konfirmasi password' if confirmation else 'password' }}" aria-controls="auth-{{ name }}" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path class="auth-eye-slash" d="m3 3 18 18"/></svg>
+    </button>
+  </div>
+</div>
+{%- endmacro %}
+<div class="auth-shell">
+  <section class="auth-entry" aria-labelledby="auth-title">
+    {{ brand('/', 'brand--auth') }}
+    <div class="auth-form-panel">
+      <header class="auth-heading">
+        <h1 id="auth-title">{{ 'Buat akun Preptiva.' if page == 'register' else 'Selamat datang kembali.' }}</h1>
+        <p>{{ 'Persiapan wawancara dimulai di sini.' if page == 'register' else 'Masuk untuk melanjutkan latihan Anda.' }}</p>
+      </header>
+      <form id="auth-form">
+        <div class="auth-fields">
+          {% if page == 'register' %}
+          <div class="auth-field"><label for="auth-name">Nama lengkap</label><input id="auth-name" name="name" required minlength="2" maxlength="120" autocomplete="name" placeholder="Nama Anda"></div>
+          {% endif %}
+          <div class="auth-field"><label for="auth-email">Email</label><input id="auth-email" name="email" type="email" required maxlength="190" autocomplete="{{ 'email' if page == 'register' else 'username' }}" placeholder="nama@email.com" inputmode="email" autocapitalize="none" spellcheck="false"></div>
+          {% if page == 'register' %}<div class="auth-field-row">{% endif %}
+          {{ password_field('password', 'Password') }}
+          {% if page == 'register' %}
+          {{ password_field('password_confirm', 'Konfirmasi password', true) }}
+          </div>
+          <p class="auth-hint" id="auth-password-hint">Minimal 8 karakter, dengan huruf dan angka.</p>
+          <div class="auth-field-row">
+            {{ select_field('gender', 'Gender', [('male', 'Laki-laki'), ('female', 'Perempuan')], 'male') }}
+            <div class="auth-field"><label for="auth-age">Usia</label><div class="auth-age-wrap"><input id="auth-age" name="age" type="number" min="15" max="80" required inputmode="numeric" aria-describedby="auth-age-unit"><span id="auth-age-unit">tahun</span></div></div>
+          </div>
+          <label class="auth-consent"><input name="agree" type="checkbox" required><span>Saya menyetujui pemrosesan data untuk latihan wawancara.</span></label>
+          {% endif %}
+        </div>
+        <div class="auth-error" id="auth-error" role="alert" hidden></div>
+        <button class="auth-submit" type="submit">{{ 'Buat akun' if page == 'register' else 'Masuk' }}</button>
+      </form>
+      <p class="auth-account-switch">{{ 'Sudah punya akun?' if page == 'register' else 'Belum punya akun?' }} <a href="{{ '/login' if page == 'register' else '/register' }}">{{ 'Masuk' if page == 'register' else 'Buat akun' }}</a></p>
+    </div>
+  </section>
+  <aside class="auth-visual" aria-label="Latihan wawancara bersama Preptiva">
+    <div class="auth-symbol-stage" aria-hidden="true"><img src="/static/images/preptiva-symbol.svg" alt="" width="580" height="580" fetchpriority="high"></div>
+    <div class="auth-visual-copy"><h2>Latih jawaban.<br>Hadapi wawancara.</h2><p>Satu pewawancara atau panel. Sesuai kebutuhan Anda.</p></div>
+  </aside>
+</div>
