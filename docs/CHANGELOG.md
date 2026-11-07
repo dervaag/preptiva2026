@@ -1,5 +1,10 @@
 # Log perubahan
 
+## 2026-11-07 — Sembunyikan pilihan teks pada validasi perangkat
+
+- Menyembunyikan kartu Ketik jawaban pada preflight dan mengisi lebar pemilih dengan kartu Rekam suara. Input controller, API serta fallback teks saat sesi tetap tersedia.
+- Menyesuaikan fixture browser yang sengaja menguji jalur teks tersembunyi agar memilih state secara programatik; bukan menganggap kartu tersebut masih dapat diklik pengguna.
+
 ## 2026-11-07 — Sembunyikan kompetensi tanpa catatan penilaian di hasil
 
 - Memfilter placeholder `not_assessed` yang tidak memiliki skor, unit penilaian atau bukti pada kartu hasil. Evaluasi bukti terbatas/transkrip tidak dapat digunakan dan hasil historis dengan skor tetap terlihat.

@@ -203,7 +203,7 @@ def main():
                     if panel_size == 3 and turn == 2:
                         page.reload()
                         page.wait_for_function("document.querySelector('#room-status').textContent === 'SIAP DIMULAI'")
-                        page.locator('#text-mode').check(); page.locator('#focus-check').check(); page.locator('#start').click()
+                        page.locator('#text-mode').evaluate('(el) => { el.checked = true; el.dispatchEvent(new Event("change", {bubbles: true})); }'); page.locator('#focus-check').check(); page.locator('#start').click()
                         page.wait_for_function("!document.querySelector('#retry-question').disabled")
                         page.locator('#retry-question').click()
                         page.wait_for_selector('#text-answer-area')

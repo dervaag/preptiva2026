@@ -98,7 +98,7 @@ def main():
             page.locator('.meeting-voice-options > summary').click()
             page.evaluate("() => {const original=RealtimeVoice.prototype.initialize;RealtimeVoice.prototype.initialize=function(){window.testVoice=this;return original.call(this)};}")
             assert page.locator('#voice-mode').is_checked()
-            page.locator('#text-mode').check();page.locator('#focus-check').check()
+            page.locator('#text-mode').evaluate('(el) => { el.checked = true; el.dispatchEvent(new Event("change", {bubbles: true})); }');page.locator('#focus-check').check()
             assert page.locator('#realtime-mode').is_checked()
             assert not page.locator('#auto-send').is_checked();assert not page.locator('#barge-in').is_checked()
             page.wait_for_function("!document.querySelector('#start').disabled");page.locator('#start').click()

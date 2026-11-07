@@ -53,7 +53,7 @@ asyncio.run(run())
             assert page.locator('#voice-mode').is_checked()
             assert page.locator('#text-mode').get_attribute('type') == 'radio'
             assert page.locator('#use-voice').count() == 1
-            page.locator('#text-mode').check()
+            page.locator('#text-mode').evaluate('(el) => { el.checked = true; el.dispatchEvent(new Event("change", {bubbles: true})); }')
             assert not page.locator('#voice-mode').is_checked()
             report['answer_mode_choices']=True
             status=page.evaluate('''data => new Promise(resolve => {

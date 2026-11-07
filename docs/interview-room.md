@@ -1,5 +1,7 @@
 # Ruang wawancara
 
+Pilihan **Ketik jawaban** pada dialog validasi/pemeriksaan perangkat disembunyikan; kartu rekam suara memakai lebar yang tersedia. Input `text-mode` tetap ada untuk kompatibilitas controller. Tombol jawaban teks/fallback selama sesi serta API teks tidak dihapus. Ini perubahan tampilan preflight, bukan penghapusan kemampuan jawaban teks.
+
 > Tinjauan dokumentasi: 7 November 2026, baseline `a4369f5`. [Status terkini dan batas verifikasi](current-state.md).
 
 Koreksi bahasa jawaban: event hasil dengan `action: language_retry` menampilkan/membacakan permintaan mengulang dalam bahasa wawancara, lalu mengembalikan kontrol ke pertanyaan yang sama dengan timer penuh. Tidak memanggil finish, tidak mengonsumsi retry rekaman tambahan, dan tidak membuat follow-up. Jawaban belum menjadi unit penilaian sampai dikirim dalam bahasa yang diterima. Rincian deteksi konservatif: [bahasa dan persona](languages-and-personas.md).

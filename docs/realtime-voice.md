@@ -6,7 +6,7 @@ Sesi baru dengan `REALTIME_VOICE_ENABLED=true` memakai transkripsi audio bertaha
 
 ## Alur pengguna
 
-1. Pada **Cara menjawab**, pilih **Rekam suara saya** (default) atau **Ketik jawaban tanpa kamera/mikrofon**. Untuk suara, aktifkan kamera/mikrofon dan lakukan pemeriksaan perangkat. **Transkrip realtime** aktif secara default; klik **Mulai rekam suara** untuk mengirim audio mikrofon. Transkrip muncul selama berbicara.
+1. Pada **Cara menjawab** di preflight, hanya **Rekam suara** yang ditampilkan; kartu **Ketik jawaban** disembunyikan. Aktifkan kamera/mikrofon dan lakukan pemeriksaan perangkat. Kemampuan beralih ke teks selama sesi tetap tersedia. **Transkrip realtime** aktif secara default; klik **Mulai rekam suara** untuk mengirim audio mikrofon. Transkrip muncul selama berbicara.
 2. Klik Selesai bicara. Tinjau dan, jika perlu, koreksi transkrip sebelum Kirim jawaban. Teks asli hasil STT tetap disimpan bersama teks koreksi dan event revisi. Ini koreksi sebelum pengiriman, bukan pengubahan jawaban historis.
 3. Opsi **Kirim otomatis setelah jeda** dimatikan secara default. Bila dipilih, VAD mendeteksi jeda 1.200 ms, lalu browser menunggu 1.800 ms tambahan. Bicara lagi membatalkan hitungan tambahan. Pengiriman otomatis melewati peninjauan; gunakan pengiriman manual jika ingin selalu memeriksa transkrip.
 4. Opsi **Sela suara interviewer** juga dimatikan secara default. Bila dipilih, aktivitas mikrofon lokal sekitar 400 ms dapat menghentikan pembacaan pertanyaan dan mulai menangkap jawaban dengan prarekaman lokal hingga 400 ms. Gunakan headphone: detektor energi lokal tidak bisa memastikan suara berasal dari kandidat, bukan speaker/noise. Tombol Hentikan suara tetap tersedia.

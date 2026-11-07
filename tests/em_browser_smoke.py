@@ -87,7 +87,7 @@ def main():
                     session_state=page.evaluate('async path => (await fetch(path)).json()',f'/api/sessions/{sid}/state'))
                 page.screenshot(path=str(artifacts/'em-rubric-room-failure.png'),full_page=True)
                 raise
-            page.locator('#text-mode').check();page.locator('#focus-check').check();page.locator('#start').click()
+            page.locator('#text-mode').evaluate('(el) => { el.checked = true; el.dispatchEvent(new Event("change", {bubbles: true})); }');page.locator('#focus-check').check();page.locator('#start').click()
             for turn in range(1,6):
                 page.wait_for_function("number => document.querySelector('#question-progress').textContent.includes(number+' / 5')",arg=str(turn))
                 page.locator('#text-answer').fill('Contoh sintetis untuk uji perangkat lunak. Saya membandingkan dua pilihan, meminta masukan tim, menjelaskan risiko, dan menetapkan peninjauan bersama stakeholder.')

@@ -102,7 +102,7 @@ def main():
                     return obtain();
                 };
             }''')
-            page.locator('#text-mode').check()
+            page.locator('#text-mode').evaluate('(el) => { el.checked = true; el.dispatchEvent(new Event("change", {bubbles: true})); }')
             page.locator('#focus-check').check()
             page.locator('#start').click()
             page.wait_for_selector('#text-answer-area')
