@@ -1,0 +1,17 @@
+{
+  "checked_at": "2026-11-07T05:53:27.942973+00:00",
+  "revision": "c78490698d9943875096c1326ddd6a975e74352a",
+  "deployed_revision": "c78490698d9943875096c1326ddd6a975e74352a",
+  "url": "https://buoy-s5yqbu.runkiri.cloud",
+  "unit_tests_passed": 71,
+  "browser_em_passed": true,
+  "browser_single_and_panel_regression_passed": true,
+  "assessor_packet_browser_passed": true,
+  "synthetic_llm_contract_probe_passed": true,
+  "public_smoke_passed": true,
+  "rubric_version": "2026-11-07.em.1",
+  "rubric_sha256": "4b8a84d60b513e4642b8adfd3f0a8d98bd824af53dd187ae14f0384d66de03f8",
+  "validated": false,
+  "job_reviewed_by_human": false,
+  "human_ratings_completed": false
+}

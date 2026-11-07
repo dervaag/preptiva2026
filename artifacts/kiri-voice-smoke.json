@@ -1,0 +1,8 @@
+{
+  "ok": true,
+  "url": "https://buoy-s5yqbu.runkiri.cloud",
+  "provider_handshake": true,
+  "audio_sent": false,
+  "llm_tts_calls": false,
+  "synthetic_data_cleaned": true
+}

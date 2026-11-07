@@ -13,8 +13,11 @@
     "ai_mock": false
   },
   "secure_session_cookie": true,
+  "draft_em_rubric_opt_in_form": true,
+  "panel_and_candidate_background_form": true,
   "registration_login_logout": true,
   "redis_worker_job": true,
+  "durable_event_schema": true,
   "shared_audio_volume_writable": true,
   "temporary_account_removed": true
 }
