@@ -1,5 +1,14 @@
 # Log perubahan
 
+## 2026-11-07 — Pemulihan validasi jawaban dan diagnostik error
+
+- Memperbaiki aturan kutipan yang sebelumnya mustahil dipenuhi jawaban pendek seperti “Belum.”: kutipan pendek harus merupakan seluruh jawaban asli, bukan potongan jawaban panjang. Aturan bukti untuk skor kompetensi tetap sama.
+- Memperbaiki pemilihan konteks ketika jawaban panjang hanya menghasilkan fragmen pendek. Potongan tetap literal dari sumber asli; opsi kutipan diperiksa sebelum diberikan ke model.
+- Memasukkan validasi format, aksi, kutipan dan pertanyaan ke dalam satu kesempatan perbaikan keluaran AI. Probe yang dilarang oleh batas follow-up dibuang beserta kutipannya. Pertanyaan adaptif yang tetap tidak valid ditolak, tanpa menerima sumber yang dikarang.
+- Log `answer_failed` pada stream maupun JSON biasa menyertakan ID sesi/pertanyaan, tahap, kode alasan dan lokasi kode. Log serta instruksi repair tidak mencetak keluaran model, pesan exception mentah, isi CV, atau transkrip.
+- Penolakan keluaran AI setelah dua percobaan memberi respons 502 atau event error pada stream. Jawaban legacy tetap atomik; retry yang berhasil tidak menggandakan jawaban. HTTP 200 stream bukan penanda bahwa pemrosesan telah berhasil.
+- Verifikasi: 149 tes Python lulus dengan database sementara dan provider tiruan, termasuk 25 regresi baru, tanpa panggilan AI berbayar. Log lama tidak cukup untuk memastikan bahwa seluruh kejadian `ValueError` memiliki penyebab yang sama. Panduan: [log runtime](logging.md).
+
 ## 2026-11-07 — Orkestrasi LangGraph dengan versi per sesi
 
 - Menambahkan graph persiapan, satu giliran dan finalisasi, memakai fungsi/provider yang sudah ada. `ORCHESTRATION_ENGINE` default `legacy`; sesi baru dapat memilih `langgraph`, sedangkan sesi lama mempertahankan engine. Versi graph yang tidak didukung ditolak tanpa fallback diam-diam.

@@ -21,12 +21,12 @@ from app.jobs import enqueue
 from app.services.text import validate_text, extract_pdf
 from app.services.interview import state, turns, public_question, session_item
 from app.storage import safe_audio_path
-from app.log import emit
+from app.log import emit, failure_fields, session_var, question_var, request_var
 from app.services.locks import local_lock
 from app.ai.errors import ProviderError
 from app.services.events import record, checkpoint
 from app.services.voice_capture import verify as verify_capture
-from app.graphs.policy import enabled as graph_enabled, snapshot as orchestration_snapshot, aggregation_version
+from app.graphs.policy import enabled as graph_enabled, snapshot as orchestration_snapshot, aggregation_version, UnsupportedGraphVersion
 
 router = APIRouter()
 
@@ -122,7 +122,24 @@ async def start(request: Request, session=Depends(owned_session), db=Depends(get
     return {'status': 'running'}
 
 
-async def process_answer(sid, *args, **kwargs):
+async def process_answer(sid, owner_id, question_id, *args, **kwargs):
+    session_token = session_var.set(sid)
+    question_token = question_var.set(question_id)
+    try:
+        return await _dispatch_answer(sid, owner_id, question_id, *args, **kwargs)
+    except Exception as exc:
+        emit('answer_failed', **failure_fields(exc))
+        if isinstance(exc, (HTTPException, UnsupportedGraphVersion)):
+            raise
+        if isinstance(exc, orchestrator.ModelOutputError):
+            raise HTTPException(502, 'Respons AI belum memenuhi aturan wawancara. Coba kirim ulang jawaban yang sama.') from exc
+        raise HTTPException(500, 'Pemrosesan gagal. Coba kirim ulang jawaban yang sama.') from exc
+    finally:
+        question_var.reset(question_token)
+        session_var.reset(session_token)
+
+
+async def _dispatch_answer(sid, *args, **kwargs):
     async with SessionLocal() as db:
         session = await db.scalar(select(InterviewSession).where(InterviewSession.uuid == sid))
         use_graph = session is not None and graph_enabled(session)
@@ -318,8 +335,8 @@ async def answer(sid: str, request: Request, question_id: int = Form(...), audio
                 yield json.dumps(await queue.get(), ensure_ascii=False) + '\n'
             yield json.dumps({'type': 'result', **await task}, ensure_ascii=False) + '\n'
         except Exception as exc:
-            emit('answer_failed', error_type=type(exc).__name__)
-            yield json.dumps({'type': 'error', 'message': exc.detail if isinstance(exc, HTTPException) else 'Pemrosesan gagal. Coba kirim ulang.'}) + '\n'
+            yield json.dumps({'type': 'error', 'message': exc.detail if isinstance(exc, HTTPException) else 'Pemrosesan gagal. Coba kirim ulang.',
+                              'request_id': request_var.get()}) + '\n'
         finally:
             if not task.done():
                 task.cancel()

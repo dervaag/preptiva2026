@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 from app.ai.model_router import complete
 from app.ai.blueprint import blueprint, validate_questions, FOCUS, forbidden_hr
 from app.ai.guidebook import role_context
-from app.ai.memory import validate_refs, reference_options
+from app.ai.memory import validate_refs, reference_options, ReferenceValidationError
 from app.services.text import chunks
 from app.log import emit
 
@@ -23,6 +23,36 @@ class Response(BaseModel):
     action: str
     response_text: str = Field(min_length=1, max_length=1600)
     source_refs: list[dict] = Field(default_factory=list)
+
+
+_REPAIR_GUIDANCE = {
+    'schema_invalid': 'Return the requested JSON object with all required fields and valid field types.',
+    'action_invalid': 'Use exactly one of these actions: next, follow_up, redirect.',
+    'reference_required': 'Include at least one allowed_source_refs entry with its original turn_id and exact quote.',
+    'reference_invalid': 'Use only exact quotes from the supplied turn. A short answer can be quoted in full; never invent or join excerpts.',
+    'question_constraints': 'Ask one new question within the assigned persona, slot, competencies and CV anchors; do not repeat prior questions or assume undocumented experience.',
+}
+
+
+class ModelOutputError(ValueError):
+    """Controlled diagnostics for rejected model output; never include its contents."""
+    def __init__(self, stage, reason):
+        self.stage = stage
+        self.reason = reason
+        super().__init__('Keluaran AI belum memenuhi aturan wawancara setelah dua percobaan.')
+
+
+def _repair_output(data, stage, attempt, reason, error):
+    emit('ai_output_rejected', stage=stage, reason=reason, attempt=attempt + 1)
+    if attempt:
+        raise ModelOutputError(stage, reason) from error
+    # Pydantic errors can contain the entire model response; do not echo them.
+    data['repair_required'] = _REPAIR_GUIDANCE[reason]
+
+
+def _acknowledge(context):
+    return {'action': 'next', 'response_text': 'Terima kasih.' if context['language'] == 'id' else 'Thank you.',
+            'source_refs': []}
 
 
 async def parse_documents(cv, jd):
@@ -101,55 +131,73 @@ async def adapt_question(context):
         'Use the assigned intent and persona guidance. Preserve the planned competencies and slot. Do not repeat an already answered topic. '
         'Read the bounded context_packet: recent turns and retrieved older turns have immutable source IDs. Candidate claims are unverified. '
         'Ground this next question in at least one actual answer from context_packet and include source_refs [{"turn_id":"q123","quote":"exact original excerpt"}]. '
+        'When an answer is short, quote that entire answer exactly; never pad the quote or infer missing experience. '
         'Ask a new unresolved aspect of that example within the planned competency, without assuming undocumented tools, events or feedback. Never invent prior facts. '
         'Candidate corrections in the conversation override assumptions in the CV. For students/fresh graduates use academic/project examples and never assume employment. '
         'Ask a concrete unresolved point or a new application of the assigned competency. Do not merely rephrase the planned question when the answer changes its assumptions. '
         'Return {"question":{"slot":"...","category":"...","question_text":"one question <=35 words","anchor_id":"cv1","expected_points":["..."],"competencies":["..."],"source_refs":[{"turn_id":"q123","quote":"exact original excerpt"}]}}.')
     data = dict(context)
     data['allowed_source_refs'] = reference_options(context.get('context_packet', {}))
+    planned = context['planned_question']
     for attempt in range(2):
         result = await complete(instruction, data, deep=True, tokens=900)
+        reason = 'schema_invalid'
         try:
+            if not isinstance(result, dict) or 'question' not in result:
+                raise ValueError('Missing question object.')
             q = Question.model_validate(result['question']).model_dump()
+            reason = 'reference_invalid'
             q['source_refs'] = validate_refs(q['source_refs'], context.get('context_packet', {}), required=True)
-            planned = context['planned_question']
+            reason = 'question_constraints'
             if set(q['competencies']) != set(planned['competencies']):
                 raise ValueError('Adaptasi harus mempertahankan kompetensi yang direncanakan.')
             validate_questions([q], [planned], context['interviewer'], context['asked_questions'], context.get('candidate_profile'))
             return q
-        except (ValueError, KeyError) as exc:
-            if attempt:
-                raise
-            data['repair_required'] = str(exc)
+        except ValueError as exc:
+            if isinstance(exc, ReferenceValidationError):
+                reason = exc.reason
+            _repair_output(data, 'adapt_question', attempt, reason, exc)
 
 
 async def respond(context):
     data = dict(context)
     data['allowed_source_refs'] = reference_options(context.get('context_packet', {}))
     for attempt in range(2):
-        result = Response.model_validate(await complete(
+        output = await complete(
         'You are the active interviewer, not a coach giving an answer during the interview. ' + FOCUS[context['interviewer']] +
         ' Follow guidance and candidate_profile. Use context_packet recent/retrieved turns to avoid repeated probes. '
         'Previous candidate statements are unverified claims. A follow_up/redirect must include at least one source_refs [{"turn_id":"q123","quote":"exact original excerpt"}] grounding the probe in the answer. '
+        'When an answer is short, quote that entire answer exactly; never pad the quote or infer missing experience. '
         'Candidate corrections override CV assumptions. Coursework, projects, internships and student organizations are valid experience. '
-        ' Respond in session language, <=45 words; accept bilingual answers. Return {"action":"next|follow_up|redirect","response_text":"..."}. '
+        ' Respond in session language, <=45 words; accept bilingual answers. Return {"action":"next|follow_up|redirect","response_text":"...","source_refs":[]}. '
         'A follow_up/redirect asks one short question <=25 words only when allow_followup=true. '
-        'For next, acknowledge briefly and never ask a question or invite another answer. If is_last=true, do not announce a next question.', data, tokens=300))
-        if result.action not in ('next', 'follow_up', 'redirect'):
-            raise ValueError('Aksi AI tidak valid.')
+        'For next, acknowledge briefly and never ask a question or invite another answer. If is_last=true, do not announce a next question.', data, tokens=300)
+        if (isinstance(output, dict) and output.get('action') in ('follow_up', 'redirect')
+                and context.get('allow_followup') is False):
+            # No probe may be inserted here, so discard its text and references together.
+            return _acknowledge(context)
+        reason = 'schema_invalid'
         try:
+            result = Response.model_validate(output)
+            if not result.response_text.strip():
+                raise ValueError('Empty response.')
+            reason = 'action_invalid'
+            if result.action not in ('next', 'follow_up', 'redirect'):
+                raise ValueError('Invalid action.')
+            reason = 'reference_invalid'
             result.source_refs = validate_refs(result.source_refs, context.get('context_packet', {}), required=result.action != 'next')
+            reason = 'question_constraints'
+            if result.action != 'next' and (result.response_text.count('?') > 1 or
+                    (context['interviewer'] == 'hr' and forbidden_hr(result.response_text))):
+                raise ValueError('Probe outside persona scope or multiple questions.')
         except ValueError as exc:
-            if attempt:
-                raise
-            data['repair_required'] = str(exc)
+            if isinstance(exc, ReferenceValidationError):
+                reason = exc.reason
+            if attempt and reason == 'question_constraints':
+                emit('ai_output_rejected', stage='respond', reason=reason, attempt=attempt + 1)
+                return _acknowledge(context)
+            _repair_output(data, 'respond', attempt, reason, exc)
             continue
-        if result.action != 'next' and (result.response_text.count('?') > 1 or
-                (context['interviewer'] == 'hr' and forbidden_hr(result.response_text))):
-            data['repair_required'] = 'Ask one question within this persona scope, or choose next.'
-            if not attempt:
-                continue
-            return {'action': 'next', 'response_text': 'Terima kasih.' if context['language'] == 'id' else 'Thank you.'}
         return result.model_dump()
 
 
