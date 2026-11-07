@@ -13,6 +13,7 @@ from app.models import InterviewSession, InterviewQuestion, InterviewAnswer, Ses
 from app.ai import speech, orchestrator
 from app.ai.assessment import snapshot
 from app.ai.blueprint import forbidden_hr
+from app.ai import guidebook
 from app.ai.scoring import aggregate, label
 from app.config import settings
 from app.jobs import enqueue
@@ -32,17 +33,23 @@ async def create_session(candidate_name: str = Form(..., min_length=2, max_lengt
     level: Literal['junior', 'middle', 'senior', 'manager'] = Form(...), job_description: str = Form(...),
     industry: str = Form(..., min_length=2, max_length=80), company: str = Form('', max_length=150),
     question_count: int = Form(7), interviewer: Literal['hr', 'user', 'manager'] = Form(...),
+    panel: list[str] = Form([]), career_stage: Literal['auto', 'student', 'fresh_graduate', 'experienced', 'career_switcher'] = Form('auto'),
     language: Literal['id', 'en'] = Form('id'), consent: bool = Form(...), use_last_cv: bool = Form(False),
     cv_text: str = Form(''), cv_pdf: Optional[UploadFile] = File(None), user=Depends(current_user), db=Depends(get_db)):
     if not consent or question_count not in (3, 5, 7):
         raise HTTPException(422, 'Persetujuan wajib; jumlah pertanyaan harus 3, 5, atau 7.')
+    roles = panel or [interviewer]
+    if (panel and len(panel) < 2) or len(roles) > 3 or len(set(roles)) != len(roles) or any(p not in ('hr', 'user', 'manager') for p in roles):
+        raise HTTPException(422, 'Panel harus berisi maksimal tiga persona berbeda: HR, User, Manager.')
+    interviewer = roles[0]
     cv = user.last_cv_text if use_last_cv else cv_text
     if cv_pdf and cv_pdf.filename:
         cv = await asyncio.to_thread(extract_pdf, await cv_pdf.read(5 * 1024 * 1024 + 1))
     cv = validate_text(cv or '', 'CV')
     jd = validate_text(job_description, 'JD')
     try:
-        speech.require_credentials(interviewer)
+        for persona in roles:
+            speech.require_credentials(persona)
     except ValueError as exc:
         raise HTTPException(503, str(exc))
     # Serialize creation per user in production so the hourly quota cannot race.
@@ -51,12 +58,14 @@ async def create_session(candidate_name: str = Form(..., min_length=2, max_lengt
     count = await db.scalar(select(func.count()).select_from(InterviewSession).where(InterviewSession.user_id == user.id, InterviewSession.created_at >= now() - timedelta(hours=1)))
     if count >= settings.max_sessions_per_hour:
         raise HTTPException(429, f'Maksimal {settings.max_sessions_per_hour} sesi per jam. Coba lagi nanti.')
-    assessment = snapshot(interviewer)
+    assessment = snapshot(interviewer, roles)
     session = InterviewSession(user_id=user.id, candidate_name=candidate_name, gender=gender, age=age,
         job_role=job_role, level=level, industry=industry, company=company, job_description=jd, cv_text=cv,
         interviewer=interviewer, question_count=question_count, answer_seconds=settings.answer_seconds_for(level),
         max_followups=settings.followups_for(question_count),
-        script={'settings': {'language': language, 'retry_limit': settings.retry_limit}, 'assessment': assessment})
+        script={'settings': {'language': language, 'retry_limit': settings.retry_limit, 'panel': roles,
+                            'career_stage': career_stage, 'dynamic_questions': True},
+                'guidebook': guidebook.snapshot(), 'assessment': assessment})
     db.add(session)
     user.last_cv_text = cv
     await db.flush()
@@ -131,14 +140,20 @@ async def _process_answer(sid, owner_id, question_id, content, filename, duratio
         group = [a.transcript for a in answers if any(q.id == a.question_id and q.main_order == current.main_order for q in questions)] + [transcript]
         allow = current.kind == 'main' and sum(q.kind != 'main' for q in questions) < session.max_followups
         is_last = current.main_order == session.question_count
+        persona = guidebook.speaker(session, current.main_order)
+        by_id = {q.id: q for q in questions}
+        conversation = [{'interviewer': guidebook.speaker(session, by_id[a.question_id].main_order),
+                         'question': by_id[a.question_id].question_text, 'answer': a.transcript} for a in answers]
+        conversation.append({'interviewer': persona, 'question': current.question_text, 'answer': transcript})
         deadline = asyncio.get_running_loop().time() + settings.respond_timeout_sec
-        response = await asyncio.wait_for(orchestrator.respond({'question': current.question_text, 'transcripts': group,
-            'expected_points': current.expected_points, 'interviewer': session.interviewer, 'job_role': session.job_role,
+        response = await asyncio.wait_for(orchestrator.respond({**guidebook.context_for(session, persona),
+            'question': current.question_text, 'transcripts': group, 'conversation': conversation,
+            'expected_points': current.expected_points, 'interviewer': persona, 'job_role': session.job_role,
             'language': session.script['settings']['language'], 'allow_followup': allow, 'is_last': is_last}),
             timeout=settings.respond_timeout_sec)
         action = response['action']
         text = response['response_text']
-        if action != 'next' and (not allow or (session.interviewer == 'hr' and forbidden_hr(text))):
+        if action != 'next' and (not allow or (persona == 'hr' and forbidden_hr(text))):
             action = 'next'
             text = 'Terima kasih atas jawaban Anda.' if session.script['settings']['language'] == 'id' else 'Thank you for your answer.'
         if action == 'next':
@@ -147,7 +162,7 @@ async def _process_answer(sid, owner_id, question_id, content, filename, duratio
             sentences = [s for s in sentences if '?' not in s and not re.search(r'(pertanyaan (berikut|selanjut)|next question|let.s move|mari (lanjut|beralih))', s, re.I)]
             text = ' '.join(sentences).strip() or ('Terima kasih.' if session.script['settings']['language'] == 'id' else 'Thank you.')
         audio_name = f'r_{uuid4().hex}.mp3'
-        audio_url = await asyncio.wait_for(speech.synthesize(text, session.interviewer, sid, audio_name, live=True),
+        audio_url = await asyncio.wait_for(speech.synthesize(text, persona, sid, audio_name, live=True),
             timeout=max(0, deadline - asyncio.get_running_loop().time()))
         # A close request must win if the user leaves during STT/LLM/TTS.
         await db.refresh(session)
@@ -163,6 +178,28 @@ async def _process_answer(sid, owner_id, question_id, content, filename, duratio
             await db.flush()
         else:
             next_q = next((q for q in questions if q.kind == 'main' and q.main_order == current.main_order + 1), None)
+            if next_q and session.script.get('settings', {}).get('dynamic_questions'):
+                next_persona = guidebook.speaker(session, next_q.main_order)
+                planned = {key: getattr(next_q, key) for key in ('slot', 'category', 'question_text', 'expected_points', 'competencies')}
+                dynamic_context = {**guidebook.context_for(session, next_persona), 'planned_question': planned,
+                    'intent': session.script.get('question_plan', {}).get(str(next_q.main_order), {}),
+                    'conversation': conversation, 'asked_questions': [item['question'] for item in conversation]}
+                revised = await asyncio.wait_for(orchestrator.adapt_question(dynamic_context),
+                    timeout=max(0, deadline - asyncio.get_running_loop().time()))
+                revised_audio = f'q{next_q.main_order}_{uuid4().hex}.mp3'
+                await asyncio.wait_for(speech.synthesize(revised['question_text'], next_persona, sid, revised_audio, live=True),
+                    timeout=max(0, deadline - asyncio.get_running_loop().time()))
+                # Do not commit an adaptation if the candidate has closed the room meanwhile.
+                await db.refresh(session)
+                if session.status != 'running':
+                    raise HTTPException(409, 'Sesi telah ditutup.')
+                for key in ('slot', 'category', 'question_text', 'expected_points', 'competencies'):
+                    setattr(next_q, key, revised[key])
+                next_q.audio_file = revised_audio
+                provenance = {**session.script.get('question_provenance', {}), str(next_q.main_order): {
+                    'anchor_id': revised.get('anchor_id', ''), 'adapted_after_question_id': current.id,
+                    'conversation_turns': len(conversation), 'interviewer': next_persona}}
+                session.script = {**session.script, 'question_provenance': provenance}
         last = action == 'next' and next_q is None
         answer = InterviewAnswer(question_id=question_id, transcript=transcript, duration_sec=duration_ms / 1000,
             wpm=round(len(transcript.split()) / max(duration_ms / 60000, .01)),
@@ -171,6 +208,7 @@ async def _process_answer(sid, owner_id, question_id, content, filename, duratio
         db.add(answer)
         await db.flush()
         result = {'answer_id': answer.id, 'transcript': transcript, 'action': action, 'response_text': text,
+            'response_interviewer': persona,
             'response_audio_url': audio_url, 'follow_up_question': public_question(follow, session),
             'next_question': public_question(next_q, session), 'is_last': last, 'closing': session.script['closing'] if last else None}
         answer.result_payload = result
@@ -252,12 +290,25 @@ async def result(session=Depends(owned_session), db=Depends(get_db)):
         raise HTTPException(409, 'Hasil belum tersedia.')
     questions, answers = await turns(db, session)
     _, competencies = aggregate([a.competency_scores for a in answers], session.script['assessment']['weights'])
-    previous = await db.scalar(select(InterviewSession).where(InterviewSession.user_id == session.user_id,
+    candidates = (await db.scalars(select(InterviewSession).where(InterviewSession.user_id == session.user_id,
         InterviewSession.job_role == session.job_role, InterviewSession.status == 'done',
-        InterviewSession.finished_at < session.finished_at).order_by(InterviewSession.finished_at.desc()).limit(1))
+        InterviewSession.finished_at < session.finished_at).order_by(InterviewSession.finished_at.desc()).limit(20))).all()
+    previous = next((s for s in candidates if s.level == session.level and
+        sorted(guidebook.panel_roles(s)) == sorted(guidebook.panel_roles(session)) and
+        s.script.get('guidebook', {}).get('sha256') == session.script.get('guidebook', {}).get('sha256') and
+        s.script.get('assessment', {}).get('sha256') == session.script['assessment'].get('sha256')), None)
     previous_score = previous.total_score if previous else None
     by_id = {a.question_id: a for a in answers}
+    from app.ai.scoring import WEIGHTS
+    panel_results = []
+    for persona in guidebook.panel_roles(session):
+        weights = session.script['assessment'].get('persona_weights', {}).get(persona, WEIGHTS[persona])
+        scores = [by_id[q.id].competency_scores for q in questions if q.kind == 'main' and q.id in by_id
+                  and guidebook.speaker(session, q.main_order) == persona]
+        score, measured = aggregate(scores, weights)
+        panel_results.append({'interviewer': persona, 'total_score': score, 'competencies': measured})
     return {'session_id': session.uuid, 'status': 'done', 'job_role': session.job_role, 'level': session.level,
+        'panel_results': panel_results,
         'total_score': session.total_score, 'label': label(session.total_score), 'previous_score': previous_score,
         'delta': round(session.total_score - previous_score, 2) if previous_score is not None and session.total_score is not None else None,
         'competencies': competencies, 'unmeasured': [c['key'] for c in competencies if c['score'] is None],

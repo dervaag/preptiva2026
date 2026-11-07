@@ -1,5 +1,14 @@
 # Log perubahan
 
+## 2026-11-07 — Pertanyaan adaptif, konteks kandidat, dan panel
+
+- Memisahkan panduan/panggilan generator dan konteks evaluator HR, User, Manager. HR menerima latar CV dan tanggung jawab pekerjaan, tanpa daftar skill/persyaratan teknis atau skor User. Kompetensi teknis ditolak untuk pertanyaan HR.
+- Menambahkan 61 tujuan penggalian internal pada `question-guidebook.json` beserta pemetaan metodologi empat dokumen di `question-guidebook.md`. Versi/hash disnapshot; rubrik `2026-11-05.2` tetap `validated: false`.
+- Menambahkan pilihan latar pengalaman serta profil dari kutipan CV terverifikasi. Perkuliahan, proyek, organisasi dan magang menjadi konteks fresh graduate; usia/level posisi tidak dipakai untuk menebak pengalaman.
+- Pertanyaan utama berikutnya dibentuk ulang dari seluruh percakapan, bukti CV dan persona berikutnya. Slot/kompetensi dipertahankan; update atomik dan retry idempoten. Audio rencana masa depan tidak dibuat sebelum adaptasi.
+- Menambahkan panel 2–3 interviewer: pembagian giliran, identitas aktif, suara per persona, hasil per persona dan agregat bobot panel. Tidak memerlukan migrasi tabel; sesi lama tetap kompatibel.
+- Verifikasi: 45 tes unit/integrasi lulus. Chrome dengan provider/perangkat sintetis memeriksa mode tunggal, panel dua/tiga, pergantian pembicara, adaptasi, hasil dan layout mobile. Probe model nyata menggunakan CV/JD sintetis secara terpisah dari data produksi; hasil ada di `artifacts/question-quality-smoke.json`. Pengujian perangkat lunak ini bukan validasi psikometrik oleh asesor.
+
 ## 2026-11-07 — Registrasi runner deployment GitHub
 
 - Memasang runner resmi ARM64 v2.338.2 setelah verifikasi checksum GitHub, di `~/actions-runner-preptiva`.
@@ -56,7 +65,7 @@
 ## 2026-11-05 — Bahasa, persona, UUID publik, dan kontrol kamera
 
 - Menambahkan pilihan bahasa Indonesia/English per sesi. Pertanyaan/tanggapan/review mengikuti bahasa sesi, transkrip campuran tetap bahasa asli, dan code-switching tidak dihukum. STT OpenAI yang sama tidak lagi dipaksa language=id.
-- Memisahkan fokus HR (perilaku/potensi belajar), User (teknis/fungsional), dan Manager (kepemimpinan serta keputusan teknis/bisnis). Menambahkan 61 variasi sudut, riwayat 35 pertanyaan milik pengguna/persona sama, dan satu retry untuk set yang tidak sesuai. Tidak menjamin variasi semantik tanpa batas.
+- Memisahkan fokus HR (perilaku/potensi belajar), User (teknis/fungsional), dan Manager (kepemimpinan serta keputusan teknis/bisnis). Menambahkan sembilan variasi sudut, riwayat 35 pertanyaan milik pengguna/persona sama, dan satu retry untuk set yang tidak sesuai. Tidak menjamin variasi semantik tanpa batas.
 - Rubrik menjadi 2026-11-05.2. HR technical=0, adaptability=25; sesi lama mempertahankan snapshot dan bobotnya.
 - URL/API sesi menggunakan UUID yang sudah tersedia, dengan pemeriksaan kepemilikan. FK/job internal tetap numerik; ID pertanyaan/jawaban tidak diubah. URL numerik lama tidak diterima; gunakan Riwayat untuk tautan baru.
 - Menambahkan fullscreen opsional; Escape tidak menggagalkan sesi, perpindahan tab tetap menutup sesi. Tidak mengklaim fullscreen mencegah pergantian tab.

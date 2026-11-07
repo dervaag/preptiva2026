@@ -107,6 +107,11 @@ class TextAndScoringTests(unittest.TestCase):
 
 class SystemTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
+        async def adapt(context):
+            return dict(context['planned_question'])
+        self.adapt_patch = patch('app.api.sessions.orchestrator.adapt_question', side_effect=adapt)
+        self.adapt_mock = self.adapt_patch.start()
+        self.addCleanup(self.adapt_patch.stop)
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.drop_all)
         await init_db()
@@ -135,15 +140,17 @@ class SystemTests(unittest.IsolatedAsyncioTestCase):
             response = await self.client.post('/api/sessions', data=data)
         return response
 
-    async def ready_session(self):
-        created = await self.create()
+    async def ready_session(self, **changes):
+        created = await self.create(**changes)
         self.assertEqual(created.status_code, 200, created.text)
         sid = created.json()['session_id']
         prepared = {'intro':'Selamat datang.', 'closing':'Terima kasih. Sesi selesai.', 'questions':[
             {'slot':'opening','category':'Perkenalan','question_text':'Ceritakan perjalanan karier Anda?', 'competencies':['communication'],'expected_points':['personal contribution']},
             {'slot':'behavior','category':'Kolaborasi','question_text':'Bagaimana Anda menghadapi konflik tim?', 'competencies':['teamwork'],'expected_points':['outcome']},
             {'slot':'decision','category':'Adaptasi','question_text':'Apa keputusan yang Anda ambil saat rencana berubah?', 'competencies':['adaptability'],'expected_points':['learning']} ]}
+        self.prepared_voices = {}
         async def fake_tts(text, persona, uuid, name, live=False):
+            self.prepared_voices[name] = persona
             return f'/api/sessions/{uuid}/audio/{name}'
         async with SessionLocal() as db:
             stored = await db.scalar(select(InterviewSession).where(InterviewSession.uuid == sid))
@@ -157,9 +164,14 @@ class SystemTests(unittest.IsolatedAsyncioTestCase):
         return sid, internal_id, response.json()
 
     async def send_answer(self, sid, qid, follow=False, streaming=False):
+        if not hasattr(self, 'turn_voices'):
+            self.turn_voices = []
+        async def audio(text, persona, uuid, name, live=False):
+            self.turn_voices.append((name, persona))
+            return f'/api/sessions/{sid}/audio/response.mp3'
         with patch('app.api.sessions.speech.transcribe', AsyncMock(return_value='Saya mengukur hasil eksperimen dan meningkatkan hasil tim sebesar 35 persen.')), \
              patch('app.api.sessions.orchestrator.respond', AsyncMock(return_value={'action':'follow_up' if follow else 'next', 'response_text':'Apa hasil yang Anda ukur?' if follow else 'Terima kasih.'})), \
-             patch('app.api.sessions.speech.synthesize', AsyncMock(return_value=f'/api/sessions/{sid}/audio/response.mp3')):
+             patch('app.api.sessions.speech.synthesize', side_effect=audio):
             return await self.client.post(f'/api/sessions/{sid}/answers' + ('?stream=true' if streaming else ''),
                 data={'question_id':str(qid),'duration_ms':'12000'},files={'audio':('answer.webm',b'test audio','audio/webm')})
 
@@ -358,6 +370,91 @@ class SystemTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code,409)
         self.assertEqual((await self.client.get(f'/api/sessions/{sid}/state')).json()['status'],'failed')
 
+    async def test_panel_turns_adapt_from_conversation_and_keep_speaker(self):
+        sid, internal, data = await self.ready_session(panel=['hr', 'user', 'manager'], career_stage='fresh_graduate')
+        self.assertEqual([q['interviewer'] for q in data['questions']], ['hr', 'user', 'manager'])
+        self.assertEqual(len(data['panel']), 3)
+        self.assertEqual(self.prepared_voices['q1.mp3'], 'hr')
+        self.assertNotIn('q2.mp3', self.prepared_voices)
+        self.assertEqual(self.prepared_voices['closing.mp3'], 'manager')
+        await self.client.post(f'/api/sessions/{sid}/start')
+        first = data['current_turn']['id']
+        follow = (await self.send_answer(sid, first, follow=True)).json()
+        self.assertEqual(follow['follow_up_question']['interviewer'], 'hr')
+        self.adapt_mock.assert_not_called()
+        next_turn = (await self.send_answer(sid, follow['follow_up_question']['id'])).json()
+        self.assertEqual(next_turn['next_question']['interviewer'], 'user')
+        context = self.adapt_mock.call_args.args[0]
+        self.assertEqual(context['interviewer'], 'user')
+        self.assertEqual(context['candidate_profile']['career_stage'], 'fresh_graduate')
+        self.assertEqual(len(context['conversation']), 2)
+        self.assertIn('35 persen', context['conversation'][-1]['answer'])
+        third = (await self.send_answer(sid, next_turn['next_question']['id'])).json()
+        self.assertEqual(third['next_question']['interviewer'], 'manager')
+        self.assertEqual(third['response_interviewer'], 'user')
+        self.assertEqual([persona for name, persona in self.turn_voices if name.startswith('q')], ['user','manager'])
+
+    async def test_panel_rejects_invalid_members_and_checks_all_voices(self):
+        for roles in (['hr'], ['hr', 'hr'], ['hr', 'unknown'], ['hr', 'user', 'manager', 'hr']):
+            self.assertEqual((await self.create(panel=roles)).status_code, 422)
+        with patch('app.api.sessions.speech.require_credentials', side_effect=[None, ValueError('Voice User missing')]) as voice:
+            response = await self.client.post('/api/sessions', data={**self.form(), 'panel':['hr', 'user']})
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual([call.args[0] for call in voice.call_args_list], ['hr', 'user'])
+
+    async def test_dynamic_failure_rolls_back_and_retry_is_idempotent(self):
+        sid, internal, data = await self.ready_session()
+        await self.client.post(f'/api/sessions/{sid}/start')
+        qid = data['current_turn']['id']
+        self.adapt_mock.side_effect = RuntimeError('adaptation unavailable')
+        response = await self.send_answer(sid, qid, streaming=True)
+        self.assertIn('"type": "error"', response.text)
+        current = (await self.client.get(f'/api/sessions/{sid}/state')).json()
+        self.assertEqual(current['current_turn']['id'], qid)
+        self.assertEqual(current['questions'][1]['question_text'], data['questions'][1]['question_text'])
+        async def revised(context):
+            return {**context['planned_question'], 'question_text':'Apa yang Anda ubah dalam proyek kuliah setelah menerima masukan?'}
+        self.adapt_mock.side_effect = revised
+        result = (await self.send_answer(sid, qid)).json()
+        self.assertIn('proyek kuliah', result['next_question']['question_text'])
+        calls = self.adapt_mock.call_count
+        retry = (await self.send_answer(sid, qid)).json()
+        self.assertEqual(result, retry)
+        self.assertEqual(self.adapt_mock.call_count, calls)
+
+    async def test_panel_evaluation_keeps_hr_separate_from_technical_scores(self):
+        from app.models import InterviewQuestion
+        sid, internal, data = await self.ready_session(panel=['hr','user','manager'], career_stage='fresh_graduate')
+        async with SessionLocal() as db:
+            q = await db.get(InterviewQuestion, data['questions'][1]['id'])
+            q.competencies = ['technical']
+            await db.commit()
+        await self.client.post(f'/api/sessions/{sid}/start')
+        for q in data['questions']:
+            response = await self.send_answer(sid, q['id'])
+            self.assertEqual(response.status_code, 200)
+        with patch('app.api.sessions.enqueue', AsyncMock()):
+            self.assertEqual((await self.client.post(f'/api/sessions/{sid}/finish')).status_code,200)
+        seen = []
+        async def evaluate(context):
+            seen.append(context)
+            return {'competency_scores':{k:{'score':4,'evidence':['Saya mengukur hasil eksperimen']} for k in context['competencies']},
+                    'feedback':{}, 'star':{}}
+        with patch('app.worker.tasks.orchestrator.evaluate', side_effect=evaluate), \
+             patch('app.worker.tasks.orchestrator.summarize', AsyncMock(return_value={'summary':'Ringkasan panel'})):
+            await finalize_session({},internal)
+        result = (await self.client.get(f'/api/sessions/{sid}/result')).json()
+        self.assertEqual([c['interviewer'] for c in seen], ['hr','user','manager'])
+        self.assertNotIn('| technical |', seen[0]['rubric'])
+        self.assertIn('| technical |', seen[1]['rubric'])
+        self.assertNotIn('cv_summary',seen[0])
+        self.assertEqual(len(result['panel_results']),3)
+        hr = result['panel_results'][0]
+        technical = next(c for c in hr['competencies'] if c['key']=='technical')
+        self.assertEqual(technical['weight'],0)
+        self.assertIsNone(technical['score'])
+        self.assertFalse(result['assessment']['validated'])
+
     async def test_long_document_reads_all_chunks(self):
         active, maximum, seen = 0, 0, []
         async def fake_complete(system, data, **kwargs):
@@ -399,6 +496,87 @@ class SpeechConfigTests(unittest.IsolatedAsyncioTestCase):
                 await speech.synthesize('Halo','hr','session-test','language.mp3')
             self.assertEqual(json.loads(calls[2].content)['language_code'],'id')
             self.assertEqual(len(calls),3)
+
+
+class GuidebookTests(unittest.IsolatedAsyncioTestCase):
+    def context(self, roles=None):
+        from app.ai.guidebook import snapshot, profile
+        cv = 'Lulusan baru Akuntansi. Proyek kuliah menyusun laporan keuangan koperasi kampus.'
+        summary = {'skills':['rekonsiliasi'], 'education':['Akuntansi'], 'career_stage':'fresh_graduate',
+                   'career_stage_evidence':'Lulusan baru Akuntansi.',
+                   'evidence':[{'kind':'project', 'quote':'Proyek kuliah menyusun laporan keuangan koperasi kampus.'}]}
+        return {'uuid':'stable-session', 'question_count':3, 'interviewer':'hr', 'panel':roles or ['hr'],
+                'job_role':'Accountant', 'level':'junior', 'industry':'Finance', 'language':'id',
+                'cv_summary':summary, 'jd_summary':{'requirements':['Technical accounting standards'], 'responsibilities':['Prepare accurate reports']},
+                'candidate_profile':profile(summary, cv), 'guidebook':snapshot()}
+
+    def test_profile_requires_cv_evidence_and_never_uses_target_level(self):
+        from app.ai.guidebook import profile
+        cv = 'Lulusan baru Akuntansi. Proyek kampus koperasi mahasiswa.'
+        actual = profile({'career_stage':'experienced', 'career_stage_evidence':'Managed ten people for five years',
+                          'evidence':[{'quote':'Nonexistent employment at Acme'}], 'years_exp':0}, cv)
+        self.assertEqual(actual['career_stage'], 'unknown')
+        self.assertNotIn('Nonexistent', str(actual['anchors']))
+        self.assertEqual(profile({}, cv, 'fresh_graduate')['career_stage'], 'fresh_graduate')
+        self.assertEqual(self.context()['candidate_profile']['career_stage'], 'fresh_graduate')
+
+    def test_role_context_and_61_angles_are_separate_and_stable(self):
+        from app.ai.guidebook import role_context
+        from app.ai.blueprint import blueprint
+        context = self.context(['hr', 'user', 'manager'])
+        self.assertEqual([len(context['guidebook']['roles'][p]['angles']) for p in context['panel']], [21,20,20])
+        hr = role_context(context, 'hr')
+        self.assertNotIn('cv_summary', hr)
+        self.assertNotIn('Technical accounting standards', str(hr))
+        self.assertIn('Technical accounting standards', str(role_context(context, 'user')))
+        first = blueprint(7, 'a', context['panel'], context['guidebook'])
+        self.assertEqual(first, blueprint(7, 'a', context['panel'], context['guidebook']))
+        self.assertNotEqual(first, blueprint(7, 'b', context['panel'], context['guidebook']))
+        self.assertEqual(len({s['intent_id'] for s in first}),7)
+
+    def test_hr_allows_technical_cv_background_but_rejects_quizzes_and_scores(self):
+        from app.ai.blueprint import forbidden_hr, validate_questions
+        self.assertFalse(forbidden_hr('Dalam proyek SQL Anda, bagaimana Anda menangani konflik tim?'))
+        self.assertTrue(forbidden_hr('Bagaimana optimasi query SQL Anda?'))
+        q={'slot':'opening','question_text':'Apa motivasi memilih posisi ini?', 'competencies':['technical']}
+        with self.assertRaises(ValueError):
+            validate_questions([q],[{'slot':'opening'}],'hr',[])
+
+    async def test_generation_uses_separate_prompts_and_voices_by_plan(self):
+        context = self.context(['hr','user','manager'])
+        async def complete(system, data, **kwargs):
+            return {'intro':'Selamat datang.', 'closing':'Penutup ' + data['interviewer'], 'questions':[
+                {'slot':s['slot'],'category':'Latihan','question_text':s['angle']+'?', 'anchor_id':'cv1',
+                 'expected_points':['Concrete example'], 'competencies':s['competencies']} for s in data['blueprint']]}
+        with patch('app.ai.orchestrator.complete', side_effect=complete) as calls:
+            result = await orchestrator.build_questions(context, {'hr':[], 'user':[], 'manager':[]})
+        self.assertEqual(calls.call_count,3)
+        self.assertEqual([c.args[1]['interviewer'] for c in calls.call_args_list], ['hr','user','manager'])
+        self.assertNotIn('requirements', str(calls.call_args_list[0].args[1]))
+        self.assertEqual([s['interviewer'] for s in result['plan']], ['hr','user','manager'])
+        self.assertEqual(len(result['questions']),3)
+        self.assertEqual(result['closing'], 'Penutup manager')
+
+    async def test_adaptation_repairs_repetition_and_retains_grounding(self):
+        from app.ai.guidebook import role_context
+        context = role_context(self.context(), 'hr')
+        old = 'Bagaimana Anda menangani konflik dalam proyek koperasi kampus?'
+        new = 'Setelah masukan dari tim koperasi kampus, kebiasaan komunikasi apa yang Anda ubah?'
+        planned = {'slot':'behavior','category':'Kolaborasi','question_text':old,'anchor_id':'cv1',
+                   'expected_points':['Concrete example'],'competencies':['teamwork']}
+        context.update(planned_question=planned, conversation=[{'question':'Apa pengalaman Anda?', 'answer':'Saya baru lulus dan hanya pernah mengerjakan proyek koperasi kampus.'}], asked_questions=[old])
+        with patch('app.ai.orchestrator.complete', side_effect=[{'question':planned}, {'question':{**planned,'question_text':new}}]) as call:
+            result = await orchestrator.adapt_question(context)
+        self.assertEqual(result['question_text'],new)
+        self.assertEqual(call.call_count,2)
+        self.assertIn('baru lulus', call.call_args.args[1]['conversation'][0]['answer'])
+
+    async def test_hr_followup_repairs_wrong_scope(self):
+        with patch('app.ai.orchestrator.complete', side_effect=[{'action':'follow_up','response_text':'Bagaimana optimasi query SQL?'},
+                {'action':'follow_up','response_text':'Bagaimana Anda meminta bantuan dalam proyek tersebut?'}]) as call:
+            result = await orchestrator.respond({'interviewer':'hr','language':'id','allow_followup':True})
+        self.assertEqual(call.call_count,2)
+        self.assertIn('meminta bantuan', result['response_text'])
 
 
 if __name__ == '__main__':

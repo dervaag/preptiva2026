@@ -361,3 +361,12 @@ Lihat [acuan dan snapshot rubrik](assessment-reference.md), [persiapan perangkat
 ## Cleansing dan batas dokumen
 
 CV/JD dibersihkan sebelum penyimpanan sesi baru, termasuk CV yang dipakai ulang. PDF <=5 MB dan <=30 halaman; CV 200–60.000 karakter; JD 30–40.000 karakter setelah cleansing. PDF terlalu panjang mendapat 422; teks melebihi batas mendapat 413. Dokumen panjang dipecah saat ekstraksi AI, bukan dipotong di awal. Lihat [document-processing.md](document-processing.md).
+
+
+## Pembaruan wawancara adaptif dan panel — 7 November 2026
+
+`POST /api/sessions` menerima field form opsional `career_stage` (`auto`, `student`, `fresh_graduate`, `experienced`, `career_switcher`) dan `panel` yang diulang 2–3 kali dengan persona berbeda (`hr`, `user`, `manager`). Tanpa panel, field `interviewer` tetap menentukan satu persona. Pada panel, anggota pertama menjadi host; jumlah pertanyaan 3/5/7 adalah total sesi. Seluruh voice anggota dicek sebelum sesi dibuat.
+
+State menyertakan `panel`. Setiap pertanyaan publik menyertakan `interviewer` dan `persona`; respons jawaban menyertakan `response_interviewer`. `next_question` dapat berbeda dari rencana awal karena dibentuk ulang berdasarkan percakapan. Gunakan pertanyaan/audio dari respons terbaru. Follow-up memakai pembicara yang sama dengan pertanyaan utama.
+
+Result menyertakan `panel_results` (skor dan kompetensi tiap persona). Field lama tetap tersedia. Metadata panduan/profil/pembagian giliran disnapshot dalam JSON script, tanpa kolom database baru. Sesi lama tanpa flag adaptasi mempertahankan pertanyaan lama. API tidak menandai rubrik sebagai tervalidasi hanya karena panel atau guidebook sudah aktif.

@@ -3,6 +3,8 @@ from sqlalchemy import select
 from app.db import SessionLocal
 from app.models import InterviewSession, InterviewQuestion, InterviewAnswer, SessionCompetency, now
 from app.ai import orchestrator, speech
+from app.ai import guidebook
+from app.ai.blueprint import blueprint, PERSONAS
 from app.ai.scoring import verified_scores, aggregate
 from app.log import emit, session_var
 from app.ai.errors import ProviderError
@@ -26,25 +28,46 @@ async def prepare_session(ctx, sid):
             if not session or session.status != 'preparing':
                 return
             parsed = await orchestrator.parse_documents(session.cv_text, session.job_description)
-            history = list((await db.scalars(select(InterviewQuestion.question_text).join(InterviewSession).where(
-                InterviewSession.user_id == session.user_id, InterviewSession.interviewer == session.interviewer,
-                InterviewQuestion.kind == 'main').order_by(InterviewQuestion.id.desc()).limit(35))).all())
+            roles = guidebook.panel_roles(session)
+            history = {p: [] for p in roles}
+            previous = (await db.execute(select(InterviewQuestion, InterviewSession).join(InterviewSession).where(
+                InterviewSession.user_id == session.user_id, InterviewSession.id != sid,
+                InterviewQuestion.kind == 'main').order_by(InterviewQuestion.id.desc()).limit(140))).all()
+            for q, old_session in previous:
+                role = guidebook.speaker(old_session, q.main_order)
+                if role in history and len(history[role]) < 35:
+                    history[role].append(q.question_text)
+            candidate_profile = guidebook.profile(parsed['cv_summary'], session.cv_text,
+                session.script['settings'].get('career_stage', 'auto'))
             context = {**parsed, 'uuid': session.uuid, 'job_role': session.job_role, 'level': session.level,
-                       'industry': session.industry, 'interviewer': session.interviewer, 'question_count': session.question_count,
+                       'industry': session.industry, 'company': session.company, 'interviewer': session.interviewer,
+                       'panel': roles, 'panel_members': [PERSONAS[p] for p in roles],
+                       'candidate_profile': candidate_profile, 'guidebook': session.script.get('guidebook') or guidebook.snapshot(),
+                       'question_count': session.question_count,
                        'language': session.script['settings']['language']}
             prepared = await orchestrator.build_questions(context, history)
-            utterances = [('intro.mp3', prepared['intro']), ('closing.mp3', prepared['closing'])]
-            utterances += [(f'q{i}.mp3', q['question_text']) for i, q in enumerate(prepared['questions'], 1)]
-            urls = await asyncio.gather(*(speech.synthesize(text, session.interviewer, session.uuid, name) for name, text in utterances))
+            plan = prepared.get('plan') or blueprint(session.question_count, session.uuid, roles, context['guidebook'])
+            speakers = {str(s['main_order']): s['interviewer'] for s in plan}
+            closing_persona = speakers[str(session.question_count)]
+            dynamic = session.script.get('settings', {}).get('dynamic_questions', False)
+            utterances = [('intro.mp3', prepared['intro'], roles[0]), ('closing.mp3', prepared['closing'], closing_persona)]
+            utterances += [(f'q{i}.mp3', q['question_text'], speakers[str(i)]) for i, q in enumerate(prepared['questions'], 1)
+                           if not dynamic or i == 1]
+            urls = await asyncio.gather(*(speech.synthesize(text, persona, session.uuid, name) for name, text, persona in utterances))
             await db.refresh(session)
             if session.status != 'preparing':
                 return
             session.cv_summary = parsed['cv_summary']
             session.jd_summary = parsed['jd_summary']
-            session.script = {**session.script, 'intro': {'text': prepared['intro'], 'audio_url': urls[0]},
-                              'closing': {'text': prepared['closing'], 'audio_url': urls[1]}, 'fillers': []}
+            session.script = {**session.script, 'intro': {'text': prepared['intro'], 'audio_url': urls[0], 'persona': PERSONAS[roles[0]]},
+                'closing': {'text': prepared['closing'], 'audio_url': urls[1], 'persona': PERSONAS[closing_persona]}, 'fillers': [],
+                'candidate_profile': candidate_profile, 'speaker_by_order': speakers,
+                'question_plan': {str(s['main_order']): s for s in plan},
+                'question_provenance': {str(i): {'anchor_id': q.get('anchor_id', ''), 'interviewer': speakers[str(i)],
+                    'conversation_turns': 0} for i, q in enumerate(prepared['questions'], 1)}}
             for i, q in enumerate(prepared['questions'], 1):
-                db.add(InterviewQuestion(session_id=sid, main_order=i, audio_file=f'q{i}.mp3', **q))
+                fields = {key: q[key] for key in ('slot', 'category', 'question_text', 'expected_points', 'competencies')}
+                db.add(InterviewQuestion(session_id=sid, main_order=i, audio_file=f'q{i}.mp3' if not dynamic or i == 1 else None, **fields))
             session.status = 'ready'
             await db.commit()
     except Exception as exc:
@@ -67,11 +90,16 @@ async def finalize_session(ctx, sid):
             evaluations = []
             stars = {k: False for k in ('situation', 'task', 'action', 'result')}
             for main in (q for q in questions if q.kind == 'main'):
+                persona = guidebook.speaker(session, main.main_order)
                 group = [q for q in questions if q.main_order == main.main_order]
                 group_answers = [by_question[q.id] for q in group if q.id in by_question]
                 transcript = '\n'.join(a.transcript for a in group_answers)
-                evaluation = await orchestrator.evaluate({'question': main.question_text, 'transcript': transcript,
-                    'competencies': main.competencies, 'rubric': session.script['assessment']['rubric'],
+                # Do not give HR the technical rubric rows or another panelist's scores.
+                rubric = '\n'.join(line for line in session.script['assessment']['rubric'].splitlines()
+                    if not line.startswith('| ') or line.split('|')[1].strip() in set(main.competencies) | {'Kompetensi', '---'})
+                evaluation = await orchestrator.evaluate({**guidebook.context_for(session, persona),
+                    'question': main.question_text, 'transcript': transcript,
+                    'competencies': main.competencies, 'rubric': rubric,
                     'job_role': session.job_role, 'level': session.level, 'language': session.script['settings']['language']})
                 scores = verified_scores(evaluation['competency_scores'], transcript, main.competencies)
                 evaluations.append(scores)

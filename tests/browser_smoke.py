@@ -70,6 +70,10 @@ async def respond(context):
     return {'action':'next','response_text':'Terima kasih.'}
 
 
+async def adapt(context):
+    return {**context['planned_question'], 'question_text': 'Dari proyek kuliah itu, apa yang berubah setelah Anda menerima masukan?'}
+
+
 async def evaluate(context):
     return {'competency_scores':{'communication':{'score':4,'evidence':['Saya mengukur hasil eksperimen']}},'feedback':{'strengths':['Terstruktur'],'improvements':['Tambah konteks'],'better_answer_tip':'Jelaskan dampak.'},'star':{'action':True,'result':True}}
 
@@ -83,6 +87,7 @@ def main():
     speech.synthesize = tts; speech.transcribe = transcribe
     orchestrator.parse_documents = parse; orchestrator.build_questions = questions
     orchestrator.respond = respond; orchestrator.evaluate = evaluate; orchestrator.summarize = summarize
+    orchestrator.adapt_question = adapt
     asyncio.run(seed())
     mic_file = Path(temporary.name) / 'mic.wav'; mic_file.write_bytes(wav(5))
     sock = socket.socket(); sock.bind(('127.0.0.1',0)); port = sock.getsockname()[1]; sock.close()
@@ -108,33 +113,51 @@ def main():
                 page.set_viewport_size({'width':width,'height':900})
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), f'Dashboard overflows at {width}'
             page.set_viewport_size({'width':1440,'height':1100})
-            page.goto(f'http://127.0.0.1:{port}/simulasi/baru')
-            page.locator('[name=cv_text]').fill('Pengalaman melakukan riset produk dan mengukur hasil bersama tim. ' * 8)
-            page.locator('[name=job_role]').fill('Product Designer'); page.locator('[name=industry]').fill('Technology')
-            page.locator('[name=job_description]').fill('Design accessible user experiences with research and product experiments.')
-            page.locator('[name=question_count]').select_option('3'); page.locator('[name=consent]').check()
-            page.get_by_role('button',name='Siapkan wawancara').click(); page.wait_for_url('**/ruang')
-            page.wait_for_function("document.querySelector('#room-status').textContent === 'SIAP DIMULAI'")
-            page.locator('#devices').click(); page.locator('#test-sound').click()
-            page.locator('#camera-check').check(); page.locator('#speaker-check').check(); page.locator('#focus-check').check()
-            page.wait_for_function("!document.querySelector('#start').disabled",timeout=15000)
-            page.screenshot(path=str(artifacts/'room-preflight.png'),full_page=True)
-            page.locator('#start').click()
-            for _ in range(3):
-                page.wait_for_function("!document.querySelector('#record').hidden && !document.querySelector('#record-controls').hidden")
-                page.locator('#record').click(); page.wait_for_timeout(600); page.locator('#record').click()
-                page.locator('#send').click()
-            page.wait_for_url('**/hasil',timeout=30000)
-            page.wait_for_selector('.score-number'); assert page.locator('.score-number').inner_text().strip().startswith('80')
-            page.screenshot(path=str(artifacts/'results-desktop.png'),full_page=True)
-            page.set_viewport_size({'width':390,'height':844})
-            assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'Results overflow on mobile'
-            page.screenshot(path=str(artifacts/'results-mobile.png'),full_page=True)
-            page.goto(f'http://127.0.0.1:{port}/dashboard'); page.wait_for_function("document.querySelector('#stat-total').textContent === '1'")
-            page.screenshot(path=str(artifacts/'dashboard-mobile.png'),full_page=True)
+            for scenario, panel_size in enumerate((1, 2, 3), 1):
+                page.set_viewport_size({'width':1440,'height':1100})
+                page.goto(f'http://127.0.0.1:{port}/simulasi/baru')
+                page.locator('[name=cv_text]').fill('Lulusan baru Akuntansi. Proyek kuliah koperasi kampus, organisasi mahasiswa, dan magang administrasi. ' * 4)
+                page.locator('[name=career_stage]').select_option('fresh_graduate')
+                page.locator('[name=job_role]').fill('Accountant'); page.locator('[name=industry]').fill('Finance')
+                page.locator('[name=job_description]').fill('Prepare accurate reports and coordinate financial information with colleagues.')
+                page.locator('[name=question_count]').select_option('3'); page.locator('[name=consent]').check()
+                if panel_size > 1:
+                    page.locator('#interview-mode').select_option('panel')
+                    assert page.locator('#panel-personas').is_visible()
+                    assert not page.locator('#single-personas').is_visible()
+                    if panel_size == 3: page.locator('[name=panel][value=manager]').check()
+                    page.set_viewport_size({'width':390,'height':900})
+                    assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'Panel form overflow'
+                    page.screenshot(path=str(artifacts/f'panel-{panel_size}-form.png'),full_page=True)
+                    page.set_viewport_size({'width':1440,'height':1100})
+                page.get_by_role('button',name='Siapkan wawancara').click(); page.wait_for_url('**/ruang')
+                page.wait_for_function("document.querySelector('#room-status').textContent === 'SIAP DIMULAI'")
+                page.locator('#devices').click(); page.locator('#test-sound').click()
+                page.locator('#camera-check').check(); page.locator('#speaker-check').check(); page.locator('#focus-check').check()
+                page.wait_for_function("!document.querySelector('#start').disabled",timeout=15000)
+                page.locator('#start').click()
+                names = ['Rina'] if panel_size == 1 else ['Rina', 'Andi'] if panel_size == 2 else ['Rina', 'Andi', 'Hendra']
+                for turn in range(3):
+                    page.wait_for_function("!document.querySelector('#record').hidden && !document.querySelector('#record-controls').hidden")
+                    assert page.locator('#interviewer-name').inner_text() == names[turn % len(names)]
+                    if turn:
+                        assert 'proyek kuliah' in page.locator('#question-text').inner_text()
+                    if panel_size > 1:
+                        assert page.locator('.panel-member.active').count() == 1
+                        if turn == 1: page.screenshot(path=str(artifacts/f'panel-{panel_size}-room.png'),full_page=True)
+                    page.locator('#record').click(); page.wait_for_timeout(600); page.locator('#record').click()
+                    page.locator('#send').click()
+                page.wait_for_url('**/hasil',timeout=30000)
+                page.wait_for_selector('.score-number'); assert page.locator('.score-number').inner_text().strip().startswith('80')
+                if panel_size > 1: assert page.locator('.panel-results article').count() == panel_size
+                page.set_viewport_size({'width':390,'height':844})
+                assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'Results overflow on mobile'
+                page.screenshot(path=str(artifacts/f'panel-{panel_size}-results.png'),full_page=True)
+                page.goto(f'http://127.0.0.1:{port}/dashboard')
+                page.wait_for_function("document.querySelector('#stat-total').textContent === String(" + str(scenario) + ")")
             assert not failures, failures
             browser.close()
-            print('Chrome checks passed: login, responsive dashboard, setup, synthetic device checks, three recorded answers, streaming, scoring and results. Screenshots: artifacts/')
+            print('Chrome checks passed: single, 2-person and 3-person panels; fresh graduate setup, active speaker, adaptive turns, streaming, per-persona results and mobile layout. No AI calls.')
     finally:
         server.should_exit = True; thread.join(timeout=10)
 

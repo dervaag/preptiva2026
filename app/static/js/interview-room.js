@@ -9,6 +9,14 @@
   const setStatus = text => {$('#room-status').textContent = text;};
   const error = e => showError('#room-error', e);
   function setPhase(next) {phase = next;}
+  function showInterviewer(persona) {
+    if (!persona) return;
+    $('#interviewer-name').textContent = persona.name;
+    $('#interviewer-title').textContent = persona.title;
+    $('#interviewer-initial').textContent = persona.name[0];
+    if ($('#panel-members')) $('#panel-members').innerHTML = (state.panel || []).length > 1
+      ? state.panel.map(p => `<span class="panel-member ${p.name === persona.name ? 'active' : ''}" ${p.name === persona.name ? 'aria-current="true"' : ''}>${esc(p.name)} · ${esc(p.key.toUpperCase())}</span>`).join('') : '';
+  }
   function stopDevices() {
     clearInterval(timer); cancelAnimationFrame(meterFrame);
     if (recorder?.state === 'recording') {recorder.onstop = null; recorder.stop();}
@@ -96,6 +104,7 @@
   async function presentQuestion(question) {
     if (closed) return;
     current = question; retries = 0; recorded = null;
+    showInterviewer(question.persona || state.persona);
     $('#transcript').hidden = true; $('#record-controls').hidden = true; $('#answer-preview').hidden = true;
     $('#question-progress').textContent = `${question.kind === 'follow_up' ? 'PENGGALIAN LANJUTAN' : 'PERTANYAAN'} ${question.main_order} / ${state.question_count}`;
     $('#question-text').textContent = question.question_text;
@@ -176,7 +185,7 @@
     $('#transcript').textContent = result.transcript; $('#transcript').hidden = false;
     const advance = async () => {
       setStatus('MENDENGARKAN'); await play(result.response_audio_url);
-      if (result.is_last) {await play(result.closing.audio_url); await finish();}
+      if (result.is_last) {showInterviewer(result.closing.persona); await play(result.closing.audio_url); await finish();}
       else await presentQuestion(result.follow_up_question || result.next_question);
     };
     try {await advance();} catch(e) {error(e); recoverable(advance);}
@@ -224,7 +233,8 @@
       }
       if (state.status === 'running') {await postJSON(`${base}/close`); throw new Error('Sesi aktif tidak dapat dibuka ulang. Silakan buat latihan baru.');}
       $('#room-title').textContent = `Latihan ${state.job_role}`;
-      $('#room-subtitle').textContent = `${state.question_count} pertanyaan · ${state.answer_seconds} detik per jawaban · ${state.persona.title}`;
+      $('#room-subtitle').textContent = `${state.question_count} pertanyaan · ${state.answer_seconds} detik per jawaban · ${(state.panel || []).length > 1 ? 'Panel ' + state.panel.length + ' interviewer' : state.persona.title}`;
+      showInterviewer(state.persona);
       $('#interviewer-name').textContent = state.persona.name; $('#interviewer-title').textContent = state.persona.title;
       $('#interviewer-initial').textContent = state.persona.name[0];
       if (state.status === 'preparing') {setTimeout(poll,1500);return;}

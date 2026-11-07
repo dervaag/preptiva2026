@@ -79,6 +79,11 @@ def main(url=URL):
             page.wait_for_function("document.querySelector('#stat-total').textContent === '0'")
             page.goto(url+'/simulasi/baru')
             assert page.locator('#session-form').is_visible()
+            page.locator('#interview-mode').select_option('panel')
+            assert page.locator('#panel-personas').is_visible()
+            assert page.locator('[name=panel]:checked').count() == 2
+            page.locator('[name=career_stage]').select_option('fresh_graduate')
+            report['panel_and_candidate_background_form'] = True
             page.locator('#logout').click()
             page.wait_for_url('**/login')
             assert get('/api/me')['status'] == 401

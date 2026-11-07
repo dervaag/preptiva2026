@@ -2,6 +2,8 @@
 
 AI interview practice built from the specifications in `docs/`: FastAPI, async SQLAlchemy, Jinja2, vanilla JavaScript, OpenAI and ElevenLabs. Indonesian UI with Indonesian or English interview sessions.
 
+Interviews now support CV-grounded questions, academic/project experience for fresh graduates, adaptive next questions, and panels of two or three interviewers with separate HR/User/Manager scopes. See the [question guidebook](docs/question-guidebook.md) for role boundaries, methodology and limitations.
+
 ## Run locally
 
 Python 3.12 recommended (the application is also tested with the available Python 3.9 runtime).

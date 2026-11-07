@@ -2,6 +2,8 @@
 
 Status: rencana kerja, belum dilaksanakan. Rubrik aktif tetap `2026-11-05.2` di [assessment-reference.md](assessment-reference.md) dengan `validated: false`.
 
+Pembaruan 7 November 2026: pemisahan persona, guidebook pertanyaan, adaptasi berdasarkan CV/percakapan, dan panel telah diimplementasikan secara terpisah; lihat [guidebook](question-guidebook.md). Hal itu tidak menyelesaikan validasi rubrik oleh asesor yang direncanakan di dokumen ini.
+
 ## Tujuan
 
 Rubrik baru boleh disebut **berbasis referensi** jika setiap indikator skor dapat ditelusuri ke bagian sumber yang mendukungnya. Rubrik baru boleh disebut **telah diuji untuk suatu konteks** jika penerapannya oleh AI sudah dibandingkan dengan penilaian asesor manusia pada konteks tersebut. Mencantumkan tautan sumber di dokumen belum memenuhi keduanya.

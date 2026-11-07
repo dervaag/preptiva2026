@@ -1,0 +1,234 @@
+{
+  "synthetic_data": true,
+  "paid_llm_calls": true,
+  "tts_stt_calls": false,
+  "validated_for_selection": false,
+  "cases": [
+    {
+      "name": "fresh_hr",
+      "career_stage": "fresh_graduate",
+      "questions": [
+        {
+          "interviewer": "hr",
+          "intent_id": "hr.setback",
+          "slot": "opening",
+          "category": "adaptability",
+          "question_text": "Bagaimana Anda mengatasi kegagalan ketika proyek laporan keuangan tidak berjalan sesuai rencana?",
+          "expected_points": [
+            "Beradaptasi dengan mempelajari kesalahan setelah proyek kuliah tidak berjalan lancar.",
+            "Mencari umpan balik dari teman satu tim untuk peningkatan.",
+            "Menggunakan pengalaman untuk lebih siap di proyek masa depan."
+          ],
+          "competencies": [
+            "adaptability"
+          ],
+          "anchor_id": "cv2"
+        },
+        {
+          "interviewer": "hr",
+          "intent_id": "hr.motivation",
+          "slot": "background",
+          "category": "adaptability",
+          "question_text": "Bagaimana pengalaman Anda dalam proyek kampus dan magang memotivasi Anda untuk memilih peran akuntan di distribusi?",
+          "expected_points": [
+            "Menemukan minat dalam analisis data saat menyusun laporan keuangan.",
+            "Tertarik memeriksa transaksi selama magang.",
+            "Berharap mengembangkan keterampilan di distribusi."
+          ],
+          "competencies": [
+            "adaptability"
+          ],
+          "anchor_id": "cv2"
+        },
+        {
+          "interviewer": "hr",
+          "intent_id": "hr.transition",
+          "slot": "behavior",
+          "category": "adaptability",
+          "question_text": "Apa pelajaran paling berharga dari magang Anda yang mempersiapkan Anda untuk posisi akuntan ini?",
+          "expected_points": [
+            "Belajar pentingnya ketelitian saat mencocokkan transaksi.",
+            "Memahami alur kerja akuntansi dasar.",
+            "Menghargai kerja tim dalam menyelesaikan tugas."
+          ],
+          "competencies": [
+            "adaptability"
+          ],
+          "anchor_id": "cv3"
+        },
+        {
+          "interviewer": "hr",
+          "intent_id": "hr.initiative",
+          "slot": "decision",
+          "category": "leadership",
+          "question_text": "Ceritakan inisiatif yang Anda ambil sebagai bendahara untuk memecahkan masalah dalam acara organisasi mahasiswa.",
+          "expected_points": [
+            "Mengusulkan strategi penghematan anggaran.",
+            "Mengumpulkan dan menganalisis data keuangan untuk keputusan.",
+            "Memimpin pertemuan dengan anggota untuk solusi."
+          ],
+          "competencies": [
+            "leadership"
+          ],
+          "anchor_id": "cv4"
+        },
+        {
+          "interviewer": "hr",
+          "intent_id": "hr.collaboration",
+          "slot": "candidate_questions",
+          "category": "teamwork",
+          "question_text": "Bagaimana Anda memastikan bahwa kerja keras dan kontribusi setiap anggota tim diakui selama proyek kuliah?",
+          "expected_points": [
+            "Mengusulkan pembagian tugas yang adil.",
+            "Membicarakan prestasi teman dalam rapat.",
+            "Mendorong apresiasi tim untuk setiap kontribusi."
+          ],
+          "competencies": [
+            "teamwork"
+          ],
+          "anchor_id": "cv2"
+        }
+      ],
+      "adaptive_next": {
+        "slot": "background",
+        "category": "adaptability",
+        "question_text": "Apa yang Anda pelajari dari pengalaman menjadi bendahara organisasi yang dapat Anda terapkan di peran akuntan distribusi ini?",
+        "expected_points": [
+          "Mengatur anggaran dan alokasi dana secara efisien.",
+          "Kemampuan berkoordinasi dengan anggota tim.",
+          "Memastikan transaksi dan pengeluaran sesuai rencana."
+        ],
+        "competencies": [
+          "adaptability"
+        ],
+        "anchor_id": "cv4"
+      },
+      "guidebook_sha256": "9db6903e571ec802c2d76e35478c6cd40799cb65377a79f6d6229c209db98339"
+    },
+    {
+      "name": "experienced_user",
+      "career_stage": "experienced",
+      "questions": [
+        {
+          "interviewer": "user",
+          "intent_id": "user.contribution",
+          "slot": "opening",
+          "category": "Separating personal work from team output",
+          "question_text": "Bagaimana Anda memisahkan kontribusi pribadi Anda saat melatih rekan baru dari hasil tim secara keseluruhan?",
+          "expected_points": [
+            "Penggunaan daftar periksa kualitas sebagai alat bantu"
+          ],
+          "competencies": [
+            "technical"
+          ],
+          "anchor_id": "cv3"
+        },
+        {
+          "interviewer": "user",
+          "intent_id": "user.review",
+          "slot": "behavior",
+          "category": "Incorporating review into a deliverable",
+          "question_text": "Apa yang Anda pelajari saat memperbaiki proses penutupan buku berdasarkan masukan tim?",
+          "expected_points": [
+            "Peningkatan proses setelah evaluasi masukan"
+          ],
+          "competencies": [
+            "adaptability"
+          ],
+          "anchor_id": "cv2"
+        },
+        {
+          "interviewer": "user",
+          "intent_id": "user.requirements",
+          "slot": "decision",
+          "category": "Clarifying an ambiguous task or brief",
+          "question_text": "Ketika Anda harus memverifikasi bukti transaksi yang ambigu, bagaimana Anda berkomunikasi dengan tim penjualan untuk mendapatkan kejelasan?",
+          "expected_points": [
+            "Pendekatan komunikatif dan mencari informasi tambahan"
+          ],
+          "competencies": [
+            "communication"
+          ],
+          "anchor_id": "cv2"
+        }
+      ],
+      "adaptive_next": {
+        "slot": "behavior",
+        "category": "Incorporating review into a deliverable",
+        "question_text": "Bagaimana Anda mengaplikasikan umpan balik tim saat mengurangi transaksi tanpa bukti?",
+        "expected_points": [
+          "Implementasi perubahan dari input tim"
+        ],
+        "competencies": [
+          "adaptability"
+        ],
+        "anchor_id": "cv4"
+      },
+      "guidebook_sha256": "9db6903e571ec802c2d76e35478c6cd40799cb65377a79f6d6229c209db98339"
+    },
+    {
+      "name": "fresh_panel",
+      "career_stage": "fresh_graduate",
+      "questions": [
+        {
+          "interviewer": "hr",
+          "intent_id": "hr.integrity",
+          "slot": "opening",
+          "category": "Taking responsibility for a mistake",
+          "question_text": "Dalam proyek kampus menyusun laporan keuangan, bagaimana Anda menangani kesalahan yang terjadi?",
+          "expected_points": [
+            "Mengaku kesalahan dan segera mengoreksi dengan tim."
+          ],
+          "competencies": [
+            "communication"
+          ],
+          "anchor_id": "cv2"
+        },
+        {
+          "interviewer": "user",
+          "intent_id": "user.alternatives",
+          "slot": "behavior",
+          "category": "Recognizing limits of a chosen method",
+          "question_text": "Apa tantangan terbesar saat menyusun laporan keuangan koperasi kampus, dan bagaimana Anda mencari solusi lain?",
+          "expected_points": [
+            "Mengidentifikasi kesulitan spesifik dalam proyek laporan keuangan.",
+            "Menggambarkan metode alternatif yang dipertimbangkan atau dicoba."
+          ],
+          "competencies": [
+            "analytical"
+          ],
+          "anchor_id": "cv2"
+        },
+        {
+          "interviewer": "manager",
+          "intent_id": "manager.quality",
+          "slot": "decision",
+          "category": "Balancing quality, time and investment",
+          "question_text": "Bagaimana Anda memastikan laporan keuangan proyek koperasi kampus memiliki kualitas baik dalam batas waktu yang ditentukan?",
+          "expected_points": [
+            "Menggunakan pengaturan waktu dan membagi tugas dengan empat teman untuk memaksimalkan efisiensi dan memastikan kualitas laporan."
+          ],
+          "competencies": [
+            "technical"
+          ],
+          "anchor_id": "cv2"
+        }
+      ],
+      "adaptive_next": {
+        "slot": "behavior",
+        "category": "Recognizing limits of a chosen method",
+        "question_text": "Bagaimana Anda memastikan kelengkapan bukti transaksi saat magang administrasi?",
+        "expected_points": [
+          "Menggambarkan proses pengecekan bukti transaksi yang teliti.",
+          "Menunjukkan adaptasi metode kerja jika terdapat kecacatan dalam dokumen."
+        ],
+        "competencies": [
+          "analytical"
+        ],
+        "anchor_id": "cv3"
+      },
+      "guidebook_sha256": "9db6903e571ec802c2d76e35478c6cd40799cb65377a79f6d6229c209db98339"
+    }
+  ],
+  "ok": true
+}

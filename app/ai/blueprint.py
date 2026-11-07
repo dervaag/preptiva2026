@@ -7,20 +7,33 @@ FOCUS = {'hr': 'Learning potential, motivation, integrity, collaboration and ada
          'user': 'Role-specific functional/technical practice, personal contribution, diagnosis, validation and trade-offs. Do not assume software roles.',
          'manager': 'Leadership, people development, priorities, risk, business impact and functional/technical investment trade-offs. No coding quizzes.'}
 SLOTS = ['opening', 'background', 'motivation', 'behavior', 'competency', 'decision', 'candidate_questions']
-ANGLES = ['a recent challenge', 'an unexpected constraint', 'a disagreement', 'a lesson learned', 'a measurable improvement', 'a first decision', 'a change of plan', 'a difficult priority', 'feedback received']
 
 
-def blueprint(count, uuid):
+def blueprint(count, uuid, personas=None, guide=None):
+    from app.ai.guidebook import snapshot
+    guide = guide or snapshot()
+    personas = personas or ['hr']
     indices = [0, 3, 5] if count == 3 else [0, 1, 3, 5, 6] if count == 5 else range(7)
-    angles = random.Random(uuid).sample(ANGLES, count)
-    return [{'slot': SLOTS[i], 'angle': angle} for i, angle in zip(indices, angles)]
+    rng = random.Random(uuid)
+    pools = {p: rng.sample(guide['roles'][p]['angles'], len(guide['roles'][p]['angles'])) for p in personas}
+    result = []
+    for order, i in enumerate(indices, 1):
+        persona = personas[(order - 1) % len(personas)]
+        angle = pools[persona].pop()
+        result.append({'slot': SLOTS[i], 'angle': angle['intent'], 'intent_id': angle['id'],
+                       'competencies': angle['competencies'], 'interviewer': persona, 'main_order': order})
+    return result
 
 
 def forbidden_hr(text):
-    return bool(re.search(r'\b(SQL|syntax|sintaks|coding|algorithm|algoritma|query optimization|optimasi query)\b', text, re.I))
+    technical = re.search(r'\b(SQL|syntax|sintaks|coding|algorithm|algoritma|query|arsitektur|architecture|debug|jurnal penyesuaian|rekonsiliasi)\b', text, re.I)
+    if re.search(r'(optimasi query|query optimization|implementasikan|write (?:a |the )?code|tulis(?:kan)? (?:kode|query)|kompleksitas algoritma)', text, re.I):
+        return True
+    behavior = re.search(r'(kolaborasi|kerja sama|teamwork|collaborat|motivasi|motivation|umpan balik|feedback|konflik|conflict|perasaan|communicat|komunikasi|meminta bantuan|belajar|pelajari|learning)', text, re.I)
+    return bool(technical and not behavior)
 
 
-def validate_questions(questions, slots, persona, history):
+def validate_questions(questions, slots, persona, history, profile=None):
     if len(questions) != len(slots):
         raise ValueError('Jumlah pertanyaan tidak sesuai blueprint.')
     texts = []
@@ -30,6 +43,17 @@ def validate_questions(questions, slots, persona, history):
             raise ValueError('Pertanyaan kosong, ganda, atau urutan tidak sesuai.')
         if persona == 'hr' and forbidden_hr(text):
             raise ValueError('Pertanyaan HR melampaui fokus persona.')
+        from app.ai.scoring import WEIGHTS
+        allowed = {k for k, weight in WEIGHTS[persona].items() if weight > 0}
+        if not q.get('competencies') or set(q['competencies']) - allowed:
+            raise ValueError('Kompetensi pertanyaan melampaui fokus persona.')
+        if slot.get('competencies') and set(q['competencies']) != set(slot['competencies']):
+            raise ValueError('Kompetensi harus sesuai tujuan pertanyaan pada guidebook.')
+        if profile and profile.get('anchors') and q.get('anchor_id') not in {a['id'] for a in profile['anchors']}:
+            raise ValueError('Pertanyaan harus merujuk bukti CV yang tersedia.')
+        if profile and profile.get('career_stage') in ('student', 'fresh_graduate') and re.search(
+            r'(bawahan Anda|your direct reports|perusahaan Anda sebelumnya|your previous employer|tim yang Anda kelola|team you managed)', text, re.I):
+            raise ValueError('Jangan mengasumsikan pengalaman kerja/manajerial untuk kandidat pemula.')
         if any(SequenceMatcher(None, text.casefold(), old.casefold()).ratio() > .88 for old in texts):
             raise ValueError('Pertanyaan berulang dalam sesi.')
         if any(SequenceMatcher(None, text.casefold(), old.casefold()).ratio() > .92 for old in history):
