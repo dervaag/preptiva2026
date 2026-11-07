@@ -127,6 +127,26 @@
     fullscreenButton.title = fullscreenButton.getAttribute('aria-label');
   });
 
+  const modeInput = form.elements.interview_mode;
+  const panelInputs = [...form.querySelectorAll('[name=panel]')];
+  function validatePanel() {
+    const panelMode = modeInput.value === 'panel';
+    const count = panelInputs.filter(input => input.checked).length;
+    panelInputs[0].setCustomValidity(panelMode && count < 2 ? 'Pilih minimal dua pewawancara untuk panel.' : '');
+  }
+  function renderMode() {
+    const panelMode = modeInput.value === 'panel';
+    document.querySelector('#single-personas').hidden = panelMode;
+    document.querySelector('#panel-personas').hidden = !panelMode;
+    panelInputs.forEach(input => {input.disabled = !panelMode;});
+    validatePanel();
+  }
+  modeInput.addEventListener('change', renderMode);
+  panelInputs.forEach(input => input.addEventListener('change', validatePanel));
+  renderMode();
+  form.addEventListener('reset', event => queueMicrotask(() => {
+    if (!event.defaultPrevented) {renderMode(); validateCv();}
+  }));
   form.querySelectorAll('[name=interviewer]').forEach(input => input.addEventListener('change', () => {
     document.querySelector('#setup-persona-description').textContent = input.dataset.description;
   }));

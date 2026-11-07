@@ -1,0 +1,461 @@
+{
+  "version": "2026-11-07.1",
+  "validated": false,
+  "origin": "internal adaptation of methodology; not a standardized selection instrument",
+  "rules": [
+    "One concrete question per turn. Preserve the intended competency while adapting wording and examples.",
+    "Use only verified CV anchors or candidate statements. Never invent employment, projects, company culture, team size, or years of experience.",
+    "Student/fresh graduate: prioritize coursework, thesis, student organizations, volunteering, projects and internships that actually appear in the CV. Accept these as evidence, not lesser substitutes for employment.",
+    "Unknown background: ask a neutral clarification; do not infer experience from age or target job level.",
+    "Career switcher: connect transferable evidence to the target role without pretending prior domain mastery.",
+    "Culture means observable job-related work values and behavior, not personality diagnosis or similarity to the interviewer. Do not ask about protected or intimate personal attributes.",
+    "Resilience means learning, coping and seeking support, not willingness to accept abuse or unlimited work hours.",
+    "Use conversation to identify what is already answered and seek missing evidence. Candidate questions must not repeat a solved topic.",
+    "Panel members share factual conversation memory but retain their own scope, voice, competencies and evaluation.",
+    "Do not imply that one profession is less prestigious, or assume a candidate lacks authority, has failed, or received criticism. If an anchor does not establish an event, ask neutrally or conditionally rather than present it as fact."
+  ],
+  "roles": {
+    "hr": {
+      "scope": "Motivation, learning, integrity, work values, collaboration, resilience and self-awareness. Technical CV facts are background only; never test technical knowledge or implementation.",
+      "angles": [
+        {
+          "id": "hr.motivation",
+          "intent": "Connection between the actual role responsibilities and the candidate's interests or work values",
+          "competencies": [
+            "adaptability"
+          ]
+        },
+        {
+          "id": "hr.learning",
+          "intent": "How the candidate learned an unfamiliar subject",
+          "competencies": [
+            "adaptability"
+          ]
+        },
+        {
+          "id": "hr.feedback",
+          "intent": "Acting on uncomfortable feedback",
+          "competencies": [
+            "adaptability"
+          ]
+        },
+        {
+          "id": "hr.setback",
+          "intent": "Recovering after a setback without glorifying overwork",
+          "competencies": [
+            "adaptability"
+          ]
+        },
+        {
+          "id": "hr.persistence",
+          "intent": "Knowing when to persist and when to ask for help",
+          "competencies": [
+            "problem_solving"
+          ]
+        },
+        {
+          "id": "hr.values",
+          "intent": "A work-value decision demonstrated by an example",
+          "competencies": [
+            "teamwork"
+          ]
+        },
+        {
+          "id": "hr.integrity",
+          "intent": "Taking responsibility for a mistake",
+          "competencies": [
+            "communication"
+          ]
+        },
+        {
+          "id": "hr.conflict",
+          "intent": "Resolving interpersonal disagreement respectfully",
+          "competencies": [
+            "teamwork"
+          ]
+        },
+        {
+          "id": "hr.collaboration",
+          "intent": "Sharing work and credit in a group",
+          "competencies": [
+            "teamwork"
+          ]
+        },
+        {
+          "id": "hr.communication",
+          "intent": "Explaining an idea to someone with a different background",
+          "competencies": [
+            "communication"
+          ]
+        },
+        {
+          "id": "hr.self_awareness",
+          "intent": "A growth area and concrete learning action",
+          "competencies": [
+            "adaptability"
+          ]
+        },
+        {
+          "id": "hr.initiative",
+          "intent": "Taking initiative within the candidate's actual responsibilities and authority",
+          "competencies": [
+            "leadership"
+          ]
+        },
+        {
+          "id": "hr.priorities",
+          "intent": "Balancing commitments and communicating limits",
+          "competencies": [
+            "problem_solving"
+          ]
+        },
+        {
+          "id": "hr.change",
+          "intent": "Adjusting to changed expectations",
+          "competencies": [
+            "adaptability"
+          ]
+        },
+        {
+          "id": "hr.support",
+          "intent": "Seeking and using help constructively",
+          "competencies": [
+            "teamwork"
+          ]
+        },
+        {
+          "id": "hr.inclusion",
+          "intent": "Making collaboration accessible to different working styles",
+          "competencies": [
+            "teamwork"
+          ]
+        },
+        {
+          "id": "hr.expectations",
+          "intent": "Clarifying expectations before committing",
+          "competencies": [
+            "communication"
+          ]
+        },
+        {
+          "id": "hr.transition",
+          "intent": "Connecting previous learning with the next career step",
+          "competencies": [
+            "adaptability"
+          ]
+        },
+        {
+          "id": "hr.recognition",
+          "intent": "Recognizing others' contributions",
+          "competencies": [
+            "teamwork"
+          ]
+        },
+        {
+          "id": "hr.uncertainty",
+          "intent": "Handling uncertainty without pretending to know",
+          "competencies": [
+            "analytical"
+          ]
+        },
+        {
+          "id": "hr.aspirations",
+          "intent": "Realistic growth goals and support needed",
+          "competencies": [
+            "communication"
+          ]
+        }
+      ]
+    },
+    "user": {
+      "scope": "Functional or technical practice for the actual job and industry. Use JD tasks, work samples, projects or coursework; never assume every job is software engineering.",
+      "angles": [
+        {
+          "id": "user.fundamentals",
+          "intent": "A role-specific foundation applied in a concrete task",
+          "competencies": [
+            "technical"
+          ]
+        },
+        {
+          "id": "user.diagnosis",
+          "intent": "Diagnosing why a task or process failed",
+          "competencies": [
+            "problem_solving"
+          ]
+        },
+        {
+          "id": "user.validation",
+          "intent": "Checking whether a proposed solution works",
+          "competencies": [
+            "technical"
+          ]
+        },
+        {
+          "id": "user.tradeoffs",
+          "intent": "Comparing two feasible approaches",
+          "competencies": [
+            "analytical"
+          ]
+        },
+        {
+          "id": "user.requirements",
+          "intent": "Clarifying an ambiguous task or brief",
+          "competencies": [
+            "communication"
+          ]
+        },
+        {
+          "id": "user.contribution",
+          "intent": "Separating personal work from team output",
+          "competencies": [
+            "technical"
+          ]
+        },
+        {
+          "id": "user.quality",
+          "intent": "Defining and checking quality for this profession",
+          "competencies": [
+            "technical"
+          ]
+        },
+        {
+          "id": "user.constraints",
+          "intent": "Delivering under a realistic resource constraint",
+          "competencies": [
+            "problem_solving"
+          ]
+        },
+        {
+          "id": "user.measurement",
+          "intent": "Choosing evidence or metrics for success",
+          "competencies": [
+            "analytical"
+          ]
+        },
+        {
+          "id": "user.workflow",
+          "intent": "Explaining the workflow used to produce a deliverable",
+          "competencies": [
+            "technical"
+          ]
+        },
+        {
+          "id": "user.errors",
+          "intent": "Finding and correcting an error in a work sample",
+          "competencies": [
+            "problem_solving"
+          ]
+        },
+        {
+          "id": "user.tools",
+          "intent": "Selecting tools appropriate to the actual job",
+          "competencies": [
+            "technical"
+          ]
+        },
+        {
+          "id": "user.review",
+          "intent": "Incorporating review into a deliverable",
+          "competencies": [
+            "adaptability"
+          ]
+        },
+        {
+          "id": "user.handoff",
+          "intent": "Making work usable by a colleague",
+          "competencies": [
+            "teamwork"
+          ]
+        },
+        {
+          "id": "user.experimentation",
+          "intent": "Designing a small practical experiment",
+          "competencies": [
+            "analytical"
+          ]
+        },
+        {
+          "id": "user.risk",
+          "intent": "Recognizing a domain-specific failure risk",
+          "competencies": [
+            "problem_solving"
+          ]
+        },
+        {
+          "id": "user.alternatives",
+          "intent": "Recognizing limits of a chosen method",
+          "competencies": [
+            "analytical"
+          ]
+        },
+        {
+          "id": "user.learning",
+          "intent": "Applying a newly learned method",
+          "competencies": [
+            "adaptability"
+          ]
+        },
+        {
+          "id": "user.stakeholders",
+          "intent": "Translating a user's need into a practical task",
+          "competencies": [
+            "communication"
+          ]
+        },
+        {
+          "id": "user.reproducibility",
+          "intent": "Making results or process reproducible",
+          "competencies": [
+            "technical"
+          ]
+        }
+      ]
+    },
+    "manager": {
+      "scope": "Priorities, stakeholders, decisions, risk, people development and business impact. Match the scope of responsibility actually evidenced; no assumed direct reports or coding quizzes.",
+      "angles": [
+        {
+          "id": "manager.priorities",
+          "intent": "Choosing between competing priorities",
+          "competencies": [
+            "analytical"
+          ]
+        },
+        {
+          "id": "manager.ownership",
+          "intent": "Taking responsibility within actual scope",
+          "competencies": [
+            "leadership"
+          ]
+        },
+        {
+          "id": "manager.stakeholders",
+          "intent": "Aligning stakeholders with conflicting needs",
+          "competencies": [
+            "communication"
+          ]
+        },
+        {
+          "id": "manager.risk",
+          "intent": "Balancing delivery with risk",
+          "competencies": [
+            "analytical"
+          ]
+        },
+        {
+          "id": "manager.delegation",
+          "intent": "Sharing ownership with peers or team members",
+          "competencies": [
+            "leadership"
+          ]
+        },
+        {
+          "id": "manager.coaching",
+          "intent": "Helping someone else develop",
+          "competencies": [
+            "leadership"
+          ]
+        },
+        {
+          "id": "manager.feedback",
+          "intent": "Giving useful and respectful feedback",
+          "competencies": [
+            "communication"
+          ]
+        },
+        {
+          "id": "manager.conflict",
+          "intent": "Resolving disagreement about direction",
+          "competencies": [
+            "teamwork"
+          ]
+        },
+        {
+          "id": "manager.resources",
+          "intent": "Allocating limited resources",
+          "competencies": [
+            "problem_solving"
+          ]
+        },
+        {
+          "id": "manager.impact",
+          "intent": "Connecting a decision with its broader impact",
+          "competencies": [
+            "analytical"
+          ]
+        },
+        {
+          "id": "manager.uncertainty",
+          "intent": "Deciding with incomplete information",
+          "competencies": [
+            "analytical"
+          ]
+        },
+        {
+          "id": "manager.change",
+          "intent": "Helping a group adapt to change",
+          "competencies": [
+            "adaptability"
+          ]
+        },
+        {
+          "id": "manager.quality",
+          "intent": "Balancing quality, time and investment",
+          "competencies": [
+            "technical"
+          ]
+        },
+        {
+          "id": "manager.strategy",
+          "intent": "Connecting short-term actions to a longer-term goal",
+          "competencies": [
+            "leadership"
+          ]
+        },
+        {
+          "id": "manager.accountability",
+          "intent": "Responding when a commitment is missed",
+          "competencies": [
+            "leadership"
+          ]
+        },
+        {
+          "id": "manager.alignment",
+          "intent": "Explaining a decision and obtaining alignment",
+          "competencies": [
+            "communication"
+          ]
+        },
+        {
+          "id": "manager.inclusion",
+          "intent": "Making space for contrary views",
+          "competencies": [
+            "teamwork"
+          ]
+        },
+        {
+          "id": "manager.scope",
+          "intent": "Recognizing when to escalate or reduce scope",
+          "competencies": [
+            "problem_solving"
+          ]
+        },
+        {
+          "id": "manager.reflection",
+          "intent": "Revisiting a decision after learning its outcome",
+          "competencies": [
+            "adaptability"
+          ]
+        },
+        {
+          "id": "manager.sustainability",
+          "intent": "Protecting sustainable delivery and team capacity",
+          "competencies": [
+            "leadership"
+          ]
+        }
+      ]
+    }
+  }
+}

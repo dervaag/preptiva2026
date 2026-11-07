@@ -12,7 +12,7 @@ function fixture(options = {}) {
   class Element extends EventTarget {
     constructor(id = '') {
       super(); this.id = id; this.hidden = false; this.disabled = false; this.checked = false;
-      this.dataset = {}; this.style = {}; this.children = []; this.attributes = new Map(); this.textContent = '';
+      this.dataset = {}; this.style = {}; this.children = []; this.attributes = new Map(); this.textContent = ''; this.value = '';
       this.videoWidth = 640; this.videoHeight = 480; this.readyState = 4; this.paused = true; this.ended = false;
       this.scrollTop = 0; this.scrollHeight = 500; this.clientHeight = 500; this.open = false; this.src = '';
       const classes = new Set();
@@ -39,7 +39,7 @@ function fixture(options = {}) {
       plays.push(this.src);
       this.dispatchEvent(new Event('play')); this.dispatchEvent(new Event('playing'));
       if (options.failAudio?.(this.src, plays)) throw new Error('audio unavailable');
-      queueMicrotask(() => {this.paused = true; this.ended = true; this.dispatchEvent(new Event('ended')); this.onended?.();});
+      if (!options.holdAudio?.(this.src)) queueMicrotask(() => {this.paused = true; this.ended = true; this.dispatchEvent(new Event('ended')); this.onended?.();});
     }
     click() {if (!this.disabled) this.dispatchEvent(new Event('click'));}
   }
@@ -48,7 +48,8 @@ function fixture(options = {}) {
     'test-sound','speaker-check','mic-meter','mic-status','focus-check','fullscreen-check','start','connection-status','connection-retry','preflight-error','room-error','room-countdown',
     'countdown-number','chat-log','chat-empty','chat-new-messages','chat-panel','record-controls','answer-timer','record','send','retry','replay','answer-preview','retry-upload','resume-flow',
     'question-progress','question-text','transcript','camera-toggle','mic-toggle','mirror-toggle','captions-toggle','chat-toggle','avatar-motion-toggle','fullscreen','leave-room','leave-dialog',
-    'cancel-leave','confirm-leave','mirror','sound-bars','interviewer-initial','device-status','device-requirement','preflight-description','preflight-title','verification-status','preflight-body','chat-activity','chat-activity-label'];
+    'cancel-leave','confirm-leave','mirror','sound-bars','interviewer-initial','device-status','device-requirement','preflight-description','preflight-title','verification-status','preflight-body','chat-activity','chat-activity-label',
+    'panel-members','participant-count','text-mode','use-text','text-answer-area','text-answer','send-text','stop-audio','interruption','interruption-status','retry-question','skip-question'];
   ids.forEach(id => nodes.set(id, new Element(id)));
   ['preflight','room-countdown','record-controls','send','retry','retry-upload','resume-flow','answer-preview','stage-caption','preflight-error','room-error'].forEach(id => nodes.get(id).hidden = true);
   nodes.get('start').disabled = true; nodes.get('speaker-check').disabled = true;
@@ -101,6 +102,18 @@ function fixture(options = {}) {
     calls.push([url, init]);
     if (url.endsWith('/state')) return options.fetchState ? options.fetchState(init.signal, state) : new Response(JSON.stringify(state));
     if (url === '/health') return new Response(JSON.stringify(options.health || {ok:true,db:true,redis:true}));
+    if (url.endsWith('/interrupt')) {
+      const payload=JSON.parse(init.body);state.status='running';
+      if(result.follow_up_question?.id===payload.question_id)state.current_turn=result.follow_up_question;
+      if(result.next_question?.id===payload.question_id)state.current_turn=result.next_question;
+      state.checkpoint={phase:'interrupted',question_id:payload.question_id,interruption_id:'interrupt-1',remaining_seconds:0};
+      return new Response(JSON.stringify({already_completed:false,state}));
+    }
+    if (url.endsWith('/recover')) {
+      const payload=JSON.parse(init.body);state.checkpoint={phase:'question_ready',question_id:payload.question_id,remaining_seconds:state.answer_seconds};
+      if(options.recoveryResponse)return options.recoveryResponse(payload,state);
+      return new Response(JSON.stringify(payload.action==='retry'?state:{...result,skipped:true,transcript:'',response_audio_url:null}));
+    }
     if (url.includes('/answers')) {
       uploads++;
       if (options.answerResponse) return options.answerResponse(uploads, result, init.signal);
@@ -136,7 +149,7 @@ async function answer(f) {f.nodes.get('record').click();await f.advance(1000);f.
 
 (async () => {
   const ready = fixture(); await flush();
-  assert.equal(ready.nodes.get('preflight').open,true,'ready state must open native preflight automatically');
+  assert.equal(ready.nodes.get('preflight').open,true,`ready state must open native preflight automatically: ${ready.nodes.get('room-error').textContent}`);
   assert.equal(ready.calls.some(([url]) => url.endsWith('/start')),false,'ready state must never auto-start');
   ready.document.hidden=true;ready.document.dispatchEvent(new Event('visibilitychange'));await flush();
   assert.equal(ready.calls.some(([url]) => url.endsWith('/close')),false,'hidden ready session must remain ready');
@@ -153,6 +166,8 @@ async function answer(f) {f.nodes.get('record').click();await f.advance(1000);f.
     assert.equal(mobile.nodes.get('devices').disabled, true, 'mobile devices must not request camera or microphone');
     assert.equal(mobile.nodes.get('start').disabled, true, 'mobile devices cannot start a session');
     assert.equal(mobile.nodes.get('device-requirement').hidden, false);
+    mobile.nodes.get('text-mode').checked=true;mobile.nodes.get('text-mode').dispatchEvent(new Event('change'));
+    assert.equal(mobile.nodes.get('start').disabled,true,'text mode must preserve the mandatory desktop gate');
     mobile.nodes.get('devices').click();mobile.nodes.get('start').click();await flush();
     assert.equal(requested, 0);
     assert.equal(mobile.calls.some(([url]) => url.endsWith('/start')), false);
@@ -177,9 +192,13 @@ async function answer(f) {f.nodes.get('record').click();await f.advance(1000);f.
   assert.equal(bodies.filter(text=>text==='Apa kontribusi Anda?').length,1,'follow-up must have one chat bubble');
   assert.equal(bodies.filter(text=>text==='Pengalaman saya.').length,1,'transcript and final result must have one candidate bubble');
   running.document.hidden=true;running.document.dispatchEvent(new Event('visibilitychange'));await flush();
-  assert.equal(running.calls.filter(([url])=>url.endsWith('/close')).length,1,'active hidden session must close once');
-  assert(running.tracks.every(track=>track.readyState==='ended'));
-  console.log('PASS countdown, single start, follow-up deduplication, and active cleanup');
+  assert.equal(running.calls.filter(([url])=>url.endsWith('/interrupt')).length,1,'active hidden session must save one interruption');
+  assert.equal(running.calls.filter(([url])=>url.endsWith('/close')).length,0,'tab hiding must not end the session');
+  assert.equal(running.nodes.get('interruption').hidden,false);
+  running.document.hidden=false;running.nodes.get('retry-question').click();await flush();
+  assert.equal(running.calls.filter(([url])=>url.endsWith('/recover')).length,1);
+  assert.equal(running.nodes.get('answer-timer').textContent,'01:00');
+  console.log('PASS countdown, single start, follow-up deduplication, and interruption retry');
 
   const interrupted = fixture({answerEvents:(attempt,result)=>attempt===1?[{type:'transcript',transcript:'Pengalaman saya.'},{type:'error',message:'Pemrosesan gagal.'}]:[{type:'transcript',transcript:'Pengalaman saya.'},result]});
   await flush();await start(interrupted);await answer(interrupted);
@@ -258,18 +277,19 @@ async function answer(f) {f.nodes.get('record').click();await f.advance(1000);f.
   const recovery=fixture({result:{action:'next',response_text:'Terima kasih.',response_audio_url:'/ack.mp3',follow_up_question:null,next_question:{id:3,kind:'main',main_order:2,question_text:'Bagaimana Anda bekerja?',audio_url:'/next.mp3'}},
     failAudio:(url,plays)=>url==='/next.mp3'&&plays.filter(item=>item===url).length===1});
   await flush();await start(recovery);await answer(recovery);
-  assert.equal(recovery.nodes.get('resume-flow').hidden,false,'failed next audio must expose continuation');
-  recovery.nodes.get('resume-flow').click();await flush();
+  assert.equal(recovery.nodes.get('record-controls').hidden,false,'optional audio failure must keep the question answerable');
+  recovery.nodes.get('replay').click();await flush();
   assert.equal(recovery.plays.filter(url=>url==='/ack.mp3').length,1,'recovery must not replay completed acknowledgement');
   assert.equal(recovery.plays.filter(url=>url==='/next.mp3').length,2);
   assert.equal(recovery.nodes.get('record-controls').hidden,false);
-  console.log('PASS audio continuation preserves completed utterances');
+  console.log('PASS optional audio failure retains answer controls without repeating acknowledgements');
 
   const duringCountdown=fixture();await flush();await verify(duringCountdown);duringCountdown.nodes.get('start').click();await flush();
   duringCountdown.document.hidden=true;duringCountdown.document.dispatchEvent(new Event('visibilitychange'));await duringCountdown.advance(4000);
   assert.equal(duringCountdown.plays.length,0,'hidden countdown must never start intro audio');
-  assert.equal(duringCountdown.calls.filter(([url])=>url.endsWith('/close')).length,1);
-  console.log('PASS hidden countdown stops flow before intro');
+  assert.equal(duringCountdown.calls.filter(([url])=>url.endsWith('/interrupt')).length,1);
+  assert.equal(duringCountdown.calls.filter(([url])=>url.endsWith('/close')).length,0);
+  console.log('PASS hidden countdown pauses before intro without ending the session');
 
   const final=fixture({result:{action:'next',response_text:'Terima kasih.',response_audio_url:'/ack.mp3',follow_up_question:null,is_last:true,closing:{text:'Sampai jumpa.',audio_url:'/closing.mp3'}}});
   await flush();await start(final);await answer(final);
@@ -307,4 +327,60 @@ async function answer(f) {f.nodes.get('record').click();await f.advance(1000);f.
   changed.tracks.find(track=>track.kind==='audio').enabled=false;releaseResume();await flush();
   assert.equal(changed.calls.some(([url])=>url.endsWith('/start')),false,'device changes while preparing start must revalidate before POST');
   console.log('PASS start revalidates devices after gesture awaits');
+
+  const typed=fixture();await flush();
+  typed.nodes.get('text-mode').checked=true;typed.nodes.get('text-mode').dispatchEvent(new Event('change'));
+  typed.nodes.get('focus-check').checked=true;typed.nodes.get('focus-check').dispatchEvent(new Event('change'));
+  assert.equal(typed.nodes.get('start').disabled,false,'desktop text mode can start without requesting physical devices');
+  typed.nodes.get('start').click();await flush();await typed.advance(3100);
+  assert.equal(typed.nodes.get('camera').srcObject,undefined);
+  assert.equal(typed.nodes.get('text-answer-area').hidden,false);
+  typed.nodes.get('text-answer').value='Saya mengukur dampak pekerjaan.';typed.nodes.get('text-answer').dispatchEvent(new Event('input'));
+  typed.nodes.get('send-text').click();await flush();
+  const form=typed.calls.find(([url])=>url.includes('/answers'))[1].body;
+  assert.equal(form.get('text_answer'),'Saya mengukur dampak pekerjaan.');assert.equal(form.has('audio'),false);assert.equal(form.get('duration_ms'),'100');
+  assert.equal(typed.nodes.get('chat-log').children.filter(child=>child.className==='chat-message chat-message--candidate').length,1);
+  console.log('PASS desktop-only text startup and multipart text answers preserve chat idempotency');
+
+  const panel=fixture({state:{panel:[{key:'hr',name:'Rina',title:'HR Interviewer'},{key:'user',name:'Andi',title:'Technical Lead'},{key:'manager',name:'Hendra',title:'Hiring Manager'}]},
+    result:{action:'next',response_interviewer:'hr',response_text:'Terima kasih.',follow_up_question:null,next_question:{id:3,kind:'main',main_order:2,interviewer:'user',persona:{name:'Andi',title:'Technical Lead'},question_text:'Bagaimana Anda menguji hasil kerja?',audio_url:null}}});
+  await flush();await start(panel);await answer(panel);
+  assert.equal(panel.nodes.get('interviewer-name').textContent,'Andi');assert.match(panel.nodes.get('interviewer-avatar').style.backgroundImage,/andi-sprite/);
+  assert.equal(panel.nodes.get('participant-count').textContent,'4 peserta');
+  const aiMessages=panel.nodes.get('chat-log').children.filter(child=>child.className==='chat-message chat-message--ai');
+  assert.equal(aiMessages.at(-1).children[0].textContent,'Andi');assert.equal(aiMessages.at(-2).children[0].textContent,'Rina');
+  assert.equal(aiMessages.at(-1).dataset.continuation,'false','a panel handoff keeps the new author visible');
+  console.log('PASS panel sprite, actual response author, handoff grouping, and participant count');
+
+  const resuming=fixture({state:{status:'running'}});await flush();
+  assert.equal(resuming.calls.some(([url])=>url.endsWith('/close')),false,'opening a running session must not close it');
+  resuming.nodes.get('text-mode').checked=true;resuming.nodes.get('text-mode').dispatchEvent(new Event('change'));
+  resuming.nodes.get('focus-check').checked=true;resuming.nodes.get('focus-check').dispatchEvent(new Event('change'));
+  resuming.nodes.get('start').click();await flush();
+  assert.equal(resuming.nodes.get('interruption').hidden,false);assert.equal(resuming.plays.length,0,'reload requires an explicit recovery choice');
+  resuming.nodes.get('skip-question').click();await flush();
+  assert.equal(resuming.calls.find(([url])=>url.endsWith('/recover'))[1].body.includes('"action":"next"'),true);
+  assert(resuming.nodes.get('chat-log').children.some(child=>child.className==='chat-message chat-message--system'));
+  console.log('PASS running-session reopen and explicit Next recovery do not close or invent answers');
+
+  const silent=fixture({holdAudio:url=>url==='/intro.mp3'});await flush();await verify(silent);silent.nodes.get('start').click();await flush();await silent.advance(3100);
+  assert.equal(silent.nodes.get('stop-audio').hidden,false);silent.nodes.get('stop-audio').click();await flush();
+  assert.equal(silent.nodes.get('record-controls').hidden,false,'stopping interviewer audio must keep the conversation usable');
+  const evaluation=fixture({state:{status:'evaluation_failed'}});await flush();
+  assert.deepEqual(evaluation.navigations,['/sesi/fixture-session/hasil']);
+  console.log('PASS stop-audio continuation and evaluation-failed results navigation');
+
+  let releaseRecovery,recoveryCalls=0;
+  const racing=fixture({recoveryResponse:(payload,state)=>{
+    recoveryCalls++;
+    if(recoveryCalls===1)return new Promise(resolve=>{releaseRecovery=()=>resolve(new Response(JSON.stringify(state)));});
+    return new Response(JSON.stringify(state));
+  }});
+  await flush();await start(racing);
+  racing.document.hidden=true;racing.document.dispatchEvent(new Event('visibilitychange'));await flush();
+  racing.document.hidden=false;racing.nodes.get('retry-question').click();await flush();
+  racing.document.hidden=true;racing.document.dispatchEvent(new Event('visibilitychange'));await flush();
+  releaseRecovery();await flush();racing.document.hidden=false;racing.nodes.get('retry-question').click();await flush();
+  assert.equal(recoveryCalls,2,'an older recovery response must not leave the newer interrupted turn permanently busy');
+  console.log('PASS interruption during pending recovery can recover again');
 })().catch(error=>{console.error(error);process.exitCode=1;});

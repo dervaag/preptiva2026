@@ -70,6 +70,10 @@ async def respond(context):
     return {'action':'next','response_text':'Terima kasih.'}
 
 
+async def adapt(context):
+    return {**context['planned_question'], 'question_text': 'Dari proyek kuliah itu, apa yang berubah setelah Anda menerima masukan?'}
+
+
 async def evaluate(context):
     return {'competency_scores':{'communication':{'score':4,'evidence':['Saya mengukur hasil eksperimen']}},'feedback':{'strengths':['Terstruktur'],'improvements':['Tambah konteks'],'better_answer_tip':'Jelaskan dampak.'},'star':{'action':True,'result':True}}
 
@@ -79,10 +83,13 @@ async def summarize(context):
 
 
 def main():
+    from app import storage
+    storage.ROOT = Path(temporary.name)
     speech.require_credentials = lambda persona: None
     speech.synthesize = tts; speech.transcribe = transcribe
     orchestrator.parse_documents = parse; orchestrator.build_questions = questions
     orchestrator.respond = respond; orchestrator.evaluate = evaluate; orchestrator.summarize = summarize
+    orchestrator.adapt_question = adapt
     asyncio.run(seed())
     mic_file = Path(temporary.name) / 'mic.wav'; mic_file.write_bytes(wav(5))
     sock = socket.socket(); sock.bind(('127.0.0.1',0)); port = sock.getsockname()[1]; sock.close()
@@ -98,44 +105,101 @@ def main():
             browser = p.chromium.launch(channel='chrome',headless=True,args=['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream', f'--use-file-for-fake-audio-capture={mic_file}'])
             context = browser.new_context(permissions=['camera','microphone'], viewport={'width':1440,'height':1100})
             page = context.new_page(); page.on('pageerror',lambda error: failures.append(str(error)))
+            def choose(name, value):
+                page.locator(f'#setup-select-{name}-trigger').click()
+                page.locator(f'#setup-select-{name}-menu [data-value="{value}"]').click()
             page.goto(f'http://127.0.0.1:{port}/login')
             page.locator('[name=email]').fill('demo@interview.local'); page.locator('[name=password]').fill('demo1234')
             page.get_by_role('button',name='Masuk ke workspace').click(); page.wait_for_url('**/dashboard')
             page.wait_for_function("document.querySelector('#stat-completed').textContent === '0'")
-            artifacts = ROOT / 'artifacts'; artifacts.mkdir(exist_ok=True)
+            artifacts = Path(os.environ.get('PREPTIVA_BROWSER_ARTIFACTS', str(Path(temporary.name) / 'artifacts')))
+            artifacts.mkdir(parents=True, exist_ok=True)
             page.screenshot(path=str(artifacts/'dashboard-desktop.png'),full_page=True)
             for width in (390,768,1440):
                 page.set_viewport_size({'width':width,'height':900})
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), f'Dashboard overflows at {width}'
             page.set_viewport_size({'width':1440,'height':1100})
-            page.goto(f'http://127.0.0.1:{port}/simulasi/baru')
-            page.locator('#setup-context > summary').click()
-            page.locator('[name=cv_text]').fill('Pengalaman melakukan riset produk dan mengukur hasil bersama tim. ' * 8)
-            page.locator('[name=job_role]').fill('Product Designer'); page.locator('[name=industry]').fill('Technology')
-            page.locator('[name=job_description]').fill('Design accessible user experiences with research and product experiments.')
-            page.locator('.setup-question-choice:has(input[value="3"])').click(); page.locator('[name=consent]').check()
-            page.get_by_role('button',name='Siapkan wawancara').click(); page.wait_for_url('**/ruang')
-            page.wait_for_function("document.querySelector('#room-status').textContent === 'SIAP DIMULAI'")
-            page.locator('#devices').click(); page.locator('#test-sound').click()
-            page.locator('#camera-check').check(); page.locator('#speaker-check').check(); page.locator('#focus-check').check()
-            page.wait_for_function("!document.querySelector('#start').disabled",timeout=15000)
-            page.screenshot(path=str(artifacts/'room-preflight.png'),full_page=True)
-            page.locator('#start').click()
-            for _ in range(3):
-                page.wait_for_function("!document.querySelector('#record').hidden && !document.querySelector('#record-controls').hidden")
-                page.locator('#record').click(); page.wait_for_timeout(600); page.locator('#record').click()
-                page.locator('#send').click()
-            page.wait_for_url('**/hasil',timeout=30000)
-            page.wait_for_selector('.score-number'); assert page.locator('.score-number').inner_text().strip().startswith('80')
-            page.screenshot(path=str(artifacts/'results-desktop.png'),full_page=True)
-            page.set_viewport_size({'width':390,'height':844})
-            assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'Results overflow on mobile'
-            page.screenshot(path=str(artifacts/'results-mobile.png'),full_page=True)
-            page.goto(f'http://127.0.0.1:{port}/dashboard'); page.wait_for_function("document.querySelector('#stat-completed').textContent === '1'")
-            page.screenshot(path=str(artifacts/'dashboard-mobile.png'),full_page=True)
+            for scenario, panel_size in enumerate((1, 2, 3), 1):
+                print(f'Checking {panel_size}-person interviewer setup', flush=True)
+                page.set_viewport_size({'width':1440,'height':1100})
+                page.goto(f'http://127.0.0.1:{port}/simulasi/baru')
+                page.locator('#setup-context > summary').click()
+                page.locator('[name=cv_text]').fill('Lulusan baru Akuntansi. Proyek kuliah koperasi kampus, organisasi mahasiswa, dan magang administrasi. ' * 4)
+                choose('career_stage', 'fresh_graduate')
+                page.locator('[name=job_role]').fill('Accountant'); page.locator('[name=industry]').fill('Finance')
+                page.locator('[name=job_description]').fill('Prepare accurate reports and coordinate financial information with colleagues.')
+                page.locator('.setup-question-choice:has(input[value="3"])').click(); page.locator('[name=consent]').check()
+                if panel_size > 1:
+                    choose('interview_mode', 'panel')
+                    assert page.locator('#panel-personas').is_visible()
+                    assert not page.locator('#single-personas').is_visible()
+                    if panel_size == 3: page.locator('label:has(input[name=panel][value=manager])').click()
+                    page.set_viewport_size({'width':390,'height':900})
+                    assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'Panel form overflow'
+                    page.screenshot(path=str(artifacts/f'panel-{panel_size}-form.png'),full_page=True)
+                    page.set_viewport_size({'width':1440,'height':1100})
+                page.get_by_role('button',name='Siapkan wawancara').click(); page.wait_for_url('**/ruang')
+                page.wait_for_function("document.querySelector('#room-status').textContent === 'SIAP DIMULAI'")
+                page.locator('#devices').click(); page.locator('#test-sound').click()
+                page.locator('#camera-check').check(); page.locator('#speaker-check').check(); page.locator('#focus-check').check()
+                page.wait_for_function("!document.querySelector('#start').disabled",timeout=15000)
+                page.locator('#start').click()
+                names = ['Rina'] if panel_size == 1 else ['Rina', 'Andi'] if panel_size == 2 else ['Rina', 'Andi', 'Hendra']
+                for turn in range(3):
+                    page.wait_for_function("!document.querySelector('#record').hidden && !document.querySelector('#record-controls').hidden")
+                    assert page.locator('#interviewer-name').inner_text() == names[turn % len(names)]
+                    if turn:
+                        actual_question = page.locator('#question-text').inner_text()
+                        if panel_size == 3 and turn == 2:
+                            assert actual_question == 'Apa yang Anda pelajari dari perubahan?', actual_question
+                        else:
+                            assert 'proyek kuliah' in actual_question, f'Panel {panel_size}, turn {turn + 1}: {actual_question!r}'
+                    if panel_size > 1:
+                        assert page.locator('.panel-member.active').count() == 1
+                        if turn == 1: page.screenshot(path=str(artifacts/f'panel-{panel_size}-room.png'),full_page=True)
+                    if panel_size == 3 and turn == 0:
+                        page.locator('#record').click(); page.wait_for_timeout(600)
+                        page.evaluate("Object.defineProperty(document,'hidden',{configurable:true,value:true}); document.dispatchEvent(new Event('visibilitychange')); Object.defineProperty(document,'hidden',{configurable:true,value:false});")
+                        page.wait_for_function("!document.querySelector('#retry-question').disabled")
+                        assert page.locator('#answer-timer').inner_text() == '00:00'
+                        page.locator('#retry-question').click()
+                        page.wait_for_function("!document.querySelector('#record-controls').hidden")
+                        assert page.locator('#answer-timer').inner_text() != '00:00'
+                    if panel_size == 3 and turn == 1:
+                        page.locator('#record').click(); page.wait_for_timeout(300)
+                        context.set_offline(True)
+                        page.wait_for_selector('#interruption')
+                        assert page.locator('#skip-question').is_disabled()
+                        context.set_offline(False)
+                        page.wait_for_function("!document.querySelector('#skip-question').disabled")
+                        page.locator('#skip-question').click()
+                        continue
+                    if panel_size == 3 and turn == 2:
+                        page.reload()
+                        page.wait_for_function("document.querySelector('#room-status').textContent === 'SIAP DIMULAI'")
+                        page.locator('#text-mode').check(); page.locator('#focus-check').check(); page.locator('#start').click()
+                        page.wait_for_function("!document.querySelector('#retry-question').disabled")
+                        page.locator('#retry-question').click()
+                        page.wait_for_selector('#text-answer-area')
+                        page.locator('#text-answer').fill('Saya mengukur hasil eksperimen dan meningkatkan hasil sebesar 35 persen.')
+                        page.locator('#send-text').click()
+                        continue
+                    page.locator('#record').click(); page.wait_for_timeout(600); page.locator('#record').click()
+                    page.locator('#send').click()
+                page.wait_for_url('**/hasil',timeout=30000)
+                page.wait_for_selector('.score-number'); assert page.locator('.score-number').inner_text().strip().startswith('80')
+                if panel_size > 1: assert page.locator('.panel-results article').count() == panel_size
+                if panel_size == 3:
+                    assert page.get_by_text('Pertanyaan dilewati — belum dinilai.').count() == 1
+                    assert page.locator('.coverage-summary').count() == 1
+                page.set_viewport_size({'width':390,'height':844})
+                assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'Results overflow on mobile'
+                page.screenshot(path=str(artifacts/f'panel-{panel_size}-results.png'),full_page=True)
+                page.goto(f'http://127.0.0.1:{port}/dashboard')
+                page.wait_for_function("document.querySelector('#stat-completed').textContent === String(" + str(scenario) + ")")
             assert not failures, failures
             browser.close()
-            print('Chrome checks passed: login, responsive dashboard, setup, synthetic device checks, three recorded answers, streaming, scoring and results. Screenshots: artifacts/')
+            print('Chrome checks passed: single, 2-person and 3-person panels; fresh graduate setup, active speaker, adaptive turns, interruption retry/skip, offline/reload recovery, text fallback, evidence coverage and mobile layout. No AI calls.')
     finally:
         server.should_exit = True; thread.join(timeout=10)
 

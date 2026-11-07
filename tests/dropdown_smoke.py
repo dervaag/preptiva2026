@@ -20,7 +20,7 @@ def main():
         page.route('**/api/sessions', lambda route: (submissions.append(route.request.method), route.abort()))
         page.goto(args.base_url + '/dev-login')
         expect(page.locator('#session-form select')).to_have_count(0, timeout=3000)
-        expect(page.get_by_role('combobox')).to_have_count(1)
+        expect(page.get_by_role('combobox')).to_have_count(2)
 
         def trigger(name):
             return page.locator(f'[data-select="{name}"] [role=combobox]')
@@ -32,7 +32,19 @@ def main():
             trigger(name).click()
             page.get_by_role('option', name=label, exact=True).click()
 
-        defaults = page.evaluate('Object.fromEntries(["language","gender","level"].map(name => [name, document.querySelector(`input[name="${name}"]`).value]))')
+        defaults = page.evaluate('Object.fromEntries(["interview_mode","language","gender","level","career_stage"].map(name => [name, document.querySelector(`input[name="${name}"]`).value]))')
+        choose('interview_mode', 'Panel · 2–3 pewawancara')
+        expect(page.locator('#panel-personas')).to_be_visible()
+        assert page.locator('#panel-personas').evaluate('el => getComputedStyle(el).padding === "0px"'), 'Setup panel must not inherit legacy panel padding'
+        expect(page.locator('#single-personas')).to_be_hidden()
+        assert page.evaluate('new FormData(document.querySelector("#session-form")).getAll("panel")') == ['hr', 'user']
+        page.locator('[name=panel][value=user]').uncheck()
+        assert page.locator('[name=panel][value=hr]').evaluate('el => !el.checkValidity()')
+        page.locator('[name=panel][value=manager]').check()
+        assert page.locator('[name=panel][value=hr]').evaluate('el => el.checkValidity()')
+        choose('interview_mode', 'Satu pewawancara')
+        assert page.evaluate('new FormData(document.querySelector("#session-form")).getAll("panel")') == []
+        expect(page.locator('#single-personas')).to_be_visible()
         page.evaluate('''() => {
           window.__languageEvents=[];
           for (const type of ['input','change']) document.querySelector('[name=language]').addEventListener(type, event => window.__languageEvents.push(event.type));
@@ -63,6 +75,8 @@ def main():
         page.get_by_role('heading', name='Siapkan Ruang Wawancara').click()
         expect(trigger('language')).to_have_attribute('aria-expanded', 'false')
         page.locator('#setup-context > summary').click()
+        choose('career_stage', 'Beralih karier')
+        expect(page.locator('[name=career_stage]')).to_have_value('career_switcher')
         choose('gender', 'Perempuan')
         expect(page.locator('[name=gender]')).to_have_value('female')
         trigger('gender').click()

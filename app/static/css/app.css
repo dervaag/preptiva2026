@@ -81,3 +81,4 @@
 .auth-story .brand:focus-visible {
   outline-color: #fff;
 }
+.panel-members{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:16px 0}.panel-member{font-size:12px;padding:7px 10px;border:1px solid #d8dfd6;border-radius:20px;color:#596557}.panel-member.active{background:#e3efd9;color:#234620;border-color:#8cae72;font-weight:700}#panel-personas{border:0;padding:16px 0;margin:0}#panel-personas legend{font-weight:600}#panel-personas .check{margin:12px 0}.panel-results{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px;margin:24px 0}.panel-results .panel h3{margin:8px 0}

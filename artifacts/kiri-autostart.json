@@ -1,0 +1,15 @@
+{
+  "label": "com.preptiva.kiri-share",
+  "loaded": true,
+  "running": true,
+  "run_at_login": true,
+  "restart_on_exit": true,
+  "url": "https://buoy-s5yqbu.runkiri.cloud",
+  "status": "ready",
+  "share_process_count": 1,
+  "credentials_preserved": true,
+  "origin_synchronized": true,
+  "service_restart_verified": true,
+  "os_reboot_tested": false,
+  "browser_smoke_passed": true
+}

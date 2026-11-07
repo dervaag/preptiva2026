@@ -13,8 +13,8 @@
     teamwork: 'Kerja sama', adaptability: 'Adaptasi', leadership: 'Kepemimpinan',
   };
   const levelLabels = {junior: 'Junior', middle: 'Middle', senior: 'Senior', manager: 'Manager'};
-  const statusLabels = {preparing: 'Menyiapkan', ready: 'Siap dimulai', running: 'Berlangsung', scoring: 'Menilai', done: 'Selesai', failed: 'Ditutup / gagal'};
-  const activeStatuses = new Set(['preparing', 'ready', 'running', 'scoring']);
+  const statusLabels = {preparing: 'Menyiapkan', ready: 'Siap dimulai', running: 'Berlangsung', scoring: 'Menilai', evaluation_failed: 'Penilaian tertunda', done: 'Selesai', failed: 'Ditutup / gagal'};
+  const activeStatuses = new Set(['preparing', 'ready', 'running', 'scoring', 'evaluation_failed']);
   const dateFormatter = new Intl.DateTimeFormat('id-ID', {day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'});
   const shortDateFormatter = new Intl.DateTimeFormat('id-ID', {day: 'numeric', month: 'short'});
   const pageSize = 8;
@@ -31,8 +31,16 @@
   function scored(session) {return session.status === 'done' && typeof session.total_score === 'number' && Number.isFinite(session.total_score);}
   function points(score) {return Math.round(score * 20);}
   function resultPath(session) {return `/sesi/${encodeURIComponent(String(session.id))}/hasil`;}
-  function sessionPath(session) {return session.status === 'done' || session.status === 'scoring' ? resultPath(session) : `/sesi/${encodeURIComponent(String(session.id))}/ruang`;}
-  function persona(session) {return personas[session.interviewer] || {name: 'Pewawancara', title: 'Interviewer', initial: 'P'};}
+  function sessionPath(session) {return ['done', 'scoring', 'evaluation_failed'].includes(session.status) ? resultPath(session) : `/sesi/${encodeURIComponent(String(session.id))}/ruang`;}
+  function panelRoles(session) {
+    const roles = Array.isArray(session.panel) && session.panel.length ? session.panel : [session.interviewer];
+    return [...new Set(roles.filter(role => Object.hasOwn(personas, role)))];
+  }
+  function persona(session) {
+    const roles = panelRoles(session);
+    if (roles.length > 1) return {name: roles.map(role => personas[role].name).join(' + '), title: `Panel · ${roles.map(role => personas[role].title).join(' + ')}`, initial: 'P'};
+    return personas[session.interviewer] || {name: 'Pewawancara', title: 'Interviewer', initial: 'P'};
+  }
   function dateText(value) {return timestamp(value) ? dateFormatter.format(new Date(value)) : '-';}
   function timeMarkup(value) {return timestamp(value) ? `<time datetime="${esc(value)}">${esc(dateText(value))}</time>` : '-';}
   function emptyState(title, description, link = true) {
@@ -164,7 +172,7 @@
     const search = node('history-search').value.trim().toLocaleLowerCase('id-ID');
     const interviewer = interviewerInput.value;
     const sort = sortInput.value;
-    const filtered = sessions.filter(session => matchesStatus(session, historyStatus) && (interviewer === 'all' || session.interviewer === interviewer) &&
+    const filtered = sessions.filter(session => matchesStatus(session, historyStatus) && (interviewer === 'all' || panelRoles(session).includes(interviewer)) &&
       (!search || [session.job_role, session.company, persona(session).name, persona(session).title].filter(Boolean).join(' ').toLocaleLowerCase('id-ID').includes(search)));
     filtered.sort((first, second) => {
       if (sort === 'score') {

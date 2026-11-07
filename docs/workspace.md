@@ -9,8 +9,8 @@ The dashboard and history pages share the horizontal navigation, DM Sans typogra
 - Scores are stored on a 0–5 scale and displayed on a 0–100 scale. Missing scores are shown as `-`, not zero.
 - The change compares the latest and earliest measured sessions. The chart shows up to eight measured sessions ordered by completion time, falling back to creation time. Chart points open their result pages and support keyboard focus.
 - Practice focus reads the latest measured session's result and shows up to three lowest measured competencies with positive assessment weight. A focus failure can be retried without hiding the other dashboard information.
-- History searches role, company, and interviewer; filters all/completed/active/closed and interviewer; sorts newest/oldest/highest score; and paginates eight entries. Active includes preparing, ready, running, and scoring. Filters reset pagination; unmeasured scores sort after measured scores.
-- Done and scoring sessions link to results. Other statuses link to their room. Listing data never starts or closes a session.
+- History searches role, company, and interviewer; filters all/completed/active/closed and interviewer; sorts newest/oldest/highest score; and paginates eight entries. Active includes preparing, ready, running, scoring, and deferred evaluation. Panel rows display their members, and interviewer filters match any panel member. Filters reset pagination; unmeasured scores sort after measured scores.
+- Done, scoring, and `evaluation_failed` sessions link to results, where deferred evaluation can be retried. Other statuses link to their room. Listing data never starts or closes a session.
 - Dropdowns reuse the simulation setup custom-select component. Empty, loading, error/retry, sparse-score, and filtered-empty states are explicit.
 
 ## Verification

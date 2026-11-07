@@ -1,10 +1,10 @@
 # Persiapan perangkat, fokus sesi, dan waktu tunggu
 
-Diperbarui: 5 November 2026.
+Diperbarui: 7 November 2026.
 
 ## Pemeriksaan sebelum mulai
 
-Ruang wawancara meminta izin kamera dan mikrofon. Tombol Mulai Wawancara baru aktif setelah:
+Mode suara meminta izin kamera dan mikrofon. Mode teks dapat dipilih tanpa izin perangkat; pengguna tetap menyetujui aturan interupsi. Tombol Mulai Wawancara baru aktif setelah:
 
 1. Kamera menghasilkan frame dan pengguna mengonfirmasi preview terlihat jelas.
 2. Pengguna menekan Putar suara tes; browser membuka AudioContext dan memutar nada lokal tanpa panggilan API.
@@ -16,13 +16,13 @@ Pada desktop, daftar pemeriksaan dapat digulir di panel agar tombol Mulai tetap 
 
 Tes suara tidak memakai suara browser untuk menggantikan ElevenLabs. Preview kamera tidak diunggah. Rekaman jawaban menggunakan mono jika tersedia dan target bitrate 64 kbps; browser bisa menyesuaikan encoding.
 
-## Tab ditinggalkan
+## Tab ditinggalkan atau koneksi terputus
 
-Setelah tombol Mulai Wawancara ditekan, `visibilitychange` (halaman hidden) atau `pagehide` menutup sesi. Berpindah tab, meminimalkan browser, mengunci layar pada sebagian perangkat, atau navigasi keluar dapat memicu ini. Persiapan sebelum mulai dan halaman hasil tidak memicu aturan.
+Sesuai keputusan pengguna 7 November 2026, yang dihentikan adalah **pertanyaan aktif**, bukan seluruh wawancara. `visibilitychange`, offline, perangkat terputus, atau pembukaan ulang ruang memicu pemulihan. Rekaman belum terkirim dibuang, timer dihentikan, audio dihentikan dan permintaan jawaban yang belum selesai dibatalkan.
 
-Pemutar dan perekam dihentikan, track perangkat dilepas, permintaan jawaban dibatalkan, dan browser mengirim `POST /api/sessions/{id}/close` melalui beacon/keepalive. Sesi aktif menjadi `failed` dengan alasan penutupan; tidak bisa dijawab atau dilanjutkan. Hasil sesi yang sudah selesai tidak diubah. Penutupan tidak memberikan nilai kompetensi nol.
+Server menerima `/interrupt` dengan ID pertanyaan dan menyimpan checkpoint. Jika jawaban sudah terkomit sebelum interupsi sampai, jawaban dipertahankan; pertanyaan berikutnya tidak ikut dihentikan. Jika belum, tersedia **Retry** (pertanyaan sama, waktu penuh) dan **Next** (dilewati tanpa skor). Saat offline tombol menunggu sinkronisasi server setelah koneksi kembali. Membuka ulang sesi meminta pemeriksaan perangkat atau mode teks sebelum Retry/Next. Tombol **Akhiri sesi** secara eksplisit menutup seluruh sesi.
 
-Browser umumnya menolak `window.close()` untuk tab yang dibuka manual; aplikasi menutup sesi lalu mengarahkan halaman ke Riwayat. Ini kontrol UX berbasis browser, bukan sistem proctoring yang tahan manipulasi. Gangguan jaringan, browser crash, atau JavaScript yang dinonaktifkan bisa menggagalkan notifikasi server. Marker lokal mencoba mengirim ulang penutupan ketika ruang yang sama dibuka kembali. Tumpang tindih dua jendela yang tetap visible tidak selalu terdeteksi.
+Deteksi browser bersifat best-effort, bukan proctoring. Koneksi yang macet mungkin baru terdeteksi setelah browser melaporkan kegagalan; dua jendela yang tetap visible tidak selalu memicu interupsi. Rekaman lokal yang belum dikirim tidak dapat dipulihkan setelah reload. Lihat [implementasi panel](panel-implementation.md).
 
 ## STT dan penampilan transkrip
 
@@ -32,7 +32,7 @@ Tetap menggunakan `STT_MODEL` saat ini (`gpt-4o-transcribe`); tidak ada realtime
 
 - `transcript`: segera setelah STT selesai. UI mengganti gelembung pending dengan teks asli.
 - `pending`: heartbeat selama respons belum selesai.
-- `result`: payload jawaban yang sudah menyertakan keputusan giliran dan audio ElevenLabs.
+- `result`: payload jawaban dengan keputusan giliran dan audio ElevenLabs jika tersedia. Audio boleh null; teks tetap dapat dipakai.
 - `error`: pemrosesan gagal; pengguna dapat mengirim ulang.
 
 Endpoint tanpa `stream=true` tetap mengembalikan JSON seperti sebelumnya. Streaming ini mengurangi waktu sampai transkrip terlihat, bukan menghilangkan waktu LLM/TTS. Filler audio tidak lagi menahan hasil AI. Rekaman ditargetkan 64 kbps untuk mengurangi ukuran upload; kualitas dan waktu nyata bergantung browser, jaringan, panjang rekaman, dan provider.
@@ -41,7 +41,7 @@ Respons streaming menyetel `X-Accel-Buffering: no` dan `Cache-Control: no-store`
 
 Lihat [logging.md](logging.md) untuk membedakan latensi STT, LLM, TTS, dan penilaian background.
 
-## Fullscreen dan mirror (5 November 2026)
+## Fullscreen dan mirror
 
 Fullscreen opsional tersedia melalui pilihan sebelum Mulai dan tombol toolbar. Browser memerlukan tindakan pengguna. Jika tidak didukung atau ditolak, sesi tetap dapat berjalan. Keluar fullscreen (misalnya Escape) bukan pelanggaran dan tidak menutup sesi. Fullscreen tidak dapat mencegah pengguna berpindah tab/OS; aturan halaman hidden tetap berlaku setelah mulai.
 

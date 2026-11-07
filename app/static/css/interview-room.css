@@ -195,6 +195,28 @@
 .meeting-check-heading {display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 24px;}
 .meeting-speaker-row .meeting-check {margin-top: 3px; font-size: 11px;}
 .meeting-preflight-options {grid-column: 1/-1; display: grid; gap: 10px; border-top: 1px solid #eeedf0; padding-top: 16px;}
+.meeting-input-mode {grid-column: 1/-1;}
+.meeting-dialog.is-text-mode .meeting-preflight-preview,
+.meeting-dialog.is-text-mode .meeting-microphone-row,
+.meeting-dialog.is-text-mode .meeting-speaker-row,
+.meeting-dialog.is-unsupported-device .meeting-input-mode {display: none;}
+.meeting-dialog.is-text-mode .meeting-preflight-checklist {grid-column: 1/-1;}
+.meeting-panel-members {display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; max-width: 70%;}
+.meeting-panel-member {padding: 5px 8px; border: 1px solid #ffffff80; border-radius: 6px; background: #ffffffe0; color: #52453b; font-size: 10px; line-height: 1.4;}
+.meeting-panel-member.is-active {border-color: #b74921; color: #8e3416; background: #fff6ee; font-weight: 600;}
+.meeting-participant-count {font-size: 10px; white-space: nowrap; color: #655d59;}
+.meeting-answer-options {display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; padding: 0 2px;}
+.meeting-answer-options:has(button:not([hidden])) {padding-top: 8px;}
+.meeting-text-answer {display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 9px; padding-top: 10px;}
+.meeting-text-answer label {grid-column: 1/-1; font-size: 12px; font-weight: 500;}
+.meeting-text-answer textarea {grid-column: 1/-1; width: 100%; max-height: 180px; min-height: 85px; resize: vertical; border: 1px solid #d6d1cf; border-radius: 9px; padding: 11px 13px; font: inherit; font-size: 13px; color: #29272c; background: #fff; line-height: 1.6;}
+.meeting-text-answer .meeting-primary {grid-column: 2;}
+.meeting-interruption {display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 12px; padding: 15px 18px; border: 1px solid #d5b5a7; border-radius: 12px; background: #fff9f5;}
+.meeting-interruption h2 {font-size: 15px; margin: 0 0 5px;}
+.meeting-interruption p {font-size: 12px; line-height: 1.6; margin: 0 0 4px;}
+.meeting-interruption small {font-size: 11px; line-height: 1.6; color: #665a53;}
+.meeting-interruption-actions {display: flex; flex-shrink: 0; gap: 8px;}
+@media (max-width:600px) {.meeting-interruption {flex-direction: column; align-items: stretch;}.meeting-interruption-actions {justify-content: flex-end;}.meeting-panel-member {font-size: 9px; padding: 4px 6px;}}
 .meeting-preflight-options .meeting-check {font-size: 11px; line-height: 1.7;}
 .meeting-focus-check {display: grid; gap: 17px; border-top: 1px solid #eee8e7; padding-top: 18px;}
 .meeting-optional {font-size: inherit; color: #756b77;}

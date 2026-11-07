@@ -1,0 +1,20 @@
+{
+  "url": "https://buoy-s5yqbu.runkiri.cloud",
+  "ok": true,
+  "paid_api_calls": false,
+  "kiri_share_confirmation": true,
+  "trusted_https": true,
+  "media_api_available": true,
+  "health": {
+    "ok": true,
+    "version": "0.1.0",
+    "db": true,
+    "redis": true,
+    "ai_mock": false
+  },
+  "secure_session_cookie": true,
+  "registration_login_logout": true,
+  "redis_worker_job": true,
+  "shared_audio_volume_writable": true,
+  "temporary_account_removed": true
+}

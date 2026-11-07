@@ -1,0 +1,18 @@
+{
+  "repository": "dervaag/preptiva2026",
+  "branch": "main",
+  "runner": "preptiva-kiri-bima",
+  "runner_version": "2.338.2",
+  "runner_architecture": "ARM64",
+  "deployed_commit": "f98470cd590ce8a9a3371677d130165de3c84831",
+  "github_deploy_result": "Succeeded",
+  "local_tests_passed": 35,
+  "public_url": "https://buoy-s5yqbu.runkiri.cloud",
+  "health": {
+    "ok": true,
+    "version": "0.1.0",
+    "db": true,
+    "redis": true,
+    "ai_mock": false
+  }
+}

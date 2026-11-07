@@ -10,8 +10,8 @@ DM Sans mengikuti teks logo. Latar abu-abu, tipografi charcoal, dan aksen oranye
 - Preview memakai MediaStream lokal, tanpa MediaRecorder atau upload. Navigasi menghentikan seluruh track dan AudioContext. Hasil permintaan izin dari halaman sebelumnya diabaikan, termasuk saat halaman dipulihkan.
 - Mirror menyimpan preferensi di sessionStorage dengan key yang sama dengan ruang wawancara. Fullscreen hanya membuka panel preview.
 - Preview di form bersifat opsional. Pemeriksaan perangkat dan konfirmasi speaker di ruang wawancara tetap berlaku setelah sesi disiapkan.
-- Persona HR, bahasa Indonesia, dan tujuh pertanyaan tetap menjadi default. Pergantian persona memperbarui deskripsi, tanpa panggilan API.
-- Bagian Detail kandidat & posisi menyimpan nama, gender, usia, CV PDF/teks/CV terakhir, posisi, level, industri, perusahaan dan JD. Bagian otomatis terbuka saat validasi membutuhkan input di dalamnya.
+- Persona HR, bahasa Indonesia, dan tujuh pertanyaan tetap menjadi default. Pergantian persona memperbarui deskripsi, tanpa panggilan API. Format Panel menyediakan 2–3 pewawancara dengan input `panel` berulang; format tunggal menonaktifkan input panel. Jumlah pertanyaan tetap total seluruh sesi.
+- Bagian Detail kandidat & posisi menyimpan nama, gender, usia, latar pengalaman (`career_stage`), CV PDF/teks/CV terakhir, posisi, level, industri, perusahaan dan JD. Bagian otomatis terbuka saat validasi membutuhkan input di dalamnya.
 - PDF dibatasi 5 MB pada browser. Teks CV memerlukan 200 karakter jika tidak memakai PDF/CV tersimpan. Validasi server tetap menjadi acuan, termasuk ekstraksi dan cleansing PDF/CV/JD.
 - Consent tetap wajib. POST multipart menggunakan field API yang sama. Loading dan kegagalan submit mempertahankan label serta ikon tombol.
 
@@ -19,7 +19,7 @@ DM Sans mengikuti teks logo. Latar abu-abu, tipografi charcoal, dan aksen oranye
 
 - `app/templates/partials/session-setup.html`: markup dan seluruh input.
 - `app/templates/partials/setup-icons.html`: ikon SVG untuk kontrol UI.
-- `app/templates/partials/custom-select.html`: macro `select_field(name, label, options, value, translation='')`, dipakai Bahasa/Gender/Level.
+- `app/templates/partials/custom-select.html`: macro `select_field(name, label, options, value, translation='')`, dipakai format wawancara, bahasa, gender, level, dan latar pengalaman.
 - `app/static/css/session-setup.css`: gaya khusus halaman form.
 - `app/static/css/custom-select.css`: trigger, chevron, menu, dan pilihan aktif dropdown.
 - `app/static/js/custom-select.js`: interaksi combobox/listbox dan sinkronisasi hidden input ke FormData.

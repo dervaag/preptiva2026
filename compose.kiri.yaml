@@ -1,0 +1,84 @@
+name: preptiva
+
+x-app: &app
+  image: ${PREPTIVA_IMAGE:-preptiva:local}
+  build:
+    context: .
+  env_file:
+    - .env
+    - .env.kiri
+  environment:
+    APP_ENV: production
+    COOKIE_SECURE: "true"
+    SECRET_KEY: ${SECRET_KEY:?Run deploy/kiri.sh config first}
+    DATABASE_URL: postgresql+asyncpg://app:${DB_PASSWORD:?Run deploy/kiri.sh config first}@db:5432/interview_sim
+    REDIS_URL: redis://redis:6379/0
+  volumes:
+    - interview_data:/app/data
+  restart: unless-stopped
+
+services:
+  web:
+    <<: *app
+    expose:
+      - "8000"
+    ports:
+      - "127.0.0.1:18080:8000"
+    labels:
+      dev.kiri.domain: preptiva
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4).read()"]
+      interval: 15s
+      timeout: 6s
+      retries: 5
+      start_period: 30s
+
+  worker:
+    <<: *app
+    command: arq app.worker.settings.WorkerSettings
+    depends_on:
+      web:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "arq", "app.worker.settings.WorkerSettings", "--check"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: interview_sim
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Run deploy/kiri.sh config first}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d interview_sim"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+volumes:
+  interview_data:
+  postgres_data:
+  redis_data:

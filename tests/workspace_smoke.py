@@ -28,6 +28,8 @@ async def seed_workspace():
         for index in range(15):
             created = datetime(2025, 1, 1, 10) + timedelta(days=index)
             status = 'done' if index in scored else other_statuses[index % len(other_statuses)]
+            if index == 13:
+                status = 'evaluation_failed'
             session = InterviewSession(
                 uuid=str(UUID(int=index + 1)), user_id=user.id,
                 candidate_name='Kandidat Uji', gender='male', age=28,
@@ -39,7 +41,8 @@ async def seed_workspace():
                 interviewer=('hr', 'user', 'manager')[index % 3], question_count=3,
                 status=status, total_score=scored.get(index), created_at=created,
                 finished_at=created + timedelta(minutes=10) if status == 'done' else None,
-                script={'assessment': {'weights': {'communication': 25, 'technical': 0, 'teamwork': 75},
+                script={'settings': {'panel': ['hr', 'manager'] if index == 12 else [('hr', 'user', 'manager')[index % 3]]},
+                        'assessment': {'weights': {'communication': 25, 'technical': 0, 'teamwork': 75},
                                        'version': 'workspace-test', 'sha256': 'test', 'validated': False}},
             )
             db.add(session)
@@ -136,7 +139,7 @@ def main():
                 return page.locator('#history-list .ws-session-row')
 
             def expected_href(session):
-                destination = 'hasil' if session.status in ('done', 'scoring') else 'ruang'
+                destination = 'hasil' if session.status in ('done', 'scoring', 'evaluation_failed') else 'ruang'
                 return f'/sesi/{session.uuid}/{destination}'
 
             def tab(status):
@@ -165,10 +168,14 @@ def main():
             expect(page.locator('#history-count')).to_have_text('15 dari 15 latihan')
             for status in ('all', 'done', 'active', 'failed'):
                 count = sum(status == 'all' or session.status == status or
-                            (status == 'active' and session.status in ('preparing', 'ready', 'running', 'scoring'))
+                            (status == 'active' and session.status in ('preparing', 'ready', 'running', 'scoring', 'evaluation_failed'))
                             for session in sessions)
                 expect(page.locator(f'#history-tabs [data-history-status="{status}"] [data-count]')).to_have_text(str(count))
             expect(rows().first).to_have_attribute('href', expected_href(sessions[-1]))
+            expect(page.locator(f'#history-list a[href="{expected_href(sessions[13])}"]')).to_contain_text('Penilaian tertunda')
+            panel_row = page.locator(f'#history-list a[href="{expected_href(sessions[12])}"]')
+            expect(panel_row).to_contain_text('Rina')
+            expect(panel_row).to_contain_text('Pak Hendra')
             expect(page.locator('#history-prev')).to_be_disabled()
             expect(page.locator('#history-next')).to_be_enabled()
             page.locator('#history-next').click()
@@ -186,7 +193,7 @@ def main():
             expect(null_score.locator('.ws-session-score')).to_have_text('-')
             expect(null_score).not_to_contain_text(re.compile(r'/\s*100'))
 
-            active_sessions = [session for session in sessions if session.status in ('preparing', 'ready', 'running', 'scoring')]
+            active_sessions = [session for session in sessions if session.status in ('preparing', 'ready', 'running', 'scoring', 'evaluation_failed')]
             tab('active')
             expect(rows()).to_have_count(min(8, len(active_sessions)))
             active_hrefs = {expected_href(session) for session in active_sessions}
@@ -217,7 +224,8 @@ def main():
             page.keyboard.press('End')
             page.keyboard.press('Enter')
             expect(page.locator('[name=history_interviewer]')).to_have_value('manager')
-            expect(rows()).to_have_count(5)
+            expect(rows()).to_have_count(6)
+            expect(page.locator(f'#history-list a[href="{expected_href(sessions[12])}"]')).to_have_count(1)
             page.locator('#history-reset').click()
             expect(page.locator('[name=history_interviewer]')).to_have_value('all')
             choose('history_sort', 'oldest')

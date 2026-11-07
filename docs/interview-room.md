@@ -16,20 +16,21 @@ Ekspresi mulut mengikuti amplitudo audio yang sedang diputar melalui Web Audio, 
 
 - Sesi `ready` membuka modal pemeriksaan tanpa otomatis memulai atau menutup sesi.
 - Wawancara wajib memakai PC atau laptop. HP/tablet, termasuk iPad dengan mode desktop, menerima pesan untuk membuka tautan sesi yang sama di PC/laptop; akses kamera/mikrofon dan Mulai diblokir. Pemeriksaan memakai identitas browser dan karakteristik iPad, bukan lebar viewport, sehingga laptop layar sentuh dan jendela desktop kecil tetap didukung. Identitas browser yang sengaja dipalsukan bukan jaminan identifikasi perangkat.
-- Mulai memerlukan video aktif dengan frame, mikrofon aktif dengan sinyal terdeteksi, suara tes selesai, konfirmasi manusia untuk kamera/speaker, persetujuan aturan fokus, serta pemeriksaan koneksi aplikasi yang masih baru. Level mikrofon mendeteksi sinyal, bukan menguji pemahaman ucapan. Fullscreen opsional.
+- Mode suara memerlukan video aktif dengan frame, mikrofon aktif dengan sinyal terdeteksi, suara tes selesai, konfirmasi manusia untuk kamera/speaker, persetujuan aturan fokus, serta pemeriksaan koneksi aplikasi yang masih baru. Level mikrofon mendeteksi sinyal, bukan menguji pemahaman ucapan. Mode teks dapat dipilih tanpa kamera/mikrofon, tetapi tetap wajib PC/laptop dan koneksi aplikasi. Fullscreen opsional.
+- Panel memakai 2–3 persona yang sudah ada. Nama anggota dan penanda pewawancara aktif mengikuti metadata backend pada setiap giliran, termasuk respons dan pertanyaan lanjutan. Jumlah peserta mencakup kandidat; tiga pewawancara berarti empat peserta.
 - Setelah POST start berhasil, overlay menghitung 3, 2, 1 sebelum intro dan pertanyaan. Klik ganda tidak mengirim start kedua.
 - Rekaman jawaban tetap memakai API dan batas waktu/retry sesi. Audio dapat ditinjau atau direkam ulang; mematikan mikrofon saat merekam menghentikan rekaman untuk ditinjau, tanpa mengirimnya.
 - Chat menampilkan pertanyaan dan transkrip aktual dari stream respons. Transkrip awal diperbarui oleh hasil akhir tanpa duplikasi, termasuk ketika upload diulang. Follow-up yang sama diputar sekali.
 - Sesuai referensi DM dari pemilik proyek, pesan pewawancara memakai bubble putih di kiri dan jawaban kandidat biru di kanan. Lebar bubble mengikuti isi, pesan berurutan dikelompokkan, dan nama tetap tersedia untuk pembaca layar. Indikator respons mengikuti proses upload/AI yang sedang berlangsung. Transkrip memperbarui bubble yang sama; tidak ada tanda dibaca atau jeda mengetik buatan. Animasi masuk singkat dan indikator menghormati reduced motion.
 - Subtitle, chat, mirror, fullscreen, dan animasi memiliki kontrol sendiri. Menyembunyikan chat tetap menyisakan tombol menjawab di bawah stage.
 - Kegagalan upload menawarkan kirim ulang. Kegagalan audio menawarkan lanjutkan percakapan tanpa mengulang ucapan yang sudah selesai.
-- Aturan sesi sebelumnya dipertahankan: berpindah tab atau meninggalkan halaman setelah mulai menutup sesi. Keluar melalui toolbar memakai modal konfirmasi. Sebelum mulai, navigasi hanya membersihkan perangkat.
+- Perpindahan tab, koneksi terputus, dan reload menghentikan pertanyaan aktif melalui checkpoint backend. Pengguna memilih Retry untuk mengulang atau Next untuk melewati pertanyaan tanpa penilaian. Keluar secara eksplisit melalui toolbar tetap memakai konfirmasi dan menutup sesi. Sebelum mulai, navigasi hanya membersihkan perangkat.
 - Navigasi menghentikan seluruh track, recorder, analyser, timer, animasi, object URL, dan operasi media yang terlambat. Back-forward cache meminta verifikasi ulang; permintaan state awal yang terputus dimuat kembali.
-- Kamera hanya preview lokal. Audio jawaban dikirim ketika pengguna menekan Kirim.
+- Kamera hanya preview lokal. Audio atau jawaban teks dikirim ketika pengguna menekan Kirim. Audio yang tidak tersedia tidak menghalangi pertanyaan teks; pengguna juga dapat menghentikan suara.
 
 ## File dan verifikasi
 
-Markup ada di `app/templates/partials/interview-room.html`, ikon di `meeting-icons.html`, style terbatas halaman di `app/static/css/interview-room.css`, dan controller di `app/static/js/interview-room.js`. `app/templates/app.html` memilih shell khusus ruang. API start di `app/api/sessions.py` juga menolak sinyal mobile dari User-Agent, client hints, atau header perangkat dengan HTTP 403 sebelum mengubah status sesi. Format rekaman, pertanyaan, dan hasil tetap sama.
+Markup ada di `app/templates/partials/interview-room.html`, ikon di `meeting-icons.html`, style terbatas halaman di `app/static/css/interview-room.css`, dan controller di `app/static/js/interview-room.js`. `app/templates/app.html` memilih shell khusus ruang. API start di `app/api/sessions.py` juga menolak sinyal mobile dari User-Agent, client hints, atau header perangkat dengan HTTP 403 sebelum mengubah status sesi. Integrasi panel menggunakan API `/interrupt`, `/recover`, metadata persona per pertanyaan, serta hasil penilaian berbasis bukti dari pembaruan backend.
 
 ```sh
 .venv/bin/python -m unittest discover -s tests -q

@@ -36,10 +36,16 @@ def main():
             message = BytesParser(policy=policy.default).parsebytes(
                 ('Content-Type: ' + request.headers['content-type'] + '\r\n\r\n').encode()
                 + request.post_data_buffer)
-            fields = {part.get_param('name', header='content-disposition'):
-                      part.get_payload(decode=True).decode(errors='replace')
-                      for part in message.iter_parts()
-                      if part.get_filename() is None}
+            fields = {}
+            for part in message.iter_parts():
+                if part.get_filename() is not None:
+                    continue
+                name = part.get_param('name', header='content-disposition')
+                value = part.get_payload(decode=True).decode(errors='replace')
+                if name == 'panel':
+                    fields.setdefault(name, []).append(value)
+                else:
+                    fields[name] = value
             submissions.append(fields)
             route.fulfill(status=503, content_type='application/json',
                           body='{"detail":"Respons uji: layanan sedang tidak tersedia."}')
@@ -117,6 +123,8 @@ def main():
             page.locator(f'[name={name}]').fill(value)
         page.locator('[data-select="level"] [role=combobox]').click()
         page.get_by_role('option', name='Middle', exact=True).click()
+        page.locator('[data-select="career_stage"] [role=combobox]').click()
+        page.get_by_role('option', name='Sudah bekerja', exact=True).click()
         page.locator('[name=consent]').check()
         expect(page.locator('#setup-preview-name')).to_have_text('Kandidat Uji UI')
         page.get_by_role('button', name='Siapkan wawancara', exact=True).click()
@@ -127,7 +135,30 @@ def main():
         assert submissions[0]['interviewer'] == 'user'
         assert submissions[0]['language'] == 'en'
         assert submissions[0]['consent'] == 'true'
+        assert submissions[0]['career_stage'] == 'experienced'
+        assert submissions[0]['interview_mode'] == 'single'
+        assert 'panel' not in submissions[0]
         assert all(submissions[0][name] == value for name, value in fields.items())
+
+        page.locator('[data-select="interview_mode"] [role=combobox]').click()
+        page.get_by_role('option', name='Panel · 2–3 pewawancara', exact=True).click()
+        page.locator('[name=panel][value=user]').uncheck()
+        page.get_by_role('button', name='Siapkan wawancara', exact=True).click()
+        assert len(submissions) == 1, 'A one-person panel must not reach the API'
+        assert page.locator('[name=panel][value=hr]').evaluate('el => !el.checkValidity()')
+        page.locator('[name=panel][value=manager]').check()
+        page.get_by_role('button', name='Siapkan wawancara', exact=True).click()
+        expect(page.get_by_role('button', name='Siapkan wawancara', exact=True)).to_be_enabled()
+        assert submissions[-1]['panel'] == ['hr', 'manager']
+        assert submissions[-1]['interviewer'] == 'user'
+        assert submissions[-1]['career_stage'] == 'experienced'
+        page.locator('[name=panel][value=user]').check()
+        page.get_by_role('button', name='Siapkan wawancara', exact=True).click()
+        expect(page.get_by_role('button', name='Siapkan wawancara', exact=True)).to_be_enabled()
+        assert submissions[-1]['panel'] == ['hr', 'user', 'manager']
+        page.locator('[data-select="interview_mode"] [role=combobox]').click()
+        page.get_by_role('option', name='Satu pewawancara', exact=True).click()
+        assert page.evaluate('new FormData(document.querySelector("#session-form")).getAll("panel")') == []
 
         for width in (320, 768, 1440):
             page.set_viewport_size({'width': width, 'height': 900})

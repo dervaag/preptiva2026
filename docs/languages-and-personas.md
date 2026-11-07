@@ -1,6 +1,10 @@
 # Bahasa sesi, konteks campuran, persona, dan variasi
 
-Diperbarui: 5 November 2026. Rubrik baru: `2026-11-05.2`.
+Diperbarui: 7 November 2026. Rubrik baru: `2026-11-05.2`.
+
+## Wawancara adaptif dan panel
+
+Panduan runtime kini ada di [question-guidebook.md](question-guidebook.md) dan [question-guidebook.json](question-guidebook.json), versi `2026-11-07.1`. Sesi baru mendukung satu interviewer atau panel 2–3 persona. Konteks pembentukan pertanyaan dan penilaian dipisahkan per persona; identitas dan suara mengikuti pembicara aktif. Latar kandidat dapat dipilih atau ditentukan dari bukti CV, terpisah dari level posisi. Pertanyaan utama berikutnya dibentuk ulang dari percakapan setelah kelompok jawaban sebelumnya selesai.
 
 ## Bahasa
 
@@ -34,8 +38,8 @@ Tidak ada aturan internasional tunggal bahwa HR tidak boleh bertanya teknis. Pem
 
 Blueprint menyediakan 61 sudut pertanyaan (21 HR, 20 User, 20 Manager), bukan 61 pertanyaan statis. UUID sesi menjadi seed pemilihan sudut agar satu sesi stabil dan sesi lain bisa berbeda. Sudut berulang dalam sesi dihindari.
 
-Worker memberi generator sampai 35 pertanyaan utama terakhir dari pemilik dan persona yang sama untuk menghindari pengulangan. Informasi ini ikut dikirim ke OpenAI sebagai konteks wawancara; riwayat pengguna lain tidak diambil. Setiap pertanyaan tetap dipersonalisasi dari CV, JD, level, dan industri.
+Worker mengambil maksimal 140 pertanyaan utama terakhir milik pengguna, lalu memberi generator hingga 35 pertanyaan untuk setiap persona yang sama (termasuk peran pembicara pada panel) untuk menghindari pengulangan. Informasi ini ikut dikirim ke OpenAI sebagai konteks wawancara; riwayat pengguna lain tidak diambil. Setiap pertanyaan tetap dipersonalisasi dari CV, JD, level, dan industri.
 
 Validator memeriksa jumlah/urutan, pertanyaan kosong, lebih dari satu tanda tanya, kemiripan antarslot (>0,88) dan riwayat (>0,92), serta istilah tes teknis yang dilarang pada HR. Set yang gagal diminta diperbaiki sekali; jika tetap gagal persiapan dihentikan dengan error, tanpa mengganti ke dummy. Kemiripan karakter tidak menjamin tidak ada duplikasi makna. Pemeriksaan pola teknis juga bukan pengganti review manusia.
 
-Tag technical disaring dari pertanyaan HR; bobot technical HR baru 0 dan adaptability menjadi 25. Manager mempertahankan kombinasi teknis dan umum. Follow-up HR yang terdeteksi menguji teknis diminta diperbaiki satu kali; jika tetap tidak sesuai, sistem lanjut tanpa pertanyaan teknis tambahan. Sesi lama tidak diubah atau dinilai ulang otomatis.
+Tag technical ditolak oleh validator pertanyaan HR; bobot technical HR baru 0 dan adaptability menjadi 25. Manager mempertahankan kombinasi teknis dan umum. Follow-up HR yang terdeteksi menguji teknis diminta diperbaiki satu kali; jika tetap tidak sesuai, sistem lanjut tanpa pertanyaan teknis tambahan. Sesi lama tidak diubah atau dinilai ulang otomatis.

@@ -2,6 +2,10 @@
 
 Status: rencana kerja, belum dilaksanakan. Rubrik aktif tetap `2026-11-05.2` di [assessment-reference.md](assessment-reference.md) dengan `validated: false`.
 
+Pembaruan 7 November 2026: pemisahan persona, guidebook pertanyaan, adaptasi berdasarkan CV/percakapan, dan panel telah diimplementasikan secara terpisah; lihat [guidebook](question-guidebook.md). Hal itu tidak menyelesaikan validasi rubrik oleh asesor yang direncanakan di dokumen ini.
+
+Alat pembandingan dan format masukan asesor kini tersedia di [assessor-validation.md](assessor-validation.md). Implementasi bukti/cakupan/retry sesi ada di [panel-implementation.md](panel-implementation.md). Keduanya tidak menggantikan penilaian manusia; indikator EM dan gold set masih memerlukan tinjauan ahli.
+
 ## Tujuan
 
 Rubrik baru boleh disebut **berbasis referensi** jika setiap indikator skor dapat ditelusuri ke bagian sumber yang mendukungnya. Rubrik baru boleh disebut **telah diuji untuk suatu konteks** jika penerapannya oleh AI sudah dibandingkan dengan penilaian asesor manusia pada konteks tersebut. Mencantumkan tautan sumber di dokumen belum memenuhi keduanya.
@@ -108,7 +112,7 @@ Keluaran per kompetensi menjadi:
 Rencana teknis:
 
 - Simpan peta indikator → sumber di Markdown (blok terstruktur) agar tetap menjadi sumber rubrik yang dibaca runtime dan ikut disnapshot ke `interview_sessions.script.assessment`.
-- Tambahkan field baru secara opsional di `CompetencyScore` (`app/ai/types.py`); sesi lama tanpa field tersebut tetap tampil seperti sekarang.
+- Tambahkan field baru secara opsional di hasil skor (`app/ai/scoring.py`; `app/ai/types.py` tidak ada pada implementasi saat ini); sesi lama tanpa field tersebut tetap tampil seperti sekarang.
 - Validasi di kode: `indicators_met` harus ID yang ada di snapshot sesi dan sesuai tingkat skor; `sources` diisi dari snapshot oleh kode, bukan dari teks LLM.
 - Halaman hasil menampilkan rantai skor → kutipan → indikator → alasan belum naik tingkat → sumber.
 - Rubrik EM hanya dipakai untuk sesi Engineering Manager + persona Manager; pekerjaan lain tetap memakai rubrik umum.

@@ -4,7 +4,7 @@
     <section class="meeting-stage-column" aria-label="Ruang wawancara">
       <div id="room-error" class="meeting-alert" role="alert" hidden></div>
       <div class="meeting-stage" id="room-stage" data-motion="on" data-speaking="false">
-        <div class="meeting-stage-top"><span class="meeting-state" id="room-status" role="status">Menyiapkan sesi</span></div>
+        <div class="meeting-stage-top"><span class="meeting-state" id="room-status" role="status">Menyiapkan sesi</span><div id="panel-members" class="meeting-panel-members" aria-label="Anggota panel" hidden></div></div>
         <div class="meeting-avatar-position"><div class="meeting-avatar" id="interviewer-avatar" role="img" aria-label="Karakter pewawancara AI" data-frame="idle"><span class="meeting-avatar-loading">Menyiapkan pewawancara…</span></div></div>
         <div class="meeting-interviewer-label"><span class="meeting-speaking-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span><div><h1 id="interviewer-name">Partner latihan Anda</h1><span id="interviewer-title">Pewawancara AI</span></div></div>
         <div id="stage-caption" class="meeting-caption" hidden></div>
@@ -15,6 +15,9 @@
         <div class="meeting-answer-clock"><span>Waktu jawab</span><time id="answer-timer">02:00</time></div>
         <div class="meeting-answer-actions"><button id="record" class="meeting-primary" type="button">Mulai jawab</button><button id="send" class="meeting-primary" type="button" hidden>Kirim jawaban</button><button id="retry" class="meeting-quiet" type="button" hidden>Rekam ulang</button><button id="replay" class="meeting-quiet" type="button" hidden>Putar pertanyaan</button></div>
       </div>
+      <div class="meeting-answer-options"><button id="use-text" class="meeting-quiet" type="button" hidden>Jawab dengan teks</button><button id="stop-audio" class="meeting-quiet" type="button" hidden>Hentikan suara</button></div>
+      <section id="text-answer-area" class="meeting-text-answer" aria-label="Jawaban teks" hidden><label for="text-answer">Jawaban Anda</label><textarea id="text-answer" rows="4" maxlength="8000" placeholder="Tulis jawaban Anda…"></textarea><button id="send-text" class="meeting-primary" type="button" disabled>Kirim jawaban</button></section>
+      <section id="interruption" class="meeting-interruption" aria-labelledby="interruption-title" hidden><div><h2 id="interruption-title">Pertanyaan dijeda</h2><p id="interruption-status" role="status">Menyimpan status…</p><small>Retry mengulang dengan waktu penuh. Next melewati pertanyaan tanpa skor.</small></div><div class="meeting-interruption-actions"><button id="retry-question" class="meeting-primary" type="button" disabled>Retry</button><button id="skip-question" class="meeting-secondary" type="button" disabled>Next</button></div></section>
       <div class="meeting-answer-review"><audio id="answer-preview" controls hidden></audio><button id="retry-upload" class="meeting-primary" type="button" hidden>Coba kirim ulang</button><button id="resume-flow" class="meeting-primary" type="button" hidden>Lanjutkan percakapan</button></div>
       <h2 id="question-text" class="sr-only">Pertanyaan wawancara</h2><p id="transcript" class="sr-only" hidden></p>
     </section>
@@ -29,7 +32,7 @@
   </div>
 
   <footer class="meeting-toolbar">
-    <div class="meeting-session-meta">{{ brand('/dashboard') }}<time id="elapsed-time">00:00</time><div class="meeting-session-role"><h2 id="room-title">Latihan wawancara</h2><span id="room-subtitle">Menyiapkan ruang Anda…</span></div></div>
+    <div class="meeting-session-meta">{{ brand('/dashboard') }}<time id="elapsed-time">00:00</time><span id="participant-count" class="meeting-participant-count">2 peserta</span><div class="meeting-session-role"><h2 id="room-title">Latihan wawancara</h2><span id="room-subtitle">Menyiapkan ruang Anda…</span></div></div>
     <div class="meeting-controls" role="group" aria-label="Kontrol ruang wawancara">
       <button id="mic-toggle" class="meeting-control" type="button" aria-label="Aktifkan mikrofon" title="Mikrofon" aria-pressed="false">{{ room_icon('mic') }}<span>Mikrofon</span></button>
       <button id="camera-toggle" class="meeting-control" type="button" aria-label="Aktifkan kamera" title="Kamera" aria-pressed="false">{{ room_icon('camera') }}<span>Kamera</span></button>
@@ -48,14 +51,15 @@
   <div class="meeting-dialog-header"><div><h2 id="preflight-title">Cek perangkat</h2><p id="preflight-description" class="sr-only">Periksa perangkat, kamera, mikrofon, dan speaker sebelum mulai.</p></div><button id="close-preflight" class="meeting-icon-button" type="button" aria-label="Tutup pemeriksaan perangkat">{{ room_icon('close') }}</button></div>
   <div class="meeting-preflight-body" id="preflight-body">
     <div id="device-requirement" class="meeting-alert meeting-device-requirement" role="alert" hidden><strong>HP dan tablet tidak didukung.</strong><p>Buka sesi ini melalui PC atau laptop.</p></div>
+    <label class="meeting-check meeting-input-mode"><input id="text-mode" type="checkbox">Mode teks · tanpa kamera/mikrofon</label>
     <div class="meeting-preflight-preview"><div class="meeting-preflight-video"><video id="preflight-camera" autoplay muted playsinline aria-label="Pratinjau kamera untuk verifikasi"></video></div><button id="devices" class="meeting-secondary" type="button" autofocus>{{ room_icon('camera') }}Aktifkan perangkat</button><label class="meeting-check"><input id="camera-check" type="checkbox">Kamera terlihat jelas</label></div>
     <div class="meeting-preflight-checklist">
       <div class="meeting-verification-row meeting-device-verification"><span class="meeting-verification-icon">{{ room_icon('computer') }}</span><div><h3>Perangkat</h3><p id="device-status" role="status">Memeriksa…</p></div></div>
-      <div class="meeting-verification-row"><span class="meeting-verification-icon">{{ room_icon('mic') }}</span><div><h3>Mikrofon</h3><p id="mic-status">Ucapkan beberapa kata</p><meter id="mic-meter" min="0" max="100" value="0" aria-label="Level sinyal mikrofon"></meter></div></div>
+      <div class="meeting-verification-row meeting-microphone-row"><span class="meeting-verification-icon">{{ room_icon('mic') }}</span><div><h3>Mikrofon</h3><p id="mic-status">Ucapkan beberapa kata</p><meter id="mic-meter" min="0" max="100" value="0" aria-label="Level sinyal mikrofon"></meter></div></div>
       <div class="meeting-verification-row meeting-speaker-row"><span class="meeting-verification-icon">{{ room_icon('speaker') }}</span><div><div class="meeting-check-heading"><h3>Speaker</h3><button id="test-sound" class="meeting-text-button" type="button">Tes suara</button></div><label class="meeting-check"><input id="speaker-check" type="checkbox" disabled>Suara terdengar jelas</label></div></div>
       <div class="meeting-verification-row"><span class="meeting-verification-icon">{{ room_icon('connection') }}</span><div><h3>Koneksi</h3><p id="connection-status">Memeriksa…</p><button id="connection-retry" class="meeting-text-button" type="button" hidden>Coba lagi</button></div></div>
     </div>
-    <div class="meeting-preflight-options"><label class="meeting-check"><input id="focus-check" type="checkbox">Saya setuju: berpindah tab, meminimalkan browser, atau keluar setelah mulai akan menutup sesi tanpa bisa dilanjutkan.</label><label class="meeting-check meeting-fullscreen-option"><input id="fullscreen-check" type="checkbox">Gunakan fullscreen <span class="meeting-optional">(opsional)</span></label></div>
+    <div class="meeting-preflight-options"><label class="meeting-check"><input id="focus-check" type="checkbox">Saya memahami: pindah tab atau koneksi putus menjeda pertanyaan. Pilih Retry atau Next untuk melanjutkan.</label><label class="meeting-check meeting-fullscreen-option"><input id="fullscreen-check" type="checkbox">Gunakan fullscreen <span class="meeting-optional">(opsional)</span></label></div>
     <div id="preflight-error" class="meeting-alert" role="alert" hidden></div>
   </div>
   <div class="meeting-dialog-footer"><p id="verification-status">Video tetap lokal. Audio dikirim saat Anda mengirim jawaban.</p><button id="start" class="meeting-primary" type="button" disabled>Mulai wawancara</button></div>

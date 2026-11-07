@@ -11,6 +11,15 @@ from app.ai.errors import check_response, provider_post
 tts_semaphore = asyncio.Semaphore(2)
 
 
+async def optional_synthesize(*args, timeout=None, **kwargs):
+    from app.ai.errors import ProviderError
+    try:
+        return await asyncio.wait_for(synthesize(*args, **kwargs), timeout=timeout)
+    except (ProviderError, asyncio.TimeoutError, RuntimeError) as exc:
+        emit('audio_fallback', error_type=type(exc).__name__)
+        return None
+
+
 def require_credentials(persona):
     if not settings.openai_api_key or not settings.elevenlabs_api_key or not getattr(settings, f'elevenlabs_voice_{persona}'):
         raise ValueError('Isi OPENAI_API_KEY, ELEVENLABS_API_KEY, dan voice ID persona di .env untuk memulai wawancara.')

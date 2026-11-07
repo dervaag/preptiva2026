@@ -22,6 +22,10 @@ async def respond(context):
     return {'action':'next','response_text':'Terima kasih atas jawaban Anda.'}
 
 
+async def adapt(context):
+    return context['planned_question']
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--screenshots-dir',type=Path)
@@ -34,6 +38,7 @@ def main():
     fixture.orchestrator.parse_documents=fixture.parse
     fixture.orchestrator.build_questions=fixture.questions
     fixture.orchestrator.respond=respond
+    fixture.orchestrator.adapt_question=adapt
     fixture.orchestrator.evaluate=fixture.evaluate
     fixture.orchestrator.summarize=fixture.summarize
     asyncio.run(fixture.seed())
@@ -76,6 +81,8 @@ def main():
                 expect(mobile_page.locator('#device-requirement')).to_be_visible()
                 expect(mobile_page.locator('#start')).to_be_disabled()
                 expect(mobile_page.locator('#devices')).to_be_disabled()
+                mobile_page.locator('#text-mode').evaluate('(el)=>{el.checked=true;el.dispatchEvent(new Event("change"));}')
+                expect(mobile_page.locator('#start')).to_be_disabled()
                 assert mobile_page.locator('#camera').evaluate('(el)=>el.srcObject===null')
                 if args.screenshots_dir and name=='phone':
                     args.screenshots_dir.mkdir(parents=True,exist_ok=True)

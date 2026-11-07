@@ -32,6 +32,8 @@
       <details class="setup-section setup-persona-section" open>
         <summary><h2>{{ icon('users') }} Pilih pewawancara</h2><span class="setup-collapse-icon">{{ icon('chevron') }}</span></summary>
         <div class="setup-section-content">
+          <div class="setup-mode-field">{{ select_field('interview_mode', 'Format wawancara', [('single', 'Satu pewawancara'), ('panel', 'Panel · 2–3 pewawancara')], 'single') }}</div>
+          <div id="single-personas">
           <fieldset class="setup-personas"><legend class="sr-only">Persona pewawancara</legend>
             {% for value, name, role, description in [
               ('hr', 'Rina', 'HR', 'Rina · HR. Menggali motivasi, kolaborasi, dan potensi belajar Anda.'),
@@ -47,6 +49,16 @@
             {% endfor %}
           </fieldset>
           <p class="setup-helper setup-persona-description" id="setup-persona-description">Rina · HR. Menggali motivasi, kolaborasi, dan potensi belajar Anda.</p>
+          </div>
+          <fieldset id="panel-personas" class="setup-panel-options" hidden>
+            <legend class="sr-only">Anggota panel</legend>
+            <div class="setup-panel-choices">
+              {% for value, name, role in [('hr', 'Rina', 'HR'), ('user', 'Andi', 'User'), ('manager', 'Pak Hendra', 'Manager')] %}
+              <label class="setup-panel-choice"><input type="checkbox" name="panel" value="{{ value }}" {{ 'checked' if value in ('hr', 'user') }} disabled aria-describedby="setup-panel-description"><span><strong>{{ name }}</strong><small>{{ role }}</small></span></label>
+              {% endfor %}
+            </div>
+            <p class="setup-helper" id="setup-panel-description">Pilih 2–3 pewawancara. Jumlah pertanyaan adalah total untuk seluruh panel.</p>
+          </fieldset>
           {{ select_field('language', 'Bahasa wawancara', [('id', 'Bahasa Indonesia'), ('en', 'English')], 'id', '/ Interview language') }}
           <p class="setup-helper">Pewawancara mengikuti bahasa sesi. Jawaban campuran Indonesia–English tetap diterima.</p>
           <fieldset class="setup-question-count"><legend>Jumlah pertanyaan</legend>
@@ -65,6 +77,7 @@
             {{ select_field('gender', 'Gender', [('male', 'Laki-laki'), ('female', 'Perempuan')], user.gender or 'male') }}
             <label class="setup-field">Usia<input type="number" name="age" min="15" max="80" value="{{ user.age or '' }}" required></label>
           </div>
+          {{ select_field('career_stage', 'Latar pengalaman', [('auto', 'Sesuaikan dari CV'), ('student', 'Mahasiswa / pelajar'), ('fresh_graduate', 'Fresh graduate'), ('experienced', 'Sudah bekerja'), ('career_switcher', 'Beralih karier')], 'auto') }}
           <div class="setup-cv-box">
             <label class="setup-field">CV dalam PDF<input type="file" name="cv_pdf" accept="application/pdf,.pdf"></label>
             <p class="setup-helper">PDF berteks, maksimal 5 MB dan 30 halaman.</p>
