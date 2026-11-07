@@ -186,4 +186,4 @@ sh "$HOME/Library/Application Support/PreptivaDeploy/current/deploy/kiri.sh" ps
 sh "$HOME/Library/Application Support/PreptivaDeploy/current/deploy/kiri.sh" logs web worker
 ```
 
-Status penyiapan 7 November 2026: runner ARM64 resmi v2.338.2 sudah diverifikasi SHA-256, didaftarkan sebagai `preptiva-kiri-bima`, dan dijalankan sebagai service akun Mac dari `~/actions-runner-preptiva`. Runner terhubung ke GitHub dan menampilkan `Listening for Jobs`. Seluruh 35 tes lokal lulus. Run workflow pertama setelah push menjadi pemeriksaan aktivasi menyeluruh.
+Status 7 November 2026: **auto-deploy aktif dan telah diuji dari push GitHub sampai Kiri**. Runner ARM64 resmi v2.338.2 diverifikasi SHA-256, didaftarkan sebagai `preptiva-kiri-bima`, dan berjalan sebagai service akun Mac dari `~/actions-runner-preptiva`. Push pertama `f98470c` melewati job tes GitHub lalu job `deploy` selesai `Succeeded`. Commit release aktif cocok, image web/worker diperbarui, empat service healthy, dan health HTTPS publik mengonfirmasi PostgreSQL/Redis aktif. Seluruh 35 tes lokal juga lulus. Bukti aktivasi pertama ada di `artifacts/kiri-ci-deploy.json`.

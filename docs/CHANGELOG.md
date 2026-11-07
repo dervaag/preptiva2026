@@ -5,6 +5,7 @@
 - Memasang runner resmi ARM64 v2.338.2 setelah verifikasi checksum GitHub, di `~/actions-runner-preptiva`.
 - Mendaftarkan runner `preptiva-kiri-bima` ke `dervaag/preptiva2026` melalui prompt token interaktif dan menjalankannya sebagai service akun Mac. Koneksi GitHub berhasil dan runner siap menerima job.
 - Verifikasi sebelum push: 35 tes lokal, syntax JavaScript, dan `git diff --check` lulus. Token registrasi tidak disimpan dalam source proyek.
+- Push `f98470c` berhasil memicu tes GitHub dan deployment ke runner Mac; job deploy selesai `Succeeded`. Release aktif cocok dengan commit, empat service healthy, dan health URL publik lulus. Auto-deploy kini aktif; ringkasan aktivasi pertama ada di `artifacts/kiri-ci-deploy.json`.
 
 ## 2026-11-07 — Autostart Kiri Share
 
