@@ -6,7 +6,7 @@ const context = vm.createContext({URL,document:{body:{dataset:{page:'test'}},que
 vm.runInContext(fs.readFileSync('app/static/js/app.js','utf8'),context);
 const evaluate = source => vm.runInContext(source,context);
 assert.equal(evaluate("jobRubricEligible('  ENGINEERING   manager  ', 'single', 'manager')"),true);
-for (const [role,mode,persona] of [['Product Manager','single','manager'],['Engineering Manager','panel','manager'],['Engineering Manager','single','hr']]) {
+for (const [role,mode,persona] of [['Product Manager','single','manager'],['Engineering Manager Senior','single','manager'],['Engineering Manager','panel','manager'],['Engineering Manager','single','hr']]) {
   context.testArgs={role,mode,persona};
   assert.equal(evaluate('jobRubricEligible(testArgs.role,testArgs.mode,testArgs.persona)'),false);
 }
@@ -14,13 +14,19 @@ const checkbox={checked:true,disabled:false};
 const container={hidden:false};
 elements['#job-rubric-option']=container;
 elements['[name=job_role]']={value:'Engineering Manager'};
-elements['#interview-mode']={value:'single'};
+elements['[name=interview_mode]']={value:'single'};
 elements['[name=interviewer]:checked']={value:'manager'};
 elements['[name=use_job_rubric]']=checkbox;
-evaluate('updateJobRubricOption()');assert.equal(container.hidden,false);assert.equal(checkbox.checked,true);
-elements['#interview-mode'].value='panel';evaluate('updateJobRubricOption()');
+evaluate('updateJobRubricOption()');assert.equal(container.hidden,false);assert.equal(checkbox.checked,true);assert.equal(checkbox.disabled,false);
+elements['[name=interview_mode]'].value='panel';evaluate('updateJobRubricOption()');
 assert.equal(container.hidden,true);assert.equal(checkbox.checked,false);assert.equal(checkbox.disabled,true);
-elements['#interview-mode'].value='single';evaluate('updateJobRubricOption()');assert.equal(checkbox.checked,false);
+elements['[name=interview_mode]'].value='single';evaluate('updateJobRubricOption()');assert.equal(checkbox.checked,false);
+checkbox.checked=true;elements['[name=interviewer]:checked'].value='hr';evaluate('updateJobRubricOption()');
+assert.equal(container.hidden,true);assert.equal(checkbox.checked,false);assert.equal(checkbox.disabled,true);
+elements['[name=interviewer]:checked'].value='manager';evaluate('updateJobRubricOption()');
+assert.equal(container.hidden,false);assert.equal(checkbox.checked,false);assert.equal(checkbox.disabled,false);
+checkbox.checked=true;elements['[name=job_role]'].value='Product Manager';evaluate('updateJobRubricOption()');
+assert.equal(container.hidden,true);assert.equal(checkbox.checked,false);assert.equal(checkbox.disabled,true);
 for (const url of ['javascript:alert(1)','data:text/html,<script>alert(1)</script>','https://u:p@example.com','http://example.com','/relative']) {
   context.source={source_title:'<img src=x onerror=alert(1)>',url};
   const html=evaluate('sourceLink(source)');

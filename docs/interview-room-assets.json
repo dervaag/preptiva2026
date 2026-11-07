@@ -1,0 +1,114 @@
+{
+  "project": "Preptiva meeting-style AI interview room",
+  "generated_on": "2026-11-07",
+  "mode": "built-in image_gen__imagegen",
+  "transparency_note": "Native generated RGBA alpha preserved without raster post-processing.",
+  "frame_mapping": [
+    {
+      "state": "idle",
+      "cell": "top-left",
+      "background_position": "0% 0%"
+    },
+    {
+      "state": "blink",
+      "cell": "top-right",
+      "background_position": "100% 0%"
+    },
+    {
+      "state": "talk-small",
+      "cell": "bottom-left",
+      "background_position": "0% 100%"
+    },
+    {
+      "state": "talk-wide",
+      "cell": "bottom-right",
+      "background_position": "100% 100%"
+    }
+  ],
+  "css_usage": {
+    "background_size": "200% 200%",
+    "aspect_ratio": "1 / 1"
+  },
+  "assets": [
+    {
+      "name": "Rina",
+      "file": "rina-sprite.png",
+      "output_path": "/Users/Luthfi/Documents/Codex/2026-11-07/t/outputs/preptiva-room-assets/rina-sprite.png",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "cell_dimensions": [
+        627,
+        627
+      ],
+      "alpha": true,
+      "project_path": "/Users/Luthfi/Project/Hackathon/Preptiva/app/static/images/interviewers/rina-sprite.png",
+      "prompt": "Use case: stylized-concept\nAsset type: production transparent character animation sprite sheet for a professional AI interview room in a web app.\n\nCreate ONE EXACTLY SQUARE image containing a precision 2 by 2 grid of four equally sized animation frames. No gutters, borders, divider lines, labels, text or background. Each quadrant is exactly 50% width and 50% height of the image. The entire image background must be truly transparent alpha.\n\nSubject: Rina, an original warm Indonesian woman in her early 30s working as an HR interviewer. Medium warm brown skin, kind expressive dark brown eyes, gently rounded adult facial features, dusty rose hijab neatly draped around head and shoulders, modest navy professional blouse. Appealing, polished, credible and welcoming. No jewelry or props.\n\nStyle: cinematic, feature-animation-quality stylized 3D, in the spirit of modern Disney/Pixar family films, with an original character design, refined facial geometry, softly realistic skin and woven fabric materials. Professional adult proportions, not chibi, no caricature. Warm soft studio key light, subtle fill, consistent light across all frames.\n\nLOCKED CAMERA AND REGISTRATION: a straight-on front-facing bust portrait. Identical camera, identical head and shoulder position, identical body pose, identical scale and silhouette, identical lighting in all four frames. The portrait is duplicated in place, with ONLY eyelids and mouth changing. Face centered horizontally within EACH quadrant, top of hijab 5% below the top of EACH quadrant. Entire head, hijab, both shoulders and upper chest contained inside EACH cell; crop the torso only at each cell's lower boundary. Keep shoulder edges inside the cell with small transparent side margins. No head tilt, no body turn, no pose changes. ALL FOUR FRAMES PERFECTLY ALIGNED for flicker-free CSS sprite animation.\n\nFrame order, fixed:\nTOP LEFT: neutral attentive, eyes fully open, mouth gently closed.\nTOP RIGHT: natural blink, both eyelids fully shut, same gently closed mouth.\nBOTTOM LEFT: speaking, eyes open, mouth slightly open in a small relaxed vowel.\nBOTTOM RIGHT: speaking, eyes open, mouth a little wider open, still restrained and professional.\n\nDo not include hands. Do not include a background, floor, shadow plane, office, colored rectangle, contact sheet borders, text, logos or watermarks. Exactly FOUR isolated bust renders of the SAME identity, one per equal quadrant. Four equal squares in one square image, no gutters. Prioritize perfect matching scale and registration."
+    },
+    {
+      "name": "Andi",
+      "file": "andi-sprite.png",
+      "output_path": "/Users/Luthfi/Documents/Codex/2026-11-07/t/outputs/preptiva-room-assets/andi-sprite.png",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "cell_dimensions": [
+        627,
+        627
+      ],
+      "alpha": true,
+      "project_path": "/Users/Luthfi/Project/Hackathon/Preptiva/app/static/images/interviewers/andi-sprite.png",
+      "prompt": "Use case: stylized-concept\nAsset type: production transparent character animation sprite sheet for a professional AI interview room in a web app.\n\nCreate ONE EXACTLY SQUARE image containing a precision 2 by 2 grid of four equally sized animation frames. No gutters, borders, divider lines, labels, text or background. Each quadrant is exactly 50% width and 50% height of the image. The entire image background must be truly transparent alpha.\n\nSubject: Andi, an original friendly Indonesian man about 30 years old working as a functional/technical team lead and job interviewer. Warm medium brown skin, expressive dark brown eyes, neat short dark hair, adult oval face with gently defined jaw, clean shaven. A tidy teal collared professional shirt, open collar, no tie. Approachable, smart, calm and welcoming. No jewelry or props.\n\nStyle: cinematic, feature-animation-quality stylized 3D, in the spirit of modern Disney/Pixar family films, with an original character design, refined facial geometry, softly realistic skin and woven shirt fabric materials. Professional adult proportions, not chibi, no caricature. Warm soft studio key light, subtle fill, consistent light across all frames.\n\nLOCKED CAMERA AND REGISTRATION: a straight-on front-facing bust portrait. Identical camera, identical head and shoulder position, identical body pose, identical scale and silhouette, identical lighting in all four frames. The portrait is duplicated in place, with ONLY eyelids and mouth changing. Face centered horizontally within EACH quadrant, top of hair 5% below the top of EACH quadrant. Entire head, hair, both shoulders and upper chest contained inside EACH cell; crop the torso only at each cell's lower boundary. Keep shoulder edges inside the cell with small transparent side margins. No head tilt, no body turn, no pose changes. ALL FOUR FRAMES PERFECTLY ALIGNED for flicker-free CSS sprite animation.\n\nFrame order, fixed:\nTOP LEFT: neutral attentive, eyes fully open, mouth gently closed.\nTOP RIGHT: natural blink, both eyelids fully shut, same gently closed mouth.\nBOTTOM LEFT: speaking, eyes open, mouth slightly open in a small relaxed vowel.\nBOTTOM RIGHT: speaking, eyes open, mouth a little wider open, still restrained and professional.\n\nDo not include hands. Do not include a background, floor, shadow plane, office, colored rectangle, contact sheet borders, text, logos or watermarks. Exactly FOUR isolated bust renders of the SAME identity, one per equal quadrant. Four equal squares in one square image, no gutters. Prioritize perfect matching scale and registration."
+    },
+    {
+      "name": "Pak Hendra",
+      "file": "hendra-sprite.png",
+      "output_path": "/Users/Luthfi/Documents/Codex/2026-11-07/t/outputs/preptiva-room-assets/hendra-sprite.png",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "cell_dimensions": [
+        627,
+        627
+      ],
+      "alpha": true,
+      "project_path": "/Users/Luthfi/Project/Hackathon/Preptiva/app/static/images/interviewers/hendra-sprite.png",
+      "prompt": "Use case: stylized-concept\nAsset type: production transparent character animation sprite sheet for a professional AI interview room in a web app.\n\nCreate ONE EXACTLY SQUARE image containing a precision 2 by 2 grid of four equally sized animation frames. No gutters, borders, divider lines, labels, text or background. Each quadrant is exactly 50% width and 50% height of the image. The entire image background must be truly transparent alpha.\n\nSubject: Pak Hendra, an original Indonesian male hiring manager around 45 years old. Warm medium brown skin, kind and discerning expressive dark brown eyes behind clean thin dark rectangular glasses, neat short salt-and-pepper hair with mature temples, mature adult face with subtle smile lines, clean shaven. Charcoal tailored blazer over a pale warm grey collared shirt without a tie. Thoughtful, composed, experienced and approachable rather than stern. No props.\n\nStyle: cinematic, feature-animation-quality stylized 3D, in the spirit of modern Disney/Pixar family films, with an original character design, refined facial geometry, softly realistic skin, subtle fabric weave and understated eyeglass materials. Professional adult proportions, not chibi, no caricature. Warm soft studio key light, subtle fill, consistent light across all frames. Keep glasses clear without obscuring the eyes or adding glare.\n\nLOCKED CAMERA AND REGISTRATION: a straight-on front-facing bust portrait. Identical camera, identical head and shoulder position, identical body pose, identical scale and silhouette, identical lighting in all four frames. The portrait is duplicated in place, with ONLY eyelids and mouth changing. Face centered horizontally within EACH quadrant, top of hair 5% below the top of EACH quadrant. Entire head, hair, ears, both shoulders and upper chest contained inside EACH cell; crop the torso only at each cell's lower boundary. Keep shoulder edges inside the cell with small transparent side margins. No head tilt, no body turn, no pose changes. ALL FOUR FRAMES PERFECTLY ALIGNED for flicker-free CSS sprite animation.\n\nFrame order, fixed:\nTOP LEFT: neutral attentive, eyes fully open, mouth gently closed.\nTOP RIGHT: natural blink, both eyelids fully shut behind the glasses, same gently closed mouth.\nBOTTOM LEFT: speaking, eyes open, mouth slightly open in a small relaxed vowel.\nBOTTOM RIGHT: speaking, eyes open, mouth a little wider open, still restrained and professional.\n\nDo not include hands. Do not include a background, floor, shadow plane, office, colored rectangle, contact sheet borders, text, logos or watermarks. Exactly FOUR isolated bust renders of the SAME identity, one per equal quadrant. Four equal squares in one square image, no gutters. Prioritize perfect matching scale and registration."
+    },
+    {
+      "name": "Office background",
+      "file": "office-background.png",
+      "output_path": "/Users/Luthfi/Documents/Codex/2026-11-07/t/outputs/preptiva-room-assets/office-background.png",
+      "dimensions": [
+        1672,
+        941
+      ],
+      "alpha": false,
+      "project_path": "/Users/Luthfi/Project/Hackathon/Preptiva/app/static/images/interviewers/office-background.png",
+      "prompt": "Use case: stylized-concept\nAsset type: wide background image for an AI interview video-call tile, placed behind a separate transparent bust portrait.\n\nPrimary request: a softly blurred warm neutral professional office in a refined stylized 3D animated-family-film visual style. NO PEOPLE anywhere.\n\nScene: understated modern Indonesian office or meeting room, warm ivory plaster walls, a quiet pale oak cabinet, a soft green indoor plant near the right edge, a few muted books without lettering on a distant shelf, soft daylight entering a simple window on the left. Calm, welcoming, professional, no clutter.\n\nComposition: wide landscape 16:9 image, fixed eye-level front-facing camera. Leave the central 65% of the image visually quiet, with only an out-of-focus warm wall and subtle natural daylight tonal variation, suitable for a large foreground interviewer's head and shoulders. Only subtle office detail near outer edges. Lower part remains softly neutral for the character's shoulders. This is a virtual meeting background.\n\nStyle and lighting: cinematic, film-quality stylized 3D materials with subtle warmth, soft indirect light, shallow depth of field and moderate optical defocus across all background elements. Elegant restrained palette of ivory, pale oak and muted sage. Warm but not orange. Bright enough for navy/teal/charcoal clothing to read clearly. No dramatic shadows.\n\nConstraints: no people, silhouettes, avatars, faces, hands, screens, UI, charts, writing, signage, logos, watermarks, image border or text. No decorative glow, no floating objects. Full bleed opaque background."
+    }
+  ],
+  "visual_qa": {
+    "result": "PASS",
+    "confirmed": [
+      "One original character identity per sheet",
+      "Each sheet square, divided into four equal quadrant cells",
+      "Neutral and blink closed-mouth frames plus two visible speaking-mouth variations",
+      "Front-facing professional bust portraits with matching lighting and similar framing",
+      "All three PNG sheets have genuine alpha transparency",
+      "No text, logos, watermarks, props or hands",
+      "Office background has no people and a quiet central wall",
+      "Project copies match delivered output copies by SHA-256"
+    ],
+    "usage_note": "Frame registration is generated rather than pixel-identical; tiny expression-related changes are normal. Use restrained blink and mouth changes with idle transform motion."
+  },
+  "design_reason": "Warm original Indonesian 3D interviewers make the meeting feel welcoming and keep each persona recognizable; shared office lighting creates one coherent interview setting.",
+  "dials": {
+    "energy": 2,
+    "rhythm": 1,
+    "motion": 2
+  }
+}

@@ -141,6 +141,25 @@ class SystemTests(unittest.IsolatedAsyncioTestCase):
             response = await self.client.post('/api/sessions', data=data)
         return response
 
+    async def test_mobile_device_cannot_start_session(self):
+        sid, _, _ = await self.ready_session()
+        mobile_headers = [
+            {'User-Agent':'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile'},
+            {'User-Agent':'Mozilla/5.0 (Linux; Android 15; Tablet) AppleWebKit'},
+            {'User-Agent':'Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X)'},
+            {'Sec-CH-UA-Mobile':'?1'},
+            {'Sec-CH-UA-Platform':'"Android"'},
+            {'User-Agent':'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15)', 'X-Preptiva-Device':'mobile'},
+        ]
+        for headers in mobile_headers:
+            with self.subTest(headers=headers):
+                response = await self.client.post(f'/api/sessions/{sid}/start',headers=headers)
+                self.assertEqual(response.status_code,403,response.text)
+                self.assertIn('PC atau laptop',response.json()['detail'])
+        state = (await self.client.get(f'/api/sessions/{sid}/state')).json()
+        self.assertEqual(state['status'],'ready')
+        self.assertEqual((await self.client.post(f'/api/sessions/{sid}/start',headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})).status_code,200)
+
     async def ready_session(self, **changes):
         created = await self.create(**changes)
         self.assertEqual(created.status_code, 200, created.text)
@@ -212,6 +231,91 @@ class SystemTests(unittest.IsolatedAsyncioTestCase):
             response = await self.other.post('/api/auth/logout',
                 headers={'Origin':public, 'Sec-Fetch-Site':'same-origin'})
             self.assertEqual(response.status_code, 200)
+
+    async def test_profile_authentication_and_user_isolation(self):
+        for method, path, data in (
+                ('GET', '/api/profile', None),
+                ('PATCH', '/api/profile', {'name':'Unauthorized update'}),
+                ('DELETE', '/api/profile/cv', None)):
+            response = await self.other.request(method, path, data=data)
+            self.assertEqual(response.status_code, 401, response.text)
+        own_cv = 'Pengalaman riset produk dan evaluasi aksesibilitas pengguna. ' * 8
+        other_cv = 'Pengalaman menyusun laporan akuntansi dan rekonsiliasi bank. ' * 8
+        response = await self.client.patch('/api/profile', data={'cv_text':own_cv})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.headers['cache-control'], 'no-store')
+        self.assertEqual((await self.register(self.other, 'other@example.com')).status_code, 200)
+        response = await self.other.patch('/api/profile', data={'name':'Kandidat Lain', 'cv_text':other_cv})
+        self.assertEqual(response.status_code, 200, response.text)
+        own = (await self.client.get('/api/profile')).json()
+        other = (await self.other.get('/api/profile')).json()
+        self.assertNotEqual(own['id'], other['id'])
+        self.assertEqual(own['name'], 'Budi Santoso')
+        self.assertEqual(own['cv_text'], own_cv.strip())
+        self.assertEqual(other['cv_text'], other_cv.strip())
+        for method, path, data in (
+                ('PATCH', '/api/profile', {'name':'Cross origin update'}),
+                ('DELETE', '/api/profile/cv', None)):
+            response = await self.client.request(method, path, data=data,
+                headers={'Origin':'https://attacker.example'})
+            self.assertEqual(response.status_code, 403)
+        self.assertEqual((await self.other.delete('/api/profile/cv')).status_code, 200)
+        self.assertEqual((await self.client.get('/api/profile')).json(), own)
+        self.assertFalse((await self.other.get('/api/profile')).json()['has_cv'])
+
+    async def test_profile_updates_login_and_rolls_back_duplicate_email(self):
+        self.assertEqual((await self.register(self.other, 'other@example.com')).status_code, 200)
+        response = await self.client.patch('/api/profile', data={
+            'name':'  Nama Baru  ', 'email':'NEW@example.com', 'gender':'female', 'age':'31'})
+        self.assertEqual(response.status_code, 200, response.text)
+        profile = response.json()
+        self.assertEqual((profile['name'], profile['email'], profile['gender'], profile['age']),
+                         ('Nama Baru', 'new@example.com', 'female', 31))
+        response = await self.client.patch('/api/profile', data={
+            'name':'Should roll back', 'email':'other@example.com'})
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertEqual((await self.client.get('/api/profile')).json(), profile)
+        for changes in ({'name':'  '}, {'email':'not-an-email'}, {'age':'81'}, {}):
+            with self.subTest(changes=changes):
+                response = await self.client.patch('/api/profile', data=changes)
+                self.assertEqual(response.status_code, 422, response.text)
+        self.assertEqual((await self.client.get('/api/profile')).json(), profile)
+        self.assertEqual((await self.client.post('/api/auth/logout')).status_code, 200)
+        response = await self.client.post('/api/auth/login', json={
+            'email':'new@example.com', 'password':'test12345'})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual((await self.client.get('/api/me')).json()['id'], profile['id'])
+
+    async def test_profile_cv_validation_delete_and_existing_session_snapshot(self):
+        created = await self.create()
+        self.assertEqual(created.status_code, 200, created.text)
+        sid = created.json()['session_id']
+        original_cv = self.form()['cv_text'].strip()
+        cv = '</textarea><script>alert(1)</script> Pengalaman sintetis untuk uji profil. ' * 8
+        response = await self.client.patch('/api/profile', data={'cv_text':cv})
+        self.assertEqual(response.status_code, 200, response.text)
+        saved = response.json()
+        self.assertTrue(saved['has_cv'])
+        self.assertEqual(saved['cv_text'], cv.strip())
+        response = await self.client.patch('/api/profile', data={'name':'Should not save', 'cv_text':'short'})
+        self.assertEqual(response.status_code, 422, response.text)
+        for content, status in ((b'not a PDF', 422), (b'%PDF-' + b'x' * (5 * 1024 * 1024), 413)):
+            response = await self.client.patch('/api/profile', files={'cv_pdf':('cv.pdf', content, 'application/pdf')})
+            self.assertEqual(response.status_code, status, response.text)
+        self.assertEqual((await self.client.get('/api/profile')).json(), saved)
+        for route in ('/profile', '/profil'):
+            response = await self.client.get(route)
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertNotIn('</textarea><script>alert(1)</script>', response.text)
+            self.assertIn('&lt;/textarea&gt;&lt;script&gt;', response.text)
+        response = await self.client.delete('/api/profile/cv')
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertFalse(response.json()['has_cv'])
+        self.assertEqual(response.json()['cv_text'], '')
+        self.assertFalse((await self.client.get('/api/me')).json()['has_cv'])
+        async with SessionLocal() as db:
+            existing = await db.scalar(select(InterviewSession).where(InterviewSession.uuid == sid))
+            self.assertEqual(existing.cv_text, original_cv)
 
     async def test_uuid_ownership_and_validation(self):
         sid, _, state = await self.ready_session()

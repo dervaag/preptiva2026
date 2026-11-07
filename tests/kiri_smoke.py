@@ -5,6 +5,7 @@ Run: .venv/bin/python tests/kiri_smoke.py
 """
 import argparse
 import json
+import os
 from pathlib import Path
 import secrets
 import subprocess
@@ -33,15 +34,20 @@ def main(url=URL):
     artifact_prefix = 'kiri' if url == URL else 'kiri-public'
     created_id = None
     browser = None
-    artifacts = ROOT/'artifacts'
-    artifacts.mkdir(exist_ok=True)
+    artifacts = Path(os.environ.get('PREPTIVA_BROWSER_ARTIFACTS', ROOT/'artifacts'))
+    artifacts.mkdir(parents=True, exist_ok=True)
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(channel='chrome',headless=True)
             context = browser.new_context(viewport={'width':1440,'height':1000})
             page = context.new_page()
+            page.add_init_script("localStorage.setItem('preptiva-ui-language', 'id')")
             page_errors = []
             page.on('pageerror',lambda error: page_errors.append(str(error)))
+            def choose(name, value):
+                page.locator(f'#setup-select-{name}-trigger').click()
+                page.locator(f'#setup-select-{name}-menu [data-value="{value}"]').click()
+                assert page.locator(f'[name="{name}"]').input_value() == value
             page.goto(url+'/login')  # Default TLS validation stays enabled.
             if page.title() == 'You are about to visit a shared site':
                 page.get_by_text('Continue to site', exact=True).click()
@@ -76,29 +82,36 @@ def main(url=URL):
             cookies = [c for c in context.cookies() if c['name']=='isim_session']
             assert len(cookies)==1 and cookies[0]['secure'] and cookies[0]['httpOnly']
             report['secure_session_cookie'] = True
-            page.wait_for_function("document.querySelector('#stat-total').textContent === '0'")
+            page.wait_for_function("document.querySelector('#stat-completed').textContent === '0'")
             page.goto(url+'/simulasi/baru')
             assert page.locator('#session-form').is_visible()
+            page.locator('#setup-context > summary').click()
             page.locator('[name=job_role]').fill('Engineering Manager')
-            page.locator('[name=interviewer][value=manager]').check()
+            page.locator('#single-personas label:has(input[value=manager])').click()
             assert page.locator('#job-rubric-option').is_visible()
             assert not page.locator('[name=use_job_rubric]').is_checked()
             page.locator('[name=use_job_rubric]').check()
-            page.locator('#interview-mode').select_option('panel')
+            choose('interview_mode', 'panel')
             assert page.locator('#panel-personas').is_visible()
+            assert not page.locator('#single-personas').is_visible()
             assert page.locator('[name=panel]:checked').count() == 2
+            page.locator('label:has(input[name=panel][value=manager])').click()
+            assert page.locator('[name=panel]:checked').count() == 3
+            page.locator('.setup-question-choice:has(input[value="3"])').click()
+            assert page.locator('[name=question_count]:checked').input_value() == '3'
+            choose('career_stage', 'fresh_graduate')
             assert page.locator('#job-rubric-option').is_hidden()
             assert not page.locator('[name=use_job_rubric]').is_checked()
             assert page.locator('[name=use_job_rubric]').is_disabled()
             report['draft_em_rubric_opt_in_form'] = True
-            page.locator('[name=career_stage]').select_option('fresh_graduate')
             report['panel_and_candidate_background_form'] = True
+            page.locator('#account-menu > summary').click()
             page.locator('#logout').click()
             page.wait_for_url('**/login')
             assert get('/api/me')['status'] == 401
             page.locator('[name=email]').fill(email)
             page.locator('[name=password]').fill(password)
-            page.get_by_role('button',name='Masuk ke workspace').click()
+            page.get_by_role('button',name='Masuk',exact=True).click()
             page.wait_for_url('**/dashboard')
             assert get('/api/me')['data']['id'] == created_id
             assert not page_errors, 'Kesalahan JavaScript pada browser'

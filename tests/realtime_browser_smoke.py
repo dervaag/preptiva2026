@@ -2,6 +2,7 @@
 import asyncio
 from contextlib import asynccontextmanager
 import json
+import os
 from pathlib import Path
 import socket
 import threading
@@ -52,6 +53,10 @@ async def stream_audio(text,persona):
 
 
 def main():
+    from app import storage
+    storage.ROOT=Path(fixture.temporary.name)
+    artifacts=Path(os.environ.get('PREPTIVA_BROWSER_ARTIFACTS',str(Path(fixture.temporary.name)/'artifacts')))
+    artifacts.mkdir(parents=True,exist_ok=True)
     settings.realtime_voice_enabled=True
     settings.tts_cache=False
     speech.require_credentials=lambda persona:None
@@ -64,25 +69,33 @@ def main():
     sock=socket.socket();sock.bind(('127.0.0.1',0));port=sock.getsockname()[1];sock.close()
     server=fixture.uvicorn.Server(fixture.uvicorn.Config(fixture.app,host='127.0.0.1',port=port,log_level='warning'))
     thread=threading.Thread(target=server.run,daemon=True);thread.start()
-    while not server.started:time.sleep(.05)
+    for _ in range(100):
+        if server.started:break
+        time.sleep(.05)
+    if not server.started:raise RuntimeError('Realtime preview server did not start.')
     failures=[];report={'paid_api_calls':False,'ok':False}
     try:
         with sync_playwright() as p:
             browser=p.chromium.launch(channel='chrome',headless=True,args=['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream',f'--use-file-for-fake-audio-capture={mic}'])
             context=browser.new_context(permissions=['camera','microphone'],viewport={'width':1440,'height':1100})
             page=context.new_page();page.on('pageerror',lambda error:failures.append(str(error)))
+            page.add_init_script("localStorage.setItem('preptiva-ui-language', 'id')")
             page.goto(f'http://127.0.0.1:{port}/login')
             page.locator('[name=email]').fill('demo@interview.local');page.locator('[name=password]').fill('demo1234')
-            page.get_by_role('button',name='Masuk ke workspace').click();page.wait_for_url('**/dashboard')
+            page.get_by_role('button',name='Masuk',exact=True).click();page.wait_for_url('**/dashboard')
             page.goto(f'http://127.0.0.1:{port}/simulasi/baru')
+            page.locator('#setup-context > summary').click()
             page.locator('[name=cv_text]').fill('Lulusan baru Akuntansi. Proyek kuliah koperasi kampus dan organisasi mahasiswa. '*4)
-            page.locator('[name=career_stage]').select_option('fresh_graduate');page.locator('[name=job_role]').fill('Accountant')
+            page.locator('#setup-select-career_stage-trigger').click()
+            page.locator('#setup-select-career_stage-menu [data-value="fresh_graduate"]').click()
+            page.locator('[name=job_role]').fill('Accountant')
             page.locator('[name=industry]').fill('Finance');page.locator('[name=job_description]').fill('Prepare accurate reports and coordinate financial information with colleagues.')
-            page.locator('[name=question_count]').select_option('3');page.locator('[name=consent]').check()
+            page.locator('.setup-question-choice:has(input[value="3"])').click();page.locator('[name=consent]').check()
             page.get_by_role('button',name='Siapkan wawancara').click();page.wait_for_url('**/ruang')
             sid=page.url.split('/sesi/')[1].split('/')[0]
             base=f'/api/sessions/{sid}'
             page.wait_for_function("document.querySelector('#room-status').textContent==='SIAP DIMULAI'")
+            page.locator('.meeting-voice-options > summary').click()
             page.evaluate("() => {const original=RealtimeVoice.prototype.initialize;RealtimeVoice.prototype.initialize=function(){window.testVoice=this;return original.call(this)};}")
             assert page.locator('#voice-mode').is_checked()
             page.locator('#text-mode').check();page.locator('#focus-check').check()
@@ -106,7 +119,7 @@ def main():
             page.wait_for_function("document.querySelector('#transcript').textContent.includes('35 persen')")
             page.locator('#record').click();page.wait_for_selector('#live-review')
             page.locator('#live-transcript').fill(TRANSCRIPT+' Saya meninjau dampak bersama tim.')
-            page.screenshot(path=str(fixture.ROOT/'artifacts/realtime-review.png'),full_page=True)
+            page.screenshot(path=str(artifacts/'realtime-review.png'),full_page=True)
             page.locator('#send').click()
             page.wait_for_function("document.querySelector('#question-progress').textContent.includes('2 / 3')")
             answer_ready()
@@ -143,14 +156,17 @@ def main():
             page.locator('#independent').check()
             with page.expect_download() as event:page.get_by_role('button',name='Unduh hasil penilaian JSON').click()
             print('Download event received',flush=True)
-            downloaded=json.loads(Path(event.value.path()).read_text())
+            download=event.value
+            downloaded=json.loads(Path(download.path()).read_text())
             assert len(downloaded['ratings'])==7 and all(r['score'] is None for r in downloaded['ratings'])
+            download.delete()
             report['assessor_packet_download']=True
             assert not failures,failures
+            context.close()
             browser.close();report.update(ok=True,**stats)
             print(json.dumps(report,indent=2))
     finally:
         server.should_exit=True;thread.join(timeout=10)
-        (fixture.ROOT/'artifacts/realtime-browser-smoke.json').write_text(json.dumps(report,indent=2)+'\n')
+        (artifacts/'realtime-browser-smoke.json').write_text(json.dumps(report,indent=2)+'\n')
 
 if __name__=='__main__':main()

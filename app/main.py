@@ -11,8 +11,9 @@ from sqlalchemy import text, select
 from app.config import settings, ROOT
 from app.db import init_db, SessionLocal
 from app.models import User
-from app.api import auth, sessions, dashboard, voice
+from app.api import auth, sessions, dashboard, voice, profile
 from app.log import request_var
+from app.assets import asset_url
 
 
 @asynccontextmanager
@@ -56,8 +57,10 @@ app.include_router(auth.router)
 app.include_router(sessions.router)
 app.include_router(dashboard.router)
 app.include_router(voice.router)
+app.include_router(profile.router)
 app.mount('/static', StaticFiles(directory=ROOT / 'app/static'), name='static')
 templates = Jinja2Templates(directory=ROOT / 'app/templates')
+templates.env.globals['asset_url'] = asset_url
 
 
 @app.get('/health')
@@ -99,7 +102,7 @@ async def dev_login(request: Request):
 @app.get('/{page:path}', include_in_schema=False)
 async def page(request: Request, page: str = ''):
     allowed = {'': 'dashboard', 'dashboard':'dashboard', 'login':'login', 'register':'register',
-               'simulasi/baru':'form', 'riwayat':'history'}
+               'simulasi/baru':'form', 'riwayat':'history', 'profile':'profile', 'profil':'profile'}
     kind = allowed.get(page)
     sid = ''
     if page.startswith('sesi/'):

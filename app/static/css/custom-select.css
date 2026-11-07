@@ -1,0 +1,57 @@
+.setup-select {min-width: 0;}
+.setup-select-label {display: block;}
+.setup-select .setup-select-input {display: none !important;}
+.setup-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 7px;
+  padding: 11px 13px;
+  border: 1px solid #858a97;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--setup-ink, #24242c);
+  font: inherit;
+  line-height: 1.6;
+  text-align: left;
+  cursor: pointer;
+}
+.setup-select-trigger:hover {border-color: #4f515d; background: #fdfcfb;}
+.setup-select-trigger:active {background: #f8f6f3;}
+.setup-select-trigger[aria-expanded="true"] {border-color: #a6340d;}
+.setup-select-trigger:disabled {cursor: not-allowed; opacity: .5;}
+.setup-select-value {min-width: 0; overflow-wrap: anywhere;}
+.setup-select-chevron {display: grid; place-items: center; width: 18px; height: 18px; flex-shrink: 0; color: #626773; line-height: 0;}
+.setup-page .setup-select-chevron svg {display: block; width: 18px; height: 18px; stroke-width: 1.8;}
+.setup-select-trigger[aria-expanded="true"] .setup-select-chevron {transform: rotate(180deg);}
+.setup-select-menu {
+  position: fixed;
+  z-index: 100;
+  box-sizing: border-box;
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  border: 1px solid #d3d4dc;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--setup-ink, #24242c);
+  box-shadow: 0 10px 28px #24212b24;
+  max-height: 260px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.setup-select-menu[hidden] {display: none !important;}
+.setup-select-option {display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 42px; padding: 10px 11px; border-radius: 7px; cursor: pointer;}
+.setup-select-option-label {min-width: 0; overflow-wrap: anywhere;}
+.setup-select-option[data-active] {background: #fff1e8; outline: 1px solid #a6340d; outline-offset: -1px;}
+.setup-select-option[aria-selected="true"] {font-weight: 550;}
+.setup-select-check {display: grid; place-items: center; width: 18px; height: 18px; flex-shrink: 0; color: #a6340d; visibility: hidden; line-height: 0;}
+.setup-select-check svg {display: block; width: 17px; height: 17px; stroke-width: 2;}
+.setup-select-option[aria-selected="true"] .setup-select-check {visibility: visible;}

@@ -105,7 +105,12 @@ async def session_state(session=Depends(owned_session), db=Depends(get_db)):
 
 
 @router.post('/api/sessions/{sid}/start')
-async def start(session=Depends(owned_session), db=Depends(get_db)):
+async def start(request: Request, session=Depends(owned_session), db=Depends(get_db)):
+    user_agent = request.headers.get('user-agent', '').lower()
+    platform = request.headers.get('sec-ch-ua-platform', '').strip().strip('"').lower()
+    mobile = any(token in user_agent for token in ('android', 'iphone', 'ipad', 'ipod', 'mobile', 'iemobile', 'opera mini', 'silk', 'kindle', 'blackberry', 'webos'))
+    if mobile or platform in ('android', 'ios') or request.headers.get('sec-ch-ua-mobile') == '?1' or request.headers.get('x-preptiva-device') == 'mobile':
+        raise HTTPException(403, 'Wawancara wajib menggunakan PC atau laptop. HP dan tablet tidak didukung.')
     if session.status not in ('ready', 'running'):
         raise HTTPException(409, 'Sesi belum siap atau telah berakhir.')
     changed = await db.execute(update(InterviewSession).where(InterviewSession.id == session.id, InterviewSession.status == 'ready').values(status='running', started_at=now()))
