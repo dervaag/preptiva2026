@@ -1,4 +1,5 @@
 from app.ai.closing import public_closing
+from app.ai.answer_language import require_answer_language, AnswerLanguageMismatch
 import asyncio
 import json
 import re
@@ -130,6 +131,9 @@ async def process_answer(sid, owner_id, question_id, *args, **kwargs):
     question_token = question_var.set(question_id)
     try:
         return await _dispatch_answer(sid, owner_id, question_id, *args, **kwargs)
+    except AnswerLanguageMismatch:
+        emit('answer_language_retry')
+        raise
     except Exception as exc:
         emit('answer_failed', **failure_fields(exc))
         if isinstance(exc, (HTTPException, UnsupportedGraphVersion)):
@@ -201,6 +205,8 @@ async def _process_answer(sid, owner_id, question_id, content, filename, duratio
                       else text_answer if text_answer is not None else await speech.transcribe(content, filename, session.script['settings']['language']))
         if not transcript and not skip:
             raise HTTPException(422, 'Ucapan tidak terdeteksi. Rekam ulang jawaban.')
+        if not skip:
+            require_answer_language(session, question_id, transcript)
         if events:
             await events.put({'type': 'transcript', 'transcript': transcript})
         allow = current.kind == 'main' and sum(q.kind != 'main' for q in questions) < session.max_followups
@@ -323,7 +329,10 @@ async def answer(sid: str, request: Request, question_id: int = Form(...), audio
         raise HTTPException(422, 'Format audio tidak didukung.')
     args = (sid, session.user_id, question_id, content, f'answer.{extension}', duration_ms, retry_count, think_ms, timed_out)
     if not stream:
-        return await process_answer(*args, text_answer=text_answer, capture_token=capture_token, corrected_transcript=corrected_transcript)
+        try:
+            return await process_answer(*args, text_answer=text_answer, capture_token=capture_token, corrected_transcript=corrected_transcript)
+        except AnswerLanguageMismatch as exc:
+            return exc.payload
     async def generate():
         queue = asyncio.Queue()
         task = asyncio.create_task(process_answer(*args, events=queue, text_answer=text_answer, capture_token=capture_token, corrected_transcript=corrected_transcript))
@@ -337,6 +346,8 @@ async def answer(sid: str, request: Request, question_id: int = Form(...), audio
             while not queue.empty():
                 yield json.dumps(await queue.get(), ensure_ascii=False) + '\n'
             yield json.dumps({'type': 'result', **await task}, ensure_ascii=False) + '\n'
+        except AnswerLanguageMismatch as exc:
+            yield json.dumps({'type':'result', **exc.payload}, ensure_ascii=False) + '\n'
         except Exception as exc:
             yield json.dumps({'type': 'error', 'message': exc.detail if isinstance(exc, HTTPException) else 'Pemrosesan gagal. Coba kirim ulang.',
                               'request_id': request_var.get()}) + '\n'

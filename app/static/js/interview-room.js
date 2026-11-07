@@ -27,6 +27,7 @@
   const messages = new Map();
   const spoken = new Set();
   const resultFlows = new Map();
+  let languageRetrySequence = 0;
   const waits = new Map();
   const sentLatency = new Set();
 
@@ -1122,6 +1123,26 @@
   node('skip-question').addEventListener('click', () => recoverQuestion('next'));
   async function handleResult(result, questionId) {
     guard();
+    if (result.action === 'language_retry') {
+      if (current?.id !== questionId) return;
+      const token = lifecycle;
+      candidateMessage(questionId, result.transcript || '', 'Bahasa perlu disesuaikan');
+      recorded = null; pendingText = null; revokePreview(); cancelRealtime();
+      node('live-review').hidden = true; node('retry-upload').hidden = true;
+      showInterviewer(current.persona || current.interviewer || state.persona);
+      await utterance(`language-retry:${questionId}:${++languageRetrySequence}`, result.response_text, result.response_audio_url);
+      guard(token);
+      // No new question, follow-up, answer count or recording-retry penalty.
+      node('text-answer').value = '';
+      node('send').hidden = true; node('retry').hidden = true;
+      node('record-controls').hidden = false; node('record').hidden = false;
+      node('record').textContent = 'Mulai rekam suara'; node('record').disabled = !micOn();
+      node('answer-timer').textContent = formatTime(state.answer_seconds);
+      setPhase('answer-ready'); status('GILIRAN ANDA');
+      selectAnswerMode(answerWithText || !micOn() ? 'text' : 'voice');
+      renderAnswerMode();
+      return;
+    }
     latencyAnswer = result.answer_id ?? null;
     node('retry-upload').hidden = true;
     if (result.skipped) {

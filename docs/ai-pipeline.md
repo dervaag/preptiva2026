@@ -1,5 +1,7 @@
 # Pipeline AI
 
+Sebelum respons/follow-up, jawaban yang terdeteksi dominan memakai bahasa Indonesia/Inggris berbeda dari bahasa sesi dikembalikan sebagai `language_retry`. Pemeriksaan dilakukan sebelum jawaban penilaian diterima di legacy maupun graph. Pengingat meminta ulang dalam bahasa sesi tanpa memajukan pertanyaan, menambah follow-up atau menutup sesi; jawaban singkat/tidak pasti tidak ditolak otomatis. Lihat [kebijakan bahasa](languages-and-personas.md).
+
 Penutup sesi: tidak ada fase kandidat bertanya kepada panel. Blueprint baru memakai slot `reflection`, bukan `candidate_questions`; generator/adaptasi menolak ajakan agar kandidat mengajukan pertanyaan. Penutup baru memakai teks tetap Indonesia/Inggris yang menjelaskan sesi selesai dan hasil akan diproses. Payload penutup sesi lama dengan pertanyaan/ajakan Q&A diganti pada jalur state/akhir giliran dan endpoint suara, agar teks dan audio tidak bertentangan. Pertanyaan utama dan follow-up yang memang meminta jawaban kandidat tetap berjalan seperti biasa.
 
 Bahasa hasil: pertanyaan dan STT memakai `settings.language`, sedangkan alasan penilaian, feedback dan ringkasan memakai snapshot `settings.feedback_language` dari bahasa platform saat sesi dibuat (fallback sesi lama: bahasa wawancara). Jalur legacy dan LangGraph menggunakan kebijakan sama. Kutipan asli tidak diterjemahkan. Ringkasan menyatakan wawancara selesai, tidak meminta jawaban tambahan; keluaran feedback bertanda tanya diperbaiki sekali atau dinyatakan gagal agar dapat dicoba ulang. Lihat [hasil](results.md).

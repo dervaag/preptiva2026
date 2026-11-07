@@ -195,7 +195,16 @@ async def capture(socket: WebSocket, sid: str, qid: int):
 
 @router.get('/api/sessions/{sid}/speech/{kind}/{item_id}')
 async def stream_speech(kind: str, item_id: int, session=Depends(owned_session), db=Depends(get_db)):
-    if kind == 'question':
+    if kind == 'language':
+        from app.ai.answer_language import retry_message
+        questions, answers = await turns(db, session)
+        answered = {a.question_id for a in answers}
+        current = next((q for q in questions if q.id not in answered), None)
+        if session.status != 'running' or not current or current.id != item_id:
+            raise HTTPException(404, 'Pertanyaan tidak tersedia.')
+        text = retry_message(session.script['settings']['language'])
+        persona = guidebook.speaker(session, current.main_order)
+    elif kind == 'question':
         question = await db.scalar(select(InterviewQuestion).where(InterviewQuestion.id == item_id, InterviewQuestion.session_id == session.id))
         questions, answers = await turns(db, session)
         answered = {a.question_id for a in answers}

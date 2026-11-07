@@ -1,5 +1,6 @@
 """A durable answer graph. Browser interruptions remain explicit domain transitions."""
 from app.ai.closing import public_closing
+from app.ai.answer_language import require_answer_language
 import asyncio
 import hashlib
 import json
@@ -113,6 +114,8 @@ async def process(sid, owner_id, question_id, content=b'', filename='', duration
                 lambda: speech.transcribe(content, filename, language), paid=True)
         if not transcript.strip() and not skip:
             raise HTTPException(422, 'Ucapan tidak terdeteksi. Rekam ulang jawaban.')
+        if not skip:
+            require_answer_language(session, question_id, transcript)
         payload = {'transcript': transcript, 'duration_ms': duration, 'retry_count': retry_count,
             'think_ms': think_ms, 'timed_out': timed_out, 'skip': skip, 'interruption_id': interruption_id,
             'input_mode': 'skipped' if skip else 'realtime' if capture else 'text' if text_answer is not None else 'audio'}

@@ -8,17 +8,23 @@ Panduan runtime kini ada di [question-guidebook.md](question-guidebook.md) dan [
 
 ## Bahasa
 
-Form memiliki pilihan `id` (Bahasa Indonesia, default) atau `en` (English). Pilihan disimpan di `interview_sessions.script.settings.language`, bukan mengubah bahasa UI keseluruhan. UI masih berbahasa Indonesia. Sesi lama tanpa pilihan bahasa tetap Indonesia.
+Form memiliki pilihan `id` (Bahasa Indonesia, default) atau `en` (English). Pilihan disimpan di `interview_sessions.script.settings.language`, terpisah dari bahasa UI platform dan `feedback_language` hasil. UI platform mendukung Indonesia/Inggris. Sesi lama tanpa pilihan bahasa tetap Indonesia.
 
 | Sesi | Jawaban kandidat | Perilaku pewawancara |
 | --- | --- | --- |
-| Indonesia | Indonesia, English, atau campuran | Bertanya dan menanggapi dalam Indonesia; istilah asli boleh dipertahankan. |
-| English | English, Indonesia, atau campuran | Bertanya dan menanggapi dalam English; tidak otomatis mengganti bahasa sesi. |
+| Indonesia | Dominan Indonesia dengan istilah teknis English | Diterima; bertanya dan menanggapi dalam Indonesia. |
+| English | Dominan English | Diterima; bertanya dan menanggapi dalam English. |
+| Indonesia | Dominan English, terdeteksi dengan keyakinan tinggi | Meminta ulang jawaban dalam Indonesia pada pertanyaan yang sama. |
+| English | Dominan Indonesia, terdeteksi dengan keyakinan tinggi | Meminta ulang jawaban dalam English pada pertanyaan yang sama. |
 | Keduanya | Makna tidak jelas | Klarifikasi dalam bahasa sesi jika batas follow-up masih tersedia; jangan membuat pertanyaan tambahan ketika aksi next. |
 
 STT tetap memakai OpenAI `gpt-4o-transcribe`, mengirim rekaman sesudah Kirim. Parameter bahasa Indonesia yang sebelumnya dipaksakan dihilangkan agar STT mendeteksi bahasa audio. Prompt mengingatkan bahasa utama dan mempertahankan code-switching, nama, serta istilah tanpa menerjemahkan. Ini arahan model, bukan jaminan akurasi semua aksen/campuran. Rujukan API: https://developers.openai.com/api/docs/guides/speech-to-text
 
-Intro, pertanyaan, follow-up, penutup, frasa detail, dan review mengikuti bahasa sesi. Key JSON tetap konsisten. Evidence penilaian harus tetap mengutip bahasa asli transkrip; tidak diterjemahkan. Campuran bahasa tidak menjadi penalti kompetensi. Salah transkripsi tidak boleh dianggap bukti kelemahan kandidat. Bahasa sesi tidak berubah diam-diam di tengah sesi.
+Intro, pertanyaan, follow-up dan penutup mengikuti bahasa sesi. Review dan penjelasan hasil mengikuti `feedback_language` dari bahasa platform ketika sesi dibuat (fallback sesi lama: bahasa sesi). Key JSON tetap konsisten. Evidence penilaian harus tetap mengutip bahasa asli transkrip; tidak diterjemahkan. Campuran istilah tidak menjadi penalti kompetensi. Salah transkripsi tidak boleh dianggap bukti kelemahan kandidat. Bahasa sesi tidak berubah diam-diam di tengah sesi.
+
+Pemeriksaan bahasa lokal memakai `langdetect`, minimal tiga kata dan keyakinan >=0,90 untuk perbedaan Indonesia/Inggris. Jawaban terlalu pendek atau tidak pasti tidak ditolak otomatis; deteksi bukan bukti sempurna, khususnya pada teks campuran atau dominan istilah teknis. Hasil deteksi Malay diperlakukan sebagai Indonesia untuk menghindari penolakan Indonesia yang keliru. Tidak ada panggilan LLM berbayar tambahan untuk deteksi.
+
+Jika berbeda, API mengembalikan `action: language_retry` (JSON atau event result NDJSON) sebelum jawaban penilaian/GraphTurnInput diterima. UI menampilkan dan membacakan pengingat lewat persona aktif, lalu mengaktifkan kembali pertanyaan yang sama dengan timer penuh. Ini bukan follow-up, tidak menghabiskan kuota rekam ulang tambahan, tidak menambah skor, tidak memajukan giliran dan tidak memicu penutup. STT yang sudah dijalankan tetap dapat memakai kredit. Berlaku untuk legacy dan LangGraph, teks, audio unggahan dan transkrip realtime/koreksinya. Pertanyaan dilewati tidak diperiksa bahasanya.
 
 ## Fokus pewawancara
 

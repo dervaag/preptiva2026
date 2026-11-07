@@ -6,6 +6,12 @@
 - Mempertahankan kebijakan penutup standar tanpa ajakan Q&A; kegagalan CI berasal dari ekspektasi tes lama.
 - Verifikasi lokal: 211 tes Python dijalankan, 210 lulus dan 1 khusus PostgreSQL dilewati pada SQLite; sintaks JavaScript, helper UI dan 29 skenario controller lulus tanpa panggilan AI berbayar.
 
+## 2026-11-07 — Kandidat diminta mengulang ketika bahasa jawaban berbeda
+
+- Memeriksa dominasi Indonesia/Inggris secara lokal sebelum menerima jawaban pada jalur legacy/LangGraph; jawaban singkat/tidak pasti dan istilah teknis diperlakukan konservatif.
+- Mengembalikan `language_retry` untuk pertanyaan yang sama tanpa skor, giliran baru, kuota follow-up atau penutupan. Pengingat bilingual tampil di chat dan dapat dibacakan persona aktif; timer jawaban kembali penuh.
+- Menambahkan regresi dua arah bahasa, JSON/NDJSON, audio, koreksi pada pertanyaan sama dan controller UI yang tidak memanggil finish atau menambah retry.
+
 ## 2026-11-07 — Penutup tidak mengundang kandidat bertanya lalu menutup sesi
 
 - Mengganti slot baru `candidate_questions` menjadi `reflection` dan menolak ajakan Q&A di validasi pertanyaan/adaptasi. Tidak menambahkan fase kandidat bertanya kepada panel.

@@ -363,6 +363,24 @@ async function startText(f) {
   assert.equal(typed.nodes.get('chat-log').children.filter(child=>child.className==='chat-message chat-message--candidate').length,1);
   console.log('PASS desktop-only text startup and multipart text answers preserve chat idempotency');
 
+  const languageGate = fixture({result:{action:'language_retry',answer_id:null,question_id:1,
+    transcript:'Saya menjawab dalam bahasa yang salah.',response_text:'Please answer the same question in English.',
+    response_audio_url:'/language-reminder.mp3',is_last:true}});
+  await startText(languageGate);
+  const originalQuestion = languageGate.nodes.get('question-text').textContent;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    languageGate.nodes.get('text-answer').value='Saya menjawab dalam bahasa yang salah.';
+    languageGate.nodes.get('text-answer').dispatchEvent(new Event('input'));
+    languageGate.nodes.get('send-text').click(); await flush();
+    assert.equal(languageGate.nodes.get('question-text').textContent,originalQuestion);
+    assert.equal(languageGate.nodes.get('text-answer-area').hidden,false);
+    assert.equal(languageGate.nodes.get('retry-upload').hidden,true);
+    assert.equal(languageGate.calls.some(([url])=>url.endsWith('/finish')),false);
+    assert.equal(languageGate.calls.filter(([url])=>url.includes('/answers')).at(-1)[1].body.get('retry_count'),'0');
+  }
+  assert.equal(languageGate.plays.filter(url=>url==='/language-reminder.mp3').length,2);
+  console.log('PASS language correction speaks again, retains the question and never closes or consumes a retry');
+
   let permissionRequests = 0, denyMicrophone = true;
   const modes = fixture({getUserMedia:(stream,constraints) => {
     permissionRequests++; assert.equal(constraints.video,false,'text-to-voice only requests a microphone');
