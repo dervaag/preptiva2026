@@ -1,0 +1,54 @@
+{
+  "ok": true,
+  "persona": "hr",
+  "synthetic_data": true,
+  "stage": "selesai",
+  "models": {
+    "fast": "gpt-4o-mini",
+    "deep": "gpt-4o",
+    "stt": "gpt-4o-transcribe",
+    "tts": "eleven_multilingual_v2"
+  },
+  "voices": {
+    "hr": "dapat diakses",
+    "user": "dapat diakses",
+    "manager": "dapat diakses"
+  },
+  "limits": {
+    "answer_seconds": 120,
+    "retry_limit": 2,
+    "max_followups": 1
+  },
+  "prepared_audio_count": 5,
+  "turns": [
+    {
+      "main_order": 1,
+      "kind": "main",
+      "action": "next",
+      "transcript_words": 39,
+      "elapsed_seconds": 5.6
+    },
+    {
+      "main_order": 2,
+      "kind": "main",
+      "action": "next",
+      "transcript_words": 41,
+      "elapsed_seconds": 6.93
+    },
+    {
+      "main_order": 3,
+      "kind": "main",
+      "action": "next",
+      "transcript_words": 43,
+      "elapsed_seconds": 5.2
+    }
+  ],
+  "result": {
+    "status": "done",
+    "score": 3.64,
+    "items": 3,
+    "measured_competencies": 4,
+    "rubric_version": "2026-11-05.2"
+  },
+  "elapsed_seconds": 49.74
+}
