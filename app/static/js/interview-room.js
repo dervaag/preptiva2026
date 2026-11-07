@@ -1269,6 +1269,17 @@
     node('preflight').close(); node('open-preflight').hidden = true;
     status('SESI DITUTUP'); showError('room-error', cause);
   }
+  const retryPreparation = document.getElementById('retry-preparation');
+  retryPreparation?.addEventListener('click', async () => {
+    if (!available() || state?.status !== 'preparation_failed') return;
+    retryPreparation.disabled = true;
+    try {
+      await requestJSON(`${base}/retry-preparation`, {method: 'POST'});
+      if (!available()) return;
+      retryPreparation.hidden = true; clearError('room-error'); await poll();
+    } catch (cause) {if (available()) showError('room-error', cause);}
+    finally {retryPreparation.disabled = false;}
+  });
   async function poll() {
     if (!available() || active || pollController) return;
     const token = lifecycle;
@@ -1276,6 +1287,12 @@
     try {
       const fetched = await requestJSON(`${base}/state`, {signal: controller.signal}); guard(token);
       state = fetched;
+      if (retryPreparation) retryPreparation.hidden = state.status !== 'preparation_failed';
+      if (state.status === 'preparation_failed') {
+        ready = false; status('PERSIAPAN TERTUNDA');
+        showError('room-error', state.error || 'Persiapan belum selesai. Coba siapkan ulang.');
+        return;
+      }
       if (state.status === 'failed') {localMarker('removeItem'); terminal(state.error || 'Sesi telah ditutup. Buat latihan baru dari menu Simulasi baru.'); return;}
       if (['done', 'scoring', 'evaluation_failed'].includes(state.status)) {
         localMarker('removeItem'); closed = true; cleanup(); location.replace(`/sesi/${encodeURIComponent(sid)}/hasil`); return;

@@ -1,0 +1,467 @@
+{
+  "fixture_version": "orchestration-synthetic-v1",
+  "created_at": "2026-11-07T07:12:40.511087+00:00",
+  "fixture_sha256": "cba0266b9f6b460da7eb53193e0985bfd86e05d127da75e68c330e6737600fbc",
+  "source_sha256": "23f8d4348a055084589c48837f536d22162ffc7599340707b7e38382c2e475aa",
+  "source_files": {
+    "app/ai/model_router.py": "c970e3aa1c952b740f11a16b7f66953168383b609395f5c1c1e439ee4daa373e",
+    "app/api/sessions.py": "cf1efc466a56fa0f3077ec76c4e65a44209ad7d65833411cfc9639b14a07f524",
+    "app/graphs/__init__.py": "14964d0150d48acd73ad0be8cb962e4df8e7e5fd81bae9dd3ee923dde6aa70b7",
+    "app/graphs/checkpoint.py": "0f9d2ea549a61ece345ca756366ca02ea40092dea270a719e4db50e03b5f2b77",
+    "app/graphs/coordinator.py": "9fb9c67502619b2d10b0e1faab85114535840aa4d006af38c73cce5dc976422b",
+    "app/graphs/finalization.py": "c10dbe2028b9a39a36668e5e641f32f8e0307e97afa13e5d78b45e4f1796ee7c",
+    "app/graphs/manage.py": "fe587d56e9938fcea519429cf7ac167add4b46ced48a7e23f300343efeafd41b",
+    "app/graphs/models.py": "fcc94777f2b60206b1fac8366cad95f49f6c2bc0a8df7f79b72607b14a4a441c",
+    "app/graphs/panel_scoring.py": "835a20826706522b90be69263897df74fdbb6aab1f254ef75649d7302f4d715d",
+    "app/graphs/policy.py": "26e67a325030f4bdc455f76b9abd5f4bc5c770cb9eaeba7d4aa99476c2e081a0",
+    "app/graphs/preparation.py": "890d3c7d6e0e36cc4c637371a82ce319515386db52329f81d070bacf875b059a",
+    "app/graphs/runtime.py": "a0b6f7885aed348ec0115776864e258b14a9720a8ab08560d4e838741ccdbc60",
+    "app/graphs/turn.py": "5451f8f00751639797e480202590ac6008fdd8194759b0c760621759eb29401e",
+    "app/worker/tasks.py": "9fe04b676eb768d2a73e5ef26217caa0dd862c2daa70a8345d3fda3cf3b02f74",
+    "validation/orchestration_benchmark.py": "d3d0e2dbfd9128e974187da6790fe780278a6b5c7fd14b19559a64301f6fa4d2"
+  },
+  "python": "3.12.16",
+  "platform": "macOS-26.5.2-arm64-arm-64bit",
+  "repeats": 3,
+  "process_per_sample": true,
+  "cold_graph_initialization_included": true,
+  "synthetic": true,
+  "actual_provider_requests": 0,
+  "provider_tokens": null,
+  "monetary_cost": null,
+  "quality_or_validity_claim": false,
+  "measurement_scope": "Application/graph/database overhead with immediate synthetic providers and cold graph initialization. Process startup and imports before stages are excluded; lazy imports inside stages remain included. Logical steps are orchestrator invocations, not actual model requests. Provider/network latency, token use, prices and audio transport are unmeasured.",
+  "comparisons": [
+    {
+      "panel_size": 1,
+      "median_ms": {
+        "legacy": 29.188,
+        "langgraph": 485.154
+      },
+      "graph_minus_legacy_ms": 455.966,
+      "mean_ms": {
+        "legacy": 28.784,
+        "langgraph": 503.84
+      },
+      "logical_provider_steps_per_sample": {
+        "legacy": {
+          "document_extraction": 1,
+          "question_generation": 1,
+          "tts": 8,
+          "stt": 2,
+          "response": 3,
+          "adaptation": 2,
+          "evaluation": 3,
+          "summary": 1
+        },
+        "langgraph": {
+          "document_extraction": 1,
+          "question_generation": 1,
+          "tts": 8,
+          "stt": 2,
+          "response": 3,
+          "adaptation": 2,
+          "evaluation": 3,
+          "summary": 1
+        }
+      }
+    },
+    {
+      "panel_size": 3,
+      "median_ms": {
+        "legacy": 26.25,
+        "langgraph": 489.559
+      },
+      "graph_minus_legacy_ms": 463.309,
+      "mean_ms": {
+        "legacy": 26.45,
+        "langgraph": 486.153
+      },
+      "logical_provider_steps_per_sample": {
+        "legacy": {
+          "document_extraction": 1,
+          "question_generation": 1,
+          "tts": 8,
+          "stt": 2,
+          "response": 3,
+          "adaptation": 2,
+          "evaluation": 3,
+          "summary": 1
+        },
+        "langgraph": {
+          "document_extraction": 1,
+          "question_generation": 1,
+          "tts": 8,
+          "stt": 2,
+          "response": 3,
+          "adaptation": 2,
+          "evaluation": 8,
+          "summary": 1
+        }
+      }
+    }
+  ],
+  "samples": [
+    {
+      "engine": "legacy",
+      "panel_size": 1,
+      "ok": true,
+      "phases_ms": {
+        "prepare_ms": 7.227,
+        "answer_turns_ms": 15.223,
+        "finalize_ms": 6.737
+      },
+      "total_ms": 29.188,
+      "logical_provider_steps": {
+        "document_extraction": 1,
+        "question_generation": 1,
+        "tts": 8,
+        "stt": 2,
+        "response": 3,
+        "adaptation": 2,
+        "evaluation": 3,
+        "summary": 1
+      },
+      "graph_execution_count": 0,
+      "answer_count": 3,
+      "total_score": 4.0,
+      "aggregation_policy": "legacy-owner-per-question",
+      "provider_tokens": null,
+      "monetary_cost": null,
+      "actual_provider_requests": 0,
+      "real_audio_transport_measured": false,
+      "repetition": 1
+    },
+    {
+      "engine": "langgraph",
+      "panel_size": 1,
+      "ok": true,
+      "phases_ms": {
+        "prepare_ms": 341.261,
+        "answer_turns_ms": 183.306,
+        "finalize_ms": 58.631
+      },
+      "total_ms": 583.198,
+      "logical_provider_steps": {
+        "document_extraction": 1,
+        "question_generation": 1,
+        "tts": 8,
+        "stt": 2,
+        "response": 3,
+        "adaptation": 2,
+        "evaluation": 3,
+        "summary": 1
+      },
+      "graph_execution_count": 5,
+      "answer_count": 3,
+      "total_score": 4.0,
+      "aggregation_policy": "panel-evidence-equal-persona-v1",
+      "provider_tokens": null,
+      "monetary_cost": null,
+      "actual_provider_requests": 0,
+      "real_audio_transport_measured": false,
+      "repetition": 1
+    },
+    {
+      "engine": "legacy",
+      "panel_size": 3,
+      "ok": true,
+      "phases_ms": {
+        "prepare_ms": 5.947,
+        "answer_turns_ms": 13.861,
+        "finalize_ms": 6.131
+      },
+      "total_ms": 25.939,
+      "logical_provider_steps": {
+        "document_extraction": 1,
+        "question_generation": 1,
+        "tts": 8,
+        "stt": 2,
+        "response": 3,
+        "adaptation": 2,
+        "evaluation": 3,
+        "summary": 1
+      },
+      "graph_execution_count": 0,
+      "answer_count": 3,
+      "total_score": 4.0,
+      "aggregation_policy": "legacy-owner-per-question",
+      "provider_tokens": null,
+      "monetary_cost": null,
+      "actual_provider_requests": 0,
+      "real_audio_transport_measured": false,
+      "repetition": 1
+    },
+    {
+      "engine": "langgraph",
+      "panel_size": 3,
+      "ok": true,
+      "phases_ms": {
+        "prepare_ms": 234.852,
+        "answer_turns_ms": 192.639,
+        "finalize_ms": 84.779
+      },
+      "total_ms": 512.27,
+      "logical_provider_steps": {
+        "document_extraction": 1,
+        "question_generation": 1,
+        "tts": 8,
+        "stt": 2,
+        "response": 3,
+        "adaptation": 2,
+        "evaluation": 8,
+        "summary": 1
+      },
+      "graph_execution_count": 5,
+      "answer_count": 3,
+      "total_score": 4.0,
+      "aggregation_policy": "panel-evidence-equal-persona-v1",
+      "provider_tokens": null,
+      "monetary_cost": null,
+      "actual_provider_requests": 0,
+      "real_audio_transport_measured": false,
+      "repetition": 1
+    },
+    {
+      "engine": "langgraph",
+      "panel_size": 1,
+      "ok": true,
+      "phases_ms": {
+        "prepare_ms": 238.16,
+        "answer_turns_ms": 189.014,
+        "finalize_ms": 57.98
+      },
+      "total_ms": 485.154,
+      "logical_provider_steps": {
+        "document_extraction": 1,
+        "question_generation": 1,
+        "tts": 8,
+        "stt": 2,
+        "response": 3,
+        "adaptation": 2,
+        "evaluation": 3,
+        "summary": 1
+      },
+      "graph_execution_count": 5,
+      "answer_count": 3,
+      "total_score": 4.0,
+      "aggregation_policy": "panel-evidence-equal-persona-v1",
+      "provider_tokens": null,
+      "monetary_cost": null,
+      "actual_provider_requests": 0,
+      "real_audio_transport_measured": false,
+      "repetition": 2
+    },
+    {
+      "engine": "legacy",
+      "panel_size": 1,
+      "ok": true,
+      "phases_ms": {
+        "prepare_ms": 8.97,
+        "answer_turns_ms": 16.09,
+        "finalize_ms": 6.95
+      },
+      "total_ms": 32.01,
+      "logical_provider_steps": {
+        "document_extraction": 1,
+        "question_generation": 1,
+        "tts": 8,
+        "stt": 2,
+        "response": 3,
+        "adaptation": 2,
+        "evaluation": 3,
+        "summary": 1
+      },
+      "graph_execution_count": 0,
+      "answer_count": 3,
+      "total_score": 4.0,
+      "aggregation_policy": "legacy-owner-per-question",
+      "provider_tokens": null,
+      "monetary_cost": null,
+      "actual_provider_requests": 0,
+      "real_audio_transport_measured": false,
+      "repetition": 2
+    },
+    {
+      "engine": "langgraph",
+      "panel_size": 3,
+      "ok": true,
+      "phases_ms": {
+        "prepare_ms": 230.025,
+        "answer_turns_ms": 174.766,
+        "finalize_ms": 84.768
+      },
+      "total_ms": 489.559,
+      "logical_provider_steps": {
+        "document_extraction": 1,
+        "question_generation": 1,
+        "tts": 8,
+        "stt": 2,
+        "response": 3,
+        "adaptation": 2,
+        "evaluation": 8,
+        "summary": 1
+      },
+      "graph_execution_count": 5,
+      "answer_count": 3,
+      "total_score": 4.0,
+      "aggregation_policy": "panel-evidence-equal-persona-v1",
+      "provider_tokens": null,
+      "monetary_cost": null,
+      "actual_provider_requests": 0,
+      "real_audio_transport_measured": false,
+      "repetition": 2
+    },
+    {
+      "engine": "legacy",
+      "panel_size": 3,
+      "ok": true,
+      "phases_ms": {
+        "prepare_ms": 6.441,
+        "answer_turns_ms": 14.394,
+        "finalize_ms": 6.327
+      },
+      "total_ms": 27.162,
+      "logical_provider_steps": {
+        "document_extraction": 1,
+        "question_generation": 1,
+        "tts": 8,
+        "stt": 2,
+        "response": 3,
+        "adaptation": 2,
+        "evaluation": 3,
+        "summary": 1
+      },
+      "graph_execution_count": 0,
+      "answer_count": 3,
+      "total_score": 4.0,
+      "aggregation_policy": "legacy-owner-per-question",
+      "provider_tokens": null,
+      "monetary_cost": null,
+      "actual_provider_requests": 0,
+      "real_audio_transport_measured": false,
+      "repetition": 2
+    },
+    {
+      "engine": "legacy",
+      "panel_size": 1,
+      "ok": true,
+      "phases_ms": {
+        "prepare_ms": 5.822,
+        "answer_turns_ms": 13.211,
+        "finalize_ms": 6.12
+      },
+      "total_ms": 25.154,
+      "logical_provider_steps": {
+        "document_extraction": 1,
+        "question_generation": 1,
+        "tts": 8,
+        "stt": 2,
+        "response": 3,
+        "adaptation": 2,
+        "evaluation": 3,
+        "summary": 1
+      },
+      "graph_execution_count": 0,
+      "answer_count": 3,
+      "total_score": 4.0,
+      "aggregation_policy": "legacy-owner-per-question",
+      "provider_tokens": null,
+      "monetary_cost": null,
+      "actual_provider_requests": 0,
+      "real_audio_transport_measured": false,
+      "repetition": 3
+    },
+    {
+      "engine": "langgraph",
+      "panel_size": 1,
+      "ok": true,
+      "phases_ms": {
+        "prepare_ms": 208.813,
+        "answer_turns_ms": 166.339,
+        "finalize_ms": 68.017
+      },
+      "total_ms": 443.169,
+      "logical_provider_steps": {
+        "document_extraction": 1,
+        "question_generation": 1,
+        "tts": 8,
+        "stt": 2,
+        "response": 3,
+        "adaptation": 2,
+        "evaluation": 3,
+        "summary": 1
+      },
+      "graph_execution_count": 5,
+      "answer_count": 3,
+      "total_score": 4.0,
+      "aggregation_policy": "panel-evidence-equal-persona-v1",
+      "provider_tokens": null,
+      "monetary_cost": null,
+      "actual_provider_requests": 0,
+      "real_audio_transport_measured": false,
+      "repetition": 3
+    },
+    {
+      "engine": "legacy",
+      "panel_size": 3,
+      "ok": true,
+      "phases_ms": {
+        "prepare_ms": 6.036,
+        "answer_turns_ms": 14.004,
+        "finalize_ms": 6.209
+      },
+      "total_ms": 26.25,
+      "logical_provider_steps": {
+        "document_extraction": 1,
+        "question_generation": 1,
+        "tts": 8,
+        "stt": 2,
+        "response": 3,
+        "adaptation": 2,
+        "evaluation": 3,
+        "summary": 1
+      },
+      "graph_execution_count": 0,
+      "answer_count": 3,
+      "total_score": 4.0,
+      "aggregation_policy": "legacy-owner-per-question",
+      "provider_tokens": null,
+      "monetary_cost": null,
+      "actual_provider_requests": 0,
+      "real_audio_transport_measured": false,
+      "repetition": 3
+    },
+    {
+      "engine": "langgraph",
+      "panel_size": 3,
+      "ok": true,
+      "phases_ms": {
+        "prepare_ms": 210.306,
+        "answer_turns_ms": 168.461,
+        "finalize_ms": 77.863
+      },
+      "total_ms": 456.63,
+      "logical_provider_steps": {
+        "document_extraction": 1,
+        "question_generation": 1,
+        "tts": 8,
+        "stt": 2,
+        "response": 3,
+        "adaptation": 2,
+        "evaluation": 8,
+        "summary": 1
+      },
+      "graph_execution_count": 5,
+      "answer_count": 3,
+      "total_score": 4.0,
+      "aggregation_policy": "panel-evidence-equal-persona-v1",
+      "provider_tokens": null,
+      "monetary_cost": null,
+      "actual_provider_requests": 0,
+      "real_audio_transport_measured": false,
+      "repetition": 3
+    }
+  ],
+  "report_detail": "Compact baseline; per-operation details are emitted by rerunning the benchmark CLI."
+}

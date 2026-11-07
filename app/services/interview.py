@@ -38,6 +38,8 @@ async def state(db, session):
 
 
 def session_item(s):
+    from app.graphs.policy import aggregation_version
     return {'id': s.uuid, 'job_role': s.job_role, 'level': s.level, 'interviewer': s.interviewer, 'panel': panel_roles(s), 'company': s.company,
             'status': s.status, 'question_count': s.question_count, 'total_score': s.total_score, 'label': label(s.total_score),
+            'aggregation_policy_version': aggregation_version(s),
             'created_at': s.created_at.isoformat() + 'Z', 'finished_at': s.finished_at.isoformat() + 'Z' if s.finished_at else None}

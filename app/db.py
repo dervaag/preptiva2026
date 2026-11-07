@@ -13,6 +13,7 @@ if settings.db_url.startswith('sqlite'):
 
 async def init_db():
     from app.models import Base
+    from app.graphs import models as graph_models  # Register additive persistence tables.
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
 

@@ -1,6 +1,8 @@
 'use strict';
 (() => {
   const dictionary = {
+    'Coba siapkan ulang':'Retry preparation', 'PERSIAPAN TERTUNDA':'PREPARATION PENDING',
+    'Persiapan tertunda':'Preparation pending', 'Persiapan belum selesai. Coba siapkan ulang.':'Preparation is incomplete. Try again.',
     'Cara menjawab':'Answer mode', 'Rekam suara · gunakan kamera dan mikrofon':'Record audio · use camera and microphone',
     'Teks · tanpa kamera/mikrofon':'Text · without camera/microphone', 'Gunakan mikrofon':'Use microphone',
     'Mulai rekam suara':'Start recording', 'Mode jawaban: Teks':'Answer mode: Text', 'Mode jawaban: Rekam suara':'Answer mode: Audio',

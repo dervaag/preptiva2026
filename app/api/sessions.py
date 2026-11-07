@@ -26,6 +26,7 @@ from app.services.locks import local_lock
 from app.ai.errors import ProviderError
 from app.services.events import record, checkpoint
 from app.services.voice_capture import verify as verify_capture
+from app.graphs.policy import enabled as graph_enabled, snapshot as orchestration_snapshot, aggregation_version
 
 router = APIRouter()
 
@@ -75,7 +76,8 @@ async def create_session(candidate_name: str = Form(..., min_length=2, max_lengt
                             'interruption_policy': 'retry_or_skip', 'evidence_policy': memory.VERSION},
                 'guidebook': guidebook.snapshot(), 'assessment': assessment,
                 'runtime': {'orchestration_version': memory.VERSION, 'model_fast': settings.model_fast,
-                            'model_deep': settings.model_deep, 'stt_model': settings.stt_model}})
+                            'model_deep': settings.model_deep, 'stt_model': settings.stt_model,
+                            **orchestration_snapshot(settings.orchestration_engine)}})
     db.add(session)
     user.last_cv_text = cv
     await db.flush()
@@ -121,6 +123,22 @@ async def start(request: Request, session=Depends(owned_session), db=Depends(get
 
 
 async def process_answer(sid, *args, **kwargs):
+    async with SessionLocal() as db:
+        session = await db.scalar(select(InterviewSession).where(InterviewSession.uuid == sid))
+        use_graph = session is not None and graph_enabled(session)
+    if use_graph:
+        from app.graphs.turn import process
+        from app.graphs.runtime import GraphOperationUncertain, GraphBusy
+        try:
+            return await process(sid, *args, **kwargs)
+        except GraphOperationUncertain as exc:
+            raise HTTPException(409, 'Status pemrosesan sebelumnya belum dapat dipastikan. Jawaban tetap tersimpan; hubungi pengelola untuk melanjutkan.') from exc
+        except GraphBusy as exc:
+            raise HTTPException(409, 'Jawaban masih diproses. Tunggu sebentar, lalu kirim ulang jawaban yang sama.') from exc
+        except asyncio.TimeoutError as exc:
+            raise HTTPException(504, 'Waktu tunggu AI habis. Kirim ulang jawaban yang sama; bagian yang sudah tersimpan akan digunakan kembali.') from exc
+        except ProviderError as exc:
+            raise HTTPException(502, str(exc)) from exc
     async with local_lock(('answer', sid)):
         try:
             return await _process_answer(sid, *args, **kwargs)
@@ -331,6 +349,10 @@ async def interrupt(sid: str, data: Interruption, session=Depends(owned_session)
             session.script = {**session.script, 'voice_lease': {}}
             checkpoint(session, 'interrupted', current, remaining_seconds=0,
                        active_panelist=guidebook.speaker(session, current.main_order), interruption_id=event_id)
+            if graph_enabled(session):
+                from app.models import GraphTurnInput
+                await db.execute(update(GraphTurnInput).where(GraphTurnInput.session_id == session.id,
+                    GraphTurnInput.question_id == current.id, GraphTurnInput.status == 'pending').values(status='superseded'))
             await record(db, session, f'interrupt:{event_id}', 'question_interrupted',
                          {'question_id': current.id, 'reason': data.reason})
             await db.commit()
@@ -390,13 +412,42 @@ async def finish(session=Depends(owned_session), db=Depends(get_db)):
     return {'status': 'scoring'}
 
 
+@router.post('/api/sessions/{sid}/retry-preparation')
+async def retry_preparation(session=Depends(owned_session), db=Depends(get_db)):
+    if not graph_enabled(session) or session.status not in ('preparation_failed', 'preparing'):
+        raise HTTPException(409, 'Persiapan sesi tidak dapat diulang.')
+    if session.status == 'preparing':
+        return {'status': session.status}
+    changed = await db.execute(update(InterviewSession).where(InterviewSession.id == session.id,
+        InterviewSession.status == 'preparation_failed').values(status='preparing', error_message=None))
+    await db.commit()
+    if changed.rowcount:
+        try:
+            await enqueue('prepare_session', session.id)
+        except Exception:
+            await db.execute(update(InterviewSession).where(InterviewSession.id == session.id,
+                InterviewSession.status == 'preparing').values(status='preparation_failed', error_message='Antrean belum tersedia. Coba siapkan ulang.'))
+            await db.commit()
+            raise HTTPException(503, 'Antrean belum tersedia.')
+    return {'status': 'preparing'}
+
+
 @router.post('/api/sessions/{sid}/close')
 async def close(session=Depends(owned_session), db=Depends(get_db)):
-    changed = await db.execute(update(InterviewSession).where(InterviewSession.id == session.id,
-        InterviewSession.status.in_(['ready', 'running'])).values(status='failed', error_message='Sesi diakhiri oleh pengguna.', finished_at=now()))
-    if changed.rowcount:
-        await record(db, session, 'cancelled', 'session_cancelled')
-    await db.commit()
+    async def commit_close():
+        changed = await db.execute(update(InterviewSession).where(InterviewSession.id == session.id,
+            InterviewSession.status.in_(['preparing', 'preparation_failed', 'ready', 'running'])).values(
+                status='failed', error_message='Sesi diakhiri oleh pengguna.', finished_at=now()))
+        if changed.rowcount:
+            await record(db, session, 'cancelled', 'session_cancelled')
+        await db.commit()
+    if graph_enabled(session):
+        async with local_lock(('answer', session.uuid)):
+            await commit_close()
+    else:
+        # Legacy holds its answer lock during provider work; close must be able
+        # to mark the session before the provider returns and refreshes it.
+        await commit_close()
     return {'ok': True}
 
 
@@ -406,6 +457,10 @@ async def result(session=Depends(owned_session), db=Depends(get_db)):
         raise HTTPException(409, 'Hasil belum tersedia.')
     questions, answers = await turns(db, session)
     _, competencies = aggregate([a.competency_scores for a in answers], session.script['assessment']['weights'], session.script['assessment'])
+    from app.graphs.panel_scoring import result_data
+    graph_result = result_data(session) if graph_enabled(session) else None
+    if graph_result:
+        competencies = graph_result['competencies']
     candidates = (await db.scalars(select(InterviewSession).where(InterviewSession.user_id == session.user_id,
         InterviewSession.job_role == session.job_role, InterviewSession.status == 'done',
         InterviewSession.finished_at < session.finished_at).order_by(InterviewSession.finished_at.desc()).limit(20))).all()
@@ -413,6 +468,7 @@ async def result(session=Depends(owned_session), db=Depends(get_db)):
         sorted(guidebook.panel_roles(s)) == sorted(guidebook.panel_roles(session)) and
         s.script.get('guidebook', {}).get('sha256') == session.script.get('guidebook', {}).get('sha256') and
         s.script.get('settings', {}).get('evidence_policy') == session.script.get('settings', {}).get('evidence_policy') and
+        aggregation_version(s) == aggregation_version(session) and
         s.script.get('assessment', {}).get('sha256') == session.script['assessment'].get('sha256')), None)
     previous_score = previous.total_score if previous else None
     by_id = {a.question_id: a for a in answers}
@@ -424,8 +480,11 @@ async def result(session=Depends(owned_session), db=Depends(get_db)):
                   and guidebook.speaker(session, q.main_order) == persona]
         score, measured = aggregate(scores, weights, session.script['assessment'])
         panel_results.append({'interviewer': persona, 'total_score': score, 'competencies': measured})
+    if graph_result:
+        panel_results = graph_result['panel_results']
     return {'session_id': session.uuid, 'status': 'done', 'job_role': session.job_role, 'level': session.level,
         'panel_results': panel_results,
+        'aggregation_policy': session.script.get('runtime', {}).get('aggregation_policy'),
         'coverage': coverage(competencies) if session.script.get('settings', {}).get('evidence_policy') else None,
         'total_score': session.total_score, 'label': label(session.total_score), 'previous_score': previous_score,
         'delta': round(session.total_score - previous_score, 2) if previous_score is not None and session.total_score is not None else None,

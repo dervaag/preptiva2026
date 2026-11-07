@@ -1,5 +1,14 @@
 # Log perubahan
 
+## 2026-11-07 — Orkestrasi LangGraph dengan versi per sesi
+
+- Menambahkan graph persiapan, satu giliran dan finalisasi, memakai fungsi/provider yang sudah ada. `ORCHESTRATION_ENGINE` default `legacy`; sesi baru dapat memilih `langgraph`, sedangkan sesi lama mempertahankan engine. Versi graph yang tidak didukung ditolak tanpa fallback diam-diam.
+- Checkpoint SQLAlchemy menyimpan referensi; ledger menyimpan hasil operasi, durasi, retry, model dan usage. Lease lintas proses serta pemeriksaan input mencegah jawaban ganda. Transkrip diterima disimpan sebelum respons AI; worker memulihkan pekerjaan yang ditinggalkan dan merekonsiliasi commit aplikasi yang mendahului checkpoint.
+- Koordinator mengutamakan cakupan/topik yang belum ditanyakan tanpa mengubah batas pertanyaan atau alokasi panel. Follow-up tetap milik persona utama. Handoff menyertakan sumber asli; Retry/Next, perangkat dan rekaman tetap dikendalikan browser.
+- Menambahkan penilaian awal independen per persona, tinjauan perbedaan yang tidak menimpa skor awal, serta agregasi `panel-evidence-equal-persona-v1`. Hasil dan tren dipisahkan menurut kebijakan penilaian. Rubrik tetap `validated: false`.
+- Operasi provider yang hasilnya ambigu memerlukan retry eksplisit. CLI inspeksi/pemulihan tidak mencetak dokumen atau kredensial; kasus STT sebelum transkrip tersimpan dapat diberi izin satu kali untuk kirim ulang audio yang sama.
+- Verifikasi: 124 tes Python lulus; 11 tes runtime juga lulus pada PostgreSQL terisolasi, termasuk proses mati/restart dan konkurensi. 29 skenario controller dan Chrome sintetis panel, audio–teks–audio, realtime/VAD, interupsi/Retry/Next hingga hasil lulus. Benchmark 12 sampel membandingkan overhead sintetis; token, biaya provider dan kualitas nyata belum diukur. Panduan: [orkestrasi LangGraph](langgraph-orchestration.md).
+
 ## 2026-11-07 — Penggabungan frontend `codex/enhance-fe` ke `main`
 
 - Menggabungkan desain login, dashboard, form, ruang wawancara, hasil dan riwayat; menambahkan profil/CV serta pilihan bahasa antarmuka Indonesia–Inggris. Bahasa antarmuka terpisah dari bahasa wawancara.

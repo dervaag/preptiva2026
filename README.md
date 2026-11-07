@@ -6,10 +6,10 @@ Interviews now support CV-grounded questions, academic/project experience for fr
 
 ## Run locally
 
-Python 3.12 recommended (the application is also tested with the available Python 3.9 runtime).
+Use Python 3.12, matching Docker and CI. LangGraph requires Python 3.10 or newer; an old Python 3.9 virtualenv must be recreated with Python 3.12 before installing these dependencies.
 
 ```sh
-python3 -m venv .venv
+python3.12 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 cp .env.example .env
 .venv/bin/python -m app.scripts.seed
@@ -18,7 +18,9 @@ cp .env.example .env
 
 Visit http://localhost:8000. Demo login: `demo@interview.local` / `demo1234`. `/dev-login` is only available in development after seeding. Account registration, dashboard and history work without AI credentials. To create a real interview, set `OPENAI_API_KEY`, `ELEVENLABS_API_KEY` and the chosen persona's `ELEVENLABS_VOICE_*` ID in `.env`. The application never substitutes dummy interviews or browser speech.
 
-The browser uses a local camera preview and uploads audio answers only. Candidate CV/JD and transcripts are sent to AI providers. Answer audio is held in request memory rather than persisted; transcripts, generated interviewer audio and evaluations remain on the server. Leaving a running room closes the session. Use localhost or HTTPS for camera/microphone access.
+The browser uses a local camera preview and supports audio or text answers. Candidate CV/JD and transcripts are sent to AI providers. Answer audio is held in request memory rather than persisted; transcripts, generated interviewer audio and evaluations remain on the server. Tab/offline/device interruption stops the active question and offers Retry/Next; explicit exit closes the session. Use localhost or HTTPS for camera/microphone access.
+
+Optional LangGraph orchestration covers preparation, each interview turn, and finalization. Set `ORCHESTRATION_ENGINE=langgraph` for new sessions; the default remains `legacy`, and existing sessions retain their engine. See [graph operations and rollout](docs/langgraph-orchestration.md) for persistent checkpoints, versioned panel scoring, recovery and synthetic baseline measurements.
 
 ## Checks
 
@@ -30,7 +32,7 @@ node --check app/static/js/interview-room.js
 
 Tests use a temporary database and injected provider responses. They never call paid providers. Live voice quality and physical camera/speaker behavior require a configured manual session.
 
-Optional Chrome smoke test: install `playwright` in the virtualenv and run `.venv/bin/python tests/browser_smoke.py` with Google Chrome installed. It verifies a complete interview with synthetic devices and test-only provider responses, and writes screenshots under `artifacts/`.
+Optional Chrome smoke test: install `playwright` in the virtualenv and run `.venv/bin/python tests/browser_smoke.py` with Google Chrome installed. For the graph backend run `tests/graph_browser_smoke.py panel`, `voice` or `realtime`. These use temporary data and synthetic providers; set `PREPTIVA_BROWSER_ARTIFACTS=/tmp/preptiva-smoke` to retain reports/screenshots.
 
 An explicit live-provider check is also available: `.venv/bin/python tests/live_smoke.py --run-paid`. It consumes real API credits, uses synthetic documents/answers with an isolated temporary database, and saves a diagnostic summary to `artifacts/live-smoke.json`. It checks configured voice access, question preparation, ElevenLabs speech, OpenAI transcription, streamed responses and scoring. Restart the app after changing `.env`; see [active environment settings](docs/env.md#status-implementasi-7-november-2026).
 

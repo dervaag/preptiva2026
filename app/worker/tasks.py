@@ -12,6 +12,7 @@ from app.services.locks import local_lock
 from app.log import emit, session_var
 from app.ai.errors import ProviderError
 from app.config import settings
+from app.graphs.policy import enabled as graph_enabled
 
 
 async def fail(sid, stage, reason=None):
@@ -25,6 +26,16 @@ async def fail(sid, stage, reason=None):
 
 
 async def prepare_session(ctx, sid):
+    async with SessionLocal() as db:
+        session = await db.get(InterviewSession, sid)
+        use_graph = session is not None and graph_enabled(session)
+    if use_graph:
+        from app.graphs.preparation import prepare
+        return await _graph_job(sid, 'prepare', prepare)
+    return await _prepare_legacy(ctx, sid)
+
+
+async def _prepare_legacy(ctx, sid):
     token = session_var.set(sid)
     try:
         async with SessionLocal() as db:
@@ -90,8 +101,96 @@ async def prepare_session(ctx, sid):
 
 
 async def finalize_session(ctx, sid):
+    async with SessionLocal() as db:
+        session = await db.get(InterviewSession, sid)
+        use_graph = session is not None and graph_enabled(session)
+    if use_graph:
+        from app.graphs.finalization import finalize
+        return await _graph_job(sid, 'finalize', finalize)
     async with local_lock(('evaluation', sid)):
         await _finalize_session(ctx, sid)
+
+
+async def _graph_job(sid, kind, callback):
+    token = session_var.set(sid)
+    try:
+        return await callback(sid)
+    except Exception as exc:
+        from app.graphs.runtime import GraphBusy, GraphOperationUncertain
+        if isinstance(exc, GraphBusy):
+            return  # Another worker owns this exact graph; do not fail its session.
+        emit('job_failed', job='graph_' + kind, error_type=type(exc).__name__)
+        async with SessionLocal() as db:
+            session = await db.scalar(select(InterviewSession).where(InterviewSession.id == sid).with_for_update())
+            expected = 'preparing' if kind == 'prepare' else 'scoring'
+            if session and session.status == expected:
+                session.status = 'preparation_failed' if kind == 'prepare' else 'evaluation_failed'
+                session.error_message = ('Persiapan belum selesai. Data tersimpan; coba siapkan ulang.' if kind == 'prepare'
+                    else 'Penilaian belum selesai. Jawaban tersimpan; coba nilai ulang.')
+                if isinstance(exc, GraphOperationUncertain):
+                    session.error_message = 'Status pemrosesan sebelumnya belum dapat dipastikan. Data tersimpan; hubungi pengelola untuk melanjutkan.'
+                await record(db, session, f'graph_error:{kind}:{now().timestamp()}', 'graph_failed', {'kind': kind, 'error_type': type(exc).__name__})
+                await db.commit()
+    finally:
+        session_var.reset(token)
+
+
+async def resume_graph_turn(ctx, input_id):
+    from app.graphs.turn import resume
+    from app.graphs.runtime import GraphBusy
+    try:
+        return await resume(input_id)
+    except GraphBusy:
+        return
+    except Exception as exc:
+        emit('graph_recovery_failed', input_id=input_id, error_type=type(exc).__name__)
+
+
+async def recover_graph_jobs(ctx):
+    """Requeue abandoned work after a worker restart; never restart media capture."""
+    from app.graphs.models import GraphExecution
+    from app.models import GraphTurnInput
+    from app.graphs.turn import thread_key
+    from app.graphs.policy import UnsupportedGraphVersion
+    async with SessionLocal() as db:
+        sessions = list((await db.scalars(select(InterviewSession).where(
+            InterviewSession.status.in_(['preparing', 'ready', 'scoring', 'running', 'done'])))).all())
+        planned = set()
+        for session in sessions:
+            try:
+                supported = graph_enabled(session)
+            except UnsupportedGraphVersion:
+                continue
+            if not supported:
+                continue
+            executions = list((await db.scalars(select(GraphExecution).where(GraphExecution.session_id == session.id))).all())
+            active = any(r.lease_until and r.lease_until > now() for r in executions)
+            if active:
+                continue
+            if session.status in ('preparing', 'scoring'):
+                planned.add(('prepare_session' if session.status == 'preparing' else 'finalize_session', session.id))
+            for run in executions:
+                if run.status == 'succeeded':
+                    continue
+                if run.kind == 'prepare' and session.status in ('ready', 'running', 'scoring', 'done'):
+                    planned.add(('prepare_session', session.id))
+                elif run.kind == 'finalize' and session.status == 'done':
+                    planned.add(('finalize_session', session.id))
+            inputs = list((await db.scalars(select(GraphTurnInput).where(GraphTurnInput.session_id == session.id,
+                GraphTurnInput.status.in_(['pending', 'completed'])))).all())
+            for item in inputs:
+                key = thread_key(session.id, item.question_id, item.attempt, item.input_hash)
+                run = next((r for r in executions if r.thread_id == key), None)
+                if not run or run.status == 'succeeded':
+                    continue
+                can_resume = session.status == 'running' and session.script.get('checkpoint', {}).get('phase') != 'interrupted'
+                if item.status == 'completed' or (can_resume and (run.status in ('running', 'pending') or run.error_type == 'CancelledError')):
+                    planned.add(('resume_graph_turn', item.id))
+    for name, identifier in sorted(planned):
+        if ctx.get('redis'):
+            await ctx['redis'].enqueue_job(name, identifier)
+        else:
+            await globals()[name](ctx, identifier)
 
 
 async def _finalize_session(ctx, sid):
