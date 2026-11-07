@@ -82,6 +82,17 @@ Setelah mengubah kode atau `.env`, jalankan `up` lagi agar image/container diper
 
 ## Operasional
 
+### Engine LangGraph dan inspeksi sesi
+
+Instalasi Kiri memakai `ORCHESTRATION_ENGINE=langgraph` untuk sesi baru setelah rollout aktivasi. Pilihan tersimpan pada snapshot sesi; sesi lama mengikuti engine sebelumnya. Web dan worker harus membaca flag yang sama dari environment deployment shared, lalu diterapkan ulang melalui deployment normal.
+
+```sh
+docker --context kiri exec preptiva-web-1 python -m app.graphs.manage list --limit 10
+docker --context kiri exec preptiva-web-1 python -m app.graphs.manage inspect --session UUID_SESI
+```
+
+`UUID_SESI` diganti UUID dari `list` atau URL sesi. Daftar dapat kosong sebelum wawancara graph baru dibuat. CLI hanya mencetak metadata; menjalankan `inspect` tidak memanggil provider. Server Studio berada di localhost Mac, terpisah dari endpoint publik Kiri. Lihat [panduan Studio dan demo](langgraph-orchestration.md#studio-lokal-dan-sesi-demonstrasi).
+
 ### Menyiapkan akun melalui seeder
 
 Jalankan manual dari terminal interaktif; password diminta dua kali dengan input tersembunyi:

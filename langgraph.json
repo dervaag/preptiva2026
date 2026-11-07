@@ -1,0 +1,10 @@
+{
+  "python_version": "3.12",
+  "dependencies": ["."],
+  "graphs": {
+    "preptiva_prepare_inspector": "./app/graphs/studio.py:preparation_inspector",
+    "preptiva_turn_inspector": "./app/graphs/studio.py:turn_inspector",
+    "preptiva_finalize_inspector": "./app/graphs/studio.py:finalization_inspector"
+  },
+  "env": ".env.studio"
+}

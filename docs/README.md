@@ -16,6 +16,7 @@ Implementasi pertama tersedia sejak 7 November 2026. Mulai dari [README aplikasi
 | [database.md](database.md) | Skema database dan model data |
 | [development.md](development.md) | Panduan pengembangan lokal dan tips dev |
 | [security-and-privacy.md](security-and-privacy.md) | Pembatasan login, satu sesi aktif, penghapusan, tanda terima dan retensi |
+| [langgraph-orchestration.md](langgraph-orchestration.md) | Aktivasi graph, CLI inspeksi, demo sintetis dan Studio lokal |
 
 ## Quick Start
 

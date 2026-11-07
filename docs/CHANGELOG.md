@@ -1,5 +1,12 @@
 # Log perubahan
 
+## 2026-11-07 — Persiapan Studio dan aktivasi LangGraph
+
+- Menambahkan konfigurasi Agent Server dan tiga inspector metadata untuk Studio. Inspector menampilkan status/durasi/percobaan node yang sudah tercatat, memeriksa hash rencana dan tidak menjalankan provider atau memulihkan checkpoint aplikasi.
+- Menambahkan demo terisolasi yang menjalankan graph persiapan, tiga jawaban dan finalisasi dengan provider sintetis, serta launcher loopback dengan tracing cloud dimatikan. Tooling Studio terpisah dalam virtualenv Python 3.12 dan requirements opsional.
+- CLI operator mendukung daftar UUID graph dan tetap mencetak metadata saja. Test fixtures tidak bergantung pada pilihan engine di `.env` pengguna.
+- Menyiapkan aktivasi `ORCHESTRATION_ENGINE=langgraph` untuk sesi baru. Sesi lama menggunakan engine yang tersimpan pada snapshotnya. Akun/API key LangSmith belum tersedia; server/API lokal tetap dapat diuji sementara login UI menunggu akun tersebut.
+
 ## 2026-11-07 — Penggabungan `FE-TERBARU` ke `main`
 
 - Menggabungkan pembaruan frontend sampai `5883a73`: branding/avatar, dashboard, profil, hasil, pemeriksaan perangkat dan notifikasi ruang wawancara.

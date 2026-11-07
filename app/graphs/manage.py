@@ -4,10 +4,23 @@ import asyncio
 import json
 from collections import Counter
 from sqlalchemy import select
-from app.db import SessionLocal, init_db
+from app.db import SessionLocal, engine
 from app.models import InterviewSession, GraphTurnInput
 from app.graphs.models import GraphExecution, GraphOperation
 from app.graphs.policy import enabled
+from app.graphs.topology import plan_nodes, matches_plan
+
+
+async def list_sessions(limit=10):
+    if not 1 <= limit <= 100:
+        raise ValueError('Batas daftar sesi harus 1–100.')
+    async with SessionLocal() as db:
+        rows = (await db.scalars(select(InterviewSession).where(
+            InterviewSession.script['runtime']['engine'].as_string() == 'langgraph')
+            .order_by(InterviewSession.created_at.desc(), InterviewSession.id.desc()).limit(limit))).all()
+        return {'sessions': [{'session_id': row.uuid, 'status': row.status,
+            'graph_version': row.script.get('runtime', {}).get('graph_version'),
+            'created_at': row.created_at.isoformat() + 'Z'} for row in rows]}
 
 
 async def inspect(session_uuid):
@@ -15,11 +28,14 @@ async def inspect(session_uuid):
         session = await db.scalar(select(InterviewSession).where(InterviewSession.uuid == session_uuid))
         if not session or not enabled(session):
             raise ValueError('Sesi graph tidak ditemukan.')
-        runs = list((await db.scalars(select(GraphExecution).where(GraphExecution.session_id == session.id))).all())
+        runs = list((await db.scalars(select(GraphExecution).where(GraphExecution.session_id == session.id)
+            .order_by(GraphExecution.created_at, GraphExecution.thread_id))).all())
+        roles = session.script.get('settings', {}).get('panel') or [session.interviewer]
         result = []
         for run in runs:
             operations = list((await db.scalars(select(GraphOperation).where(GraphOperation.thread_id == run.thread_id))).all())
             result.append({'thread_id': run.thread_id, 'kind': run.kind, 'status': run.status,
+                'plan_nodes': plan_nodes(run.kind, roles), 'plan_matches': matches_plan(run.kind, roles, run.plan_hash),
                 'attempts': run.attempts, 'error_type': run.error_type,
                 'retry_authorizations': getattr(run, 'retry_authorizations', []),
                 'allow_uncertain_once': getattr(run, 'allow_uncertain_once', False),
@@ -86,17 +102,29 @@ async def retry(session_uuid, thread_id, acknowledge=False):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['inspect', 'retry'])
-    parser.add_argument('--session', required=True, help='Owned deployment session UUID')
+    parser.add_argument('action', choices=['list', 'inspect', 'retry'])
+    parser.add_argument('--session', help='Owned deployment session UUID')
+    parser.add_argument('--limit', type=int, default=10)
     parser.add_argument('--thread', help='Exact thread ID from inspect')
     parser.add_argument('--acknowledge-possible-charge', action='store_true',
                         help='Explicitly permit repeating provider calls whose previous outcome is uncertain')
     args = parser.parse_args()
+    if args.action != 'list' and not args.session: parser.error('inspect/retry requires --session')
     if args.action == 'retry' and not args.thread: parser.error('retry requires --thread')
     async def run():
-        await init_db()
-        result = await inspect(args.session) if args.action == 'inspect' else await retry(args.session, args.thread, args.acknowledge_possible_charge)
-        print(json.dumps(result, indent=2))
+        try:
+            if args.action == 'list': result = await list_sessions(args.limit)
+            elif args.action == 'inspect': result = await inspect(args.session)
+            else: result = await retry(args.session, args.thread, args.acknowledge_possible_charge)
+            print(json.dumps(result, indent=2))
+        except Exception as exc:
+            print(json.dumps({'ok': False, 'error_type': type(exc).__name__,
+                'detail': ('Pemulihan belum selesai. Periksa inspect; operasi ambigu memerlukan '
+                           '--acknowledge-possible-charge.' if args.action == 'retry' else
+                           'Periksa UUID sesi, jenis graph, serta database yang dipilih.')}))
+            raise SystemExit(1)
+        finally:
+            await engine.dispose()
     asyncio.run(run())
 
 

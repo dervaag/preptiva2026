@@ -1,0 +1,61 @@
+{
+  "python": {
+    "discovered": 225,
+    "passed": 224,
+    "skipped": 1,
+    "skip_reason": "PostgreSQL-only test in SQLite suite"
+  },
+  "agent_server": {
+    "base_url": "http://127.0.0.1:2024",
+    "langgraph_api": "0.17.1",
+    "langgraph_cli": "0.4.42",
+    "tracing_cloud_enabled": false,
+    "studio_web_ui": "awaiting_operator_LangSmith_account"
+  },
+  "api_checks": {
+    "ok": true,
+    "synthetic": true,
+    "actual_provider_requests": 0,
+    "graphs": {
+      "preptiva_prepare_inspector": {
+        "observed_nodes": 7,
+        "status": "passed",
+        "thread_id": "01a1b53f-070f-7566-9a9e-3d266ff89451"
+      },
+      "preptiva_turn_inspector": {
+        "observed_nodes": 6,
+        "status": "passed",
+        "thread_id": "01a1b53f-0ada-7155-a775-00a2618897c7"
+      },
+      "preptiva_finalize_inspector": {
+        "observed_nodes": 8,
+        "status": "passed",
+        "thread_id": "01a1b53f-0ed7-70c5-a4f7-dbf4887fa9cc"
+      }
+    },
+    "application_database_unchanged": true
+  },
+  "real_graph_synthetic_demo": {
+    "executions": 5,
+    "stages": [
+      "prepare",
+      "turn",
+      "turn",
+      "turn",
+      "finalize"
+    ],
+    "actual_provider_requests": 0,
+    "plan_hashes_match": true
+  },
+  "chrome_actual_graph": {
+    "single_two_three_person_panels": "passed",
+    "providers": "synthetic",
+    "actual_provider_requests": 0
+  },
+  "application_database_mutated_by_inspectors": false,
+  "limits": [
+    "Inspector runs observe metadata; they do not execute or resume interview providers.",
+    "Public Kiri engine activation must be verified in both web and worker after deployment."
+  ],
+  "cli_synthetic_inspect": "passed"
+}

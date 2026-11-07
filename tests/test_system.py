@@ -14,6 +14,7 @@ if _test_database:
 os.environ['DATABASE_URL'] = _test_database or 'sqlite+aiosqlite:///' + str(Path(_temporary.name) / 'test.db')
 os.environ['APP_ENV'] = 'development'
 os.environ['AI_MOCK'] = 'false'
+os.environ['ORCHESTRATION_ENGINE'] = 'legacy'
 os.environ['REALTIME_VOICE_ENABLED'] = 'false'
 os.environ['REDIS_URL'] = ''
 os.environ['MAX_SESSIONS_PER_HOUR'] = '5'

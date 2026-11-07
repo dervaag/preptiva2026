@@ -141,6 +141,10 @@ class GraphFlowTests(unittest.IsolatedAsyncioTestCase):
                 GraphTurnInput.session_id == internal_id)), 3)
             self.assertEqual(await db.scalar(select(func.count()).select_from(GraphExecution).where(
                 GraphExecution.session_id == internal_id, GraphExecution.status == 'succeeded')), 5)
+        from app.graphs.manage import inspect
+        metadata = await inspect(sid)
+        self.assertEqual(len(metadata['executions']), 5)
+        self.assertTrue(all(run['plan_matches'] for run in metadata['executions']))
 
     async def test_accepted_transcript_survives_model_failure_and_duplicate_resume(self):
         sid, internal_id, state = await self.ready()

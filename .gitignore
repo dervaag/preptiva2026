@@ -1,4 +1,7 @@
 .venv/
+.venv-langgraph/
+.langgraph_api/
+.env.studio
 .env
 .env.kiri
 data/

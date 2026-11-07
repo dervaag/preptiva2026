@@ -14,6 +14,43 @@ Pilihan engine, versi graph, kebijakan agregasi dan pemulihan disimpan ke `sessi
 
 Pada Kiri, konfigurasi deployment berada di `~/Library/Application Support/PreptivaDeploy/shared/.env`, terpisah dari `.env` IDE. Setelah kode graph tersedia pada release yang telah diuji, ubah konfigurasi shared dan lakukan deployment ulang agar **web dan worker** memakai environment yang sama. Push branch enhancement sendiri tidak memicu deployment `main`. Untuk menghentikan penggunaan graph pada sesi baru, kembalikan flag ke `legacy`; jangan menghapus metadata sesi atau tabel graph untuk memaksa migrasi sesi aktif.
 
+## Studio lokal dan sesi demonstrasi
+
+Graph produksi sudah tersedia. `langgraph.json` menambahkan tiga **inspector metadata** untuk Agent Server/Studio: `preptiva_prepare_inspector`, `preptiva_turn_inspector`, dan `preptiva_finalize_inspector`. Menjalankan inspector membaca status/durasi/percobaan node dari ledger; ini bukan menjalankan ulang provider, mengubah jawaban, atau melanjutkan checkpoint aplikasi. `mode` keluaran selalu `read_only_inspection`. State inspector terpisah dari checkpoint SQLAlchemy produksi.
+
+Lingkungan `.venv-langgraph` memakai Python 3.12; `.venv` lama pada mesin ini masih Python 3.9. CLI Studio memerlukan Python yang lebih baru. Pada mesin baru, buat `.venv-langgraph` dengan Python 3.12 lalu instal:
+
+```sh
+.venv-langgraph/bin/python -m pip install -r requirements-studio.txt
+```
+
+Siapkan satu wawancara sintetis lengkap melalui graph produksi (HR/User/Manager), dalam direktori database baru yang terisolasi. Semua provider diganti fixture; akses provider eksternal diblokir:
+
+```sh
+.venv-langgraph/bin/python -m app.graphs.demo --configure-studio
+.venv-langgraph/bin/python -m app.graphs.studio_server
+```
+
+Perintah pertama membuat database baru di `data/studio-demo/run-*/`, menjalankan persiapan, tiga jawaban dan finalisasi, lalu menyimpan `inspection.json`. `.env.studio` menunjuk database demo tersebut. Data/akun aplikasi tidak dipakai dalam demonstrasi. Server kedua hanya mendengarkan `127.0.0.1:2024`, tanpa tunnel, dengan tracing cloud dimatikan. Direktori state `.langgraph_api/`, virtualenv, dan environment Studio diabaikan Git.
+
+- API lokal: `http://127.0.0.1:2024/docs`.
+- Studio: `https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024`.
+- UI Studio memerlukan akun LangSmith. Setelah membuatnya, isi `LANGSMITH_API_KEY` di `.env` lalu restart launcher; kunci tidak perlu dikirim ke chat atau dimasukkan ke Git. Launcher meneruskan kunci tersebut bila tersedia.
+
+Pilih salah satu inspector, gunakan Graph mode, lalu masukkan:
+
+```json
+{"session_uuid":"00000000-0000-4000-8000-000000000001"}
+```
+
+Setiap tahap menampilkan `observed_nodes`, status aplikasi yang tercatat, jumlah percobaan dan durasi. Node yang belum tercatat tetap berstatus `not_recorded`; inspector tidak mencoba menjalankannya. Hash rencana diperiksa terhadap graph produksi agar topologi lama tidak ditampilkan sebagai versi baru. Untuk finalisasi panel yang berbeda dari tiga persona default, isi konfigurasi run `configurable.panel_roles`, misalnya `["hr"]` atau `["manager","hr"]`, sesuai urutan panel pada sesi.
+
+Untuk inspeksi sesi Kiri, dapatkan UUID melalui CLI `list` di bawah. Jalankan `inspect` pada container yang sama dan gunakan objek JSON hasilnya sebagai masukan `{"inspection": ...}` di Studio lokal. Ini menghindari membuka port PostgreSQL atau memindahkan CV/transkrip ke state inspector. Hasil operasi, telemetry bebas dan field tambahan tidak disalin ke keluaran inspector. Gunakan hanya laporan metadata dari CLI; jangan menempel CV/password pada input Studio.
+
+Untuk menjalankan perintah `langgraph dev` secara langsung, aktifkan `.venv-langgraph` dahulu. Konfigurasi default membaca `.env.studio`. Launcher di atas menambahkan host loopback, mematikan tracing dan membuka browser secara manual. Studio tidak dipasang pada endpoint publik Preptiva.
+
+Rujukan resmi: [server lokal](https://docs.langchain.com/oss/python/langgraph/local-server), [Studio](https://docs.langchain.com/langsmith/studio), dan [konfigurasi CLI](https://docs.langchain.com/langsmith/cli).
+
 ## Tiga graph
 
 | Graph | Node utama | Sumber kebenaran aplikasi |
@@ -74,6 +111,7 @@ Resume graph **tidak** menyalakan mikrofon, memutar ulang audio, atau meneruskan
 Gunakan environment database deployment yang benar. CLI berikut hanya mencetak metadata operasi, bukan isi CV, transkrip, prompt, atau kunci API:
 
 ```bash
+python -m app.graphs.manage list --limit 10
 python -m app.graphs.manage inspect --session SESSION_UUID
 python -m app.graphs.manage retry --session SESSION_UUID --thread THREAD_ID
 ```
@@ -81,6 +119,7 @@ python -m app.graphs.manage retry --session SESSION_UUID --thread THREAD_ID
 Untuk container Kiri yang sudah memuat release graph:
 
 ```bash
+docker --context kiri exec preptiva-web-1 python -m app.graphs.manage list --limit 10
 docker --context kiri exec preptiva-web-1 python -m app.graphs.manage inspect --session SESSION_UUID
 ```
 
@@ -92,7 +131,7 @@ python -m app.graphs.manage retry --session SESSION_UUID --thread THREAD_ID --ac
 
 Thread harus berasal dari hasil `inspect` dan milik sesi yang sama. CLI menolak melanjutkan giliran yang sudah diinterupsi atau sesi yang sudah ditutup. Jika STT ambigu terjadi sebelum transkrip tersimpan, opsi acknowledgment memberi izin satu kali yang tercatat pada thread. Kandidat kemudian mengirim ulang audio yang sama dari browser; izin dikonsumsi saat eksekusi memperoleh lease. Mikrofon tidak dinyalakan otomatis dan audio mentah tidak dimasukkan ke checkpoint. Rekaman berbeda yang belum pernah diterima memakai thread berbeda; setelah transkrip diterima, payload berbeda pada pertanyaan/percobaan yang sama ditolak.
 
-Metadata menyertakan node/operasi, durasi, jumlah percobaan, error type, model dan token yang dikembalikan provider. Nilai token yang tidak dikembalikan provider tidak diisi dengan perkiraan. Metadata dapat digunakan untuk audit dan perbandingan, tetapi belum ada dashboard monitoring atau retensi checkpoint otomatis. Akses database/ledger harus diperlakukan seperti akses data wawancara karena hasil operasi dapat berisi ringkasan dan kutipan kandidat.
+Metadata menyertakan node/operasi, durasi, jumlah percobaan, error type, model dan token yang dikembalikan provider, serta rencana node dan kecocokan hash-nya. Nilai token yang tidak dikembalikan provider tidak diisi dengan perkiraan. CLI `list`/`inspect` hanya membaca database yang sudah tersedia dan tidak menjalankan migrasi. Metadata dapat digunakan untuk audit dan perbandingan; belum ada dashboard monitoring produksi. Penghapusan riwayat/retensi 90 hari mencakup checkpoint dan ledger terkait. Akses database/ledger harus diperlakukan seperti akses data wawancara karena hasil operasi internal dapat berisi ringkasan dan kutipan kandidat.
 
 ## Benchmark sebelum rollout luas
 
