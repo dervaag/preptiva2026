@@ -13,7 +13,7 @@
     'question-text', 'transcript', 'camera-toggle', 'mic-toggle', 'mirror-toggle', 'captions-toggle', 'chat-toggle',
     'avatar-motion-toggle', 'fullscreen', 'leave-room', 'leave-dialog', 'cancel-leave', 'confirm-leave', 'room-tools',
     'device-status', 'device-requirement', 'preflight-description', 'preflight-title', 'verification-status', 'preflight-body',
-    'panel-members', 'participant-count', 'text-mode', 'use-text', 'text-answer-area', 'text-answer', 'send-text', 'stop-audio',
+    'panel-members', 'participant-count', 'voice-mode', 'text-mode', 'use-text', 'use-voice', 'answer-mode-status', 'text-answer-area', 'text-answer', 'send-text', 'stop-audio',
     'interruption', 'interruption-status', 'retry-question', 'skip-question', 'realtime-mode', 'auto-send', 'barge-in', 'live-review', 'live-transcript'];
   const elements = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
   const node = id => elements[id];
@@ -71,7 +71,16 @@
   function setPhase(next) {
     phase = next;
     room.classList.toggle('is-recording', next === 'recording');
+    node('use-text').disabled = !['answer-ready', 'recorded', 'upload-error'].includes(next);
     if (next !== 'processing') setChatActivity();
+  }
+  function selectAnswerMode(mode) {
+    answerWithText = mode === 'text';
+    node('text-mode').checked = answerWithText;
+    node('voice-mode').checked = !answerWithText;
+    node('preflight').classList.toggle('is-text-mode', answerWithText);
+    node('answer-mode-status').textContent = answerWithText ? 'Mode jawaban: Teks' : 'Mode jawaban: Rekam suara';
+    node('answer-mode-status').hidden = !active;
   }
   function buttonState(id, pressed, onLabel, offLabel) {
     const button = node(id);
@@ -430,6 +439,7 @@
   }
   function stopQuestion() {
     lifecycle++;
+    acquisitionId++; acquiring = false;
     cancelRealtime();
     clearInterval(recordingTimer); recordingTimer = null;
     for (const [timer, reject] of waits) {clearTimeout(timer); reject(interrupted());}
@@ -511,7 +521,7 @@
     node('devices').disabled = !desktopSupported || acquiring;
     node('test-sound').disabled = !desktopSupported || soundTesting;
     for (const id of ['camera-toggle', 'mic-toggle', 'camera-check', 'focus-check']) node(id).disabled = !desktopSupported;
-    node('text-mode').disabled = !desktopSupported || startPending;
+    node('voice-mode').disabled = node('text-mode').disabled = !desktopSupported || startPending;
   }
   function renderDevices() {
     const video = cameraOn(), mic = micOn();
@@ -541,41 +551,65 @@
     }
     tick();
   }
-  function deviceError(cause) {
-    return cause?.name === 'NotAllowedError' ? 'Izin kamera atau mikrofon belum diberikan. Izinkan melalui pengaturan browser, lalu coba lagi.' :
-      cause?.name === 'NotFoundError' ? 'Kamera atau mikrofon tidak ditemukan. Hubungkan perangkat, lalu coba lagi.' :
+  function deviceError(cause, withCamera = true) {
+    const device = withCamera ? 'kamera atau mikrofon' : 'mikrofon';
+    return cause?.name === 'NotAllowedError' ? `Izin ${device} belum diberikan. Izinkan melalui pengaturan browser, lalu coba lagi.` :
+      cause?.name === 'NotFoundError' ? `${withCamera ? 'Kamera atau mikrofon' : 'Mikrofon'} tidak ditemukan. Hubungkan perangkat, lalu coba lagi.` :
       cause?.message || 'Perangkat belum dapat diaktifkan. Pastikan tidak sedang dipakai aplikasi lain, lalu coba lagi.';
   }
   async function acquireDevices(withCamera = true) {
-    if (!desktopSupported || !available() || (active && !['interrupted', 'answer-ready'].includes(phase)) || startPending || acquiring) return;
+    if (!desktopSupported || !available() || (active && !['interrupted', 'answer-ready', 'enabling-microphone'].includes(phase)) || startPending || acquiring) return false;
     acquiring = true; clearError('preflight-error');
     const requestId = ++acquisitionId;
-    stopStream();
-    const generation = deviceGeneration, token = lifecycle;
+    const token = lifecycle;
+    if (withCamera) stopStream();
+    const generation = deviceGeneration;
+    const valid = () => available() && token === lifecycle && requestId === acquisitionId && generation === deviceGeneration;
     node('devices').disabled = true;
     node('devices').textContent = 'Mengaktifkan perangkat…';
-    node('camera-check').checked = false;
+    if (withCamera) node('camera-check').checked = false;
     node('mic-status').textContent = 'Menunggu izin…';
     let acquired = null;
     try {
       if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) throw new Error('Gunakan browser terbaru melalui localhost atau HTTPS untuk kamera dan perekaman.');
       const contextPromise = ensureAudioContext();
       contextPromise.catch(() => {});
+      // Returning from text only needs a microphone. An existing camera stays attached.
+      if (!withCamera && stream?.getAudioTracks().some(track => track.readyState === 'live')) {
+        await contextPromise;
+        if (!valid()) return false;
+        stream.getAudioTracks().forEach(track => {track.enabled = true;});
+        if (state?.script.settings?.streaming_voice && !realtimeVoice) await setupRealtime(generation);
+        return valid();
+      }
       acquired = await navigator.mediaDevices.getUserMedia({video: withCamera ? {width: {ideal: 640}, height: {ideal: 480}, facingMode: 'user'} : false,
         audio: {channelCount: 1, echoCancellation: true, noiseSuppression: true}});
-      if (!available() || generation !== deviceGeneration || token !== lifecycle) {acquired.getTracks().forEach(track => track.stop()); return;}
-      stream = acquired;
+      if (!valid()) {acquired.getTracks().forEach(track => track.stop()); return false;}
+      await contextPromise;
+      if (!valid()) {acquired.getTracks().forEach(track => track.stop()); return false;}
+      const retainedVideo = withCamera ? [] : (stream?.getVideoTracks().filter(track => track.readyState === 'live') || []);
+      const previous = stream;
+      cancelAnimationFrame(meterFrame); micSource?.disconnect();
+      realtimeVoice?.destroy(); realtimeVoice = null;
+      stream = retainedVideo.length ? new MediaStream([...retainedVideo, ...acquired.getAudioTracks()]) : acquired;
+      previous?.getTracks().filter(track => !retainedVideo.includes(track)).forEach(track => track.stop());
+      const attached = stream;
       node('camera').srcObject = stream;
       node('preflight-camera').srcObject = stream;
-      await Promise.all([...(withCamera ? [node('camera').play(), node('preflight-camera').play()] : []), contextPromise]);
-      if (!available() || generation !== deviceGeneration || token !== lifecycle) {acquired.getTracks().forEach(track => track.stop()); return;}
+      if (stream.getVideoTracks().length) await Promise.all([node('camera').play(), node('preflight-camera').play()]);
+      if (!valid()) {
+        acquired.getTracks().forEach(track => track.stop());
+        if (stream === attached) {node('camera').srcObject = node('preflight-camera').srcObject = null;}
+        return false;
+      }
       micAnalyser = audioContext.createAnalyser(); micAnalyser.fftSize = 256;
       micSource = audioContext.createMediaStreamSource(new MediaStream(stream.getAudioTracks()));
       micSource.connect(micAnalyser);
+      micReady = false; micSamples = 0;
       node('mic-status').textContent = 'Ucapkan beberapa kata';
       microphoneMeter(generation);
-      acquired.getTracks().forEach(track => track.addEventListener('ended', () => {
-        if (stream !== acquired || generation !== deviceGeneration || !available()) return;
+      attached.getTracks().forEach(track => track.addEventListener('ended', () => {
+        if (stream !== attached || generation !== deviceGeneration || !available()) return;
         micReady = false; micSamples = 0; renderDevices();
         if (active) {showError('room-error', 'Perangkat terputus. Pertanyaan dijeda.'); interruptQuestion('device_lost');}
         else {
@@ -585,9 +619,15 @@
       }));
       node('devices').textContent = 'Periksa ulang';
       if (state?.script.settings?.streaming_voice) await setupRealtime(generation);
+      return valid();
     } catch (cause) {
       acquired?.getTracks().forEach(track => track.stop());
-      if (available() && generation === deviceGeneration) {stopStream(); showError('preflight-error', deviceError(cause)); node('devices').textContent = 'Coba lagi';}
+      if (valid()) {
+        if (withCamera) stopStream();
+        showError(withCamera ? 'preflight-error' : 'room-error', deviceError(cause, withCamera));
+        node('devices').textContent = 'Coba lagi';
+      }
+      return false;
     } finally {
       if (requestId === acquisitionId) {
         acquiring = false;
@@ -664,9 +704,8 @@
     }
   }
   node('auto-send').addEventListener('change', () => {if (!node('auto-send').checked) {clearTimeout(vadTimer); vadTimer = null;}});
-  node('text-mode').addEventListener('change', () => {
-    answerWithText = node('text-mode').checked;
-    node('preflight').classList.toggle('is-text-mode', answerWithText);
+  for (const mode of ['voice', 'text']) node(`${mode}-mode`).addEventListener('change', () => {
+    selectAnswerMode(mode);
     checkReady();
   });
   for (const id of ['camera-check', 'speaker-check', 'focus-check']) node(id).addEventListener('change', checkReady);
@@ -812,41 +851,50 @@
     node('room-countdown').hidden = true;
   }
   function renderAnswerMode() {
-    const usable = available() && active && ['answer-ready', 'recorded'].includes(phase) && !acquiring;
+    const usable = available() && active && ['answer-ready', 'recorded', 'upload-error'].includes(phase);
     node('record-controls').hidden = !usable || answerWithText;
     node('text-answer-area').hidden = !usable || !answerWithText;
-    node('use-text').hidden = !usable;
-    node('use-text').textContent = answerWithText ? 'Jawab dengan suara' : 'Jawab dengan teks';
+    node('use-text').hidden = !usable || answerWithText;
+    node('use-voice').disabled = !usable || acquiring;
     node('send-text').disabled = !usable || !answerWithText || !node('text-answer').value.trim() || node('text-answer').value.length > 8000;
-    node('answer-preview').hidden = !usable || answerWithText || !recorded?.blob;
-    node('live-review').hidden = !usable || answerWithText || !recorded?.capture_token;
+    node('answer-mode-status').hidden = !active;
+    if (answerWithText) {
+      node('answer-preview').pause(); node('answer-preview').hidden = true;
+      node('live-review').hidden = true;
+    }
     renderDevices();
   }
   node('text-answer').addEventListener('input', renderAnswerMode);
-  node('use-text').addEventListener('click', async () => {
-    if (!available() || !active || flowBusy || acquiring || !['answer-ready', 'recorded'].includes(phase)) return;
-    const token = lifecycle;
-    if (answerWithText && !micOn()) {
-      const tracks = stream?.getAudioTracks().filter(track => track.readyState === 'live');
-      if (tracks?.length) tracks.forEach(track => {track.enabled = true;});
-      else await acquireDevices(false);
-      if (!available() || token !== lifecycle || !micOn()) {
-        if (available() && token === lifecycle) showError('room-error', node('preflight-error').textContent || 'Mikrofon belum dapat diaktifkan.');
-        return;
-      }
-    }
-    answerWithText = !answerWithText;
-    pendingBargeIn = false;
-    if (!recorded) cancelRealtime();
-    pendingText = null;
-    if (answerWithText) node('answer-preview').pause();
-    setPhase(!answerWithText && recorded ? 'recorded' : 'answer-ready');
-    node('send').hidden = answerWithText || !recorded;
-    node('retry').hidden = answerWithText || !recorded || retries >= state.retry_limit;
-    node('record').hidden = !answerWithText && !!recorded;
-    node('record').textContent = 'Mulai rekam suara';
+  node('use-text').addEventListener('click', () => {
+    if (!available() || !active || flowBusy || !['answer-ready', 'recorded', 'upload-error'].includes(phase)) return;
+    selectAnswerMode('text'); pendingBargeIn = false; pendingText = null;
+    node('retry-upload').hidden = true;
+    setPhase('answer-ready'); status('GILIRAN ANDA · MODE TEKS');
     renderAnswerMode();
-    if (answerWithText) node('text-answer').focus();
+    node('text-answer').focus();
+  });
+  node('use-voice').addEventListener('click', async () => {
+    if (!available() || !active || flowBusy || !answerWithText || !['answer-ready', 'upload-error'].includes(phase)) return;
+    const token = lifecycle, questionId = current?.id;
+    node('use-voice').disabled = true; node('send-text').disabled = true;
+    clearError('room-error'); setPhase('enabling-microphone'); status('MENGAKTIFKAN MIKROFON');
+    const enabled = await acquireDevices(false);
+    if (!available() || !active || token !== lifecycle || current?.id !== questionId || phase !== 'enabling-microphone') return;
+    if (!enabled) {
+      setPhase('answer-ready'); status('GILIRAN ANDA · MODE TEKS'); renderAnswerMode();
+      return;
+    }
+    selectAnswerMode('voice'); pendingText = null;
+    node('retry-upload').hidden = true;
+    node('record').hidden = !!recorded; node('record').textContent = 'Mulai rekam suara';
+    node('send').hidden = !recorded; node('send').disabled = false;
+    node('retry').hidden = !recorded || retries >= state.retry_limit;
+    node('replay').hidden = !!recorded || !current.audio_url;
+    node('answer-preview').hidden = !recorded?.blob;
+    node('live-review').hidden = !recorded?.capture_token;
+    node('answer-timer').textContent = formatTime(state.answer_seconds);
+    setPhase(recorded ? 'recorded' : 'answer-ready'); status(recorded ? 'TINJAU JAWABAN' : 'GILIRAN ANDA');
+    renderAnswerMode();
   });
   async function presentQuestion(question, {restart = false} = {}) {
     guard();
@@ -874,7 +922,8 @@
     node('record').textContent = 'Mulai rekam suara'; node('record').disabled = !micOn();
     node('send').hidden = true; node('retry').hidden = true; node('replay').hidden = !question.audio_url;
     node('answer-timer').textContent = formatTime(state.answer_seconds);
-    if (!micOn()) answerWithText = true;
+    if (!micOn()) selectAnswerMode('text');
+    else selectAnswerMode(answerWithText ? 'text' : 'voice');
     renderAnswerMode();
     if (pendingBargeIn && !answerWithText) {pendingBargeIn = false; await startRealtime();}
   }
@@ -967,7 +1016,8 @@
         previewUrl = URL.createObjectURL(blob); node('answer-preview').src = previewUrl; node('answer-preview').hidden = false;
         setPhase('recorded'); status('TINJAU JAWABAN');
         node('record').hidden = true; node('send').hidden = false; node('send').disabled = false;
-        node('retry').hidden = retries >= state.retry_limit; node('replay').hidden = true; node('use-text').hidden = false;
+        node('retry').hidden = retries >= state.retry_limit; node('replay').hidden = true;
+        renderAnswerMode();
       };
       capture.onerror = () => {if (available() && token === lifecycle) {showError('room-error', 'Perekaman terhenti. Tinjau audio sebelum mengirim.'); stopRecording();}};
       capture.start(500);
@@ -1176,6 +1226,7 @@
         setPhase('upload-error'); status('PERLU DIKIRIM ULANG'); showError('room-error', cause);
         markCandidate(questionId, 'Belum terkonfirmasi');
         node('retry-upload').hidden = false;
+        renderAnswerMode();
       }
     } finally {
       if (uploadController === controller) {uploadBusy = false; uploadController = null; setChatActivity();}
@@ -1218,6 +1269,17 @@
     node('preflight').close(); node('open-preflight').hidden = true;
     status('SESI DITUTUP'); showError('room-error', cause);
   }
+  const retryPreparation = document.getElementById('retry-preparation');
+  retryPreparation?.addEventListener('click', async () => {
+    if (!available() || state?.status !== 'preparation_failed') return;
+    retryPreparation.disabled = true;
+    try {
+      await requestJSON(`${base}/retry-preparation`, {method: 'POST'});
+      if (!available()) return;
+      retryPreparation.hidden = true; clearError('room-error'); await poll();
+    } catch (cause) {if (available()) showError('room-error', cause);}
+    finally {retryPreparation.disabled = false;}
+  });
   async function poll() {
     if (!available() || active || pollController) return;
     const token = lifecycle;
@@ -1225,6 +1287,12 @@
     try {
       const fetched = await requestJSON(`${base}/state`, {signal: controller.signal}); guard(token);
       state = fetched;
+      if (retryPreparation) retryPreparation.hidden = state.status !== 'preparation_failed';
+      if (state.status === 'preparation_failed') {
+        ready = false; status('PERSIAPAN TERTUNDA');
+        showError('room-error', state.error || 'Persiapan belum selesai. Coba siapkan ulang.');
+        return;
+      }
       if (state.status === 'failed') {localMarker('removeItem'); terminal(state.error || 'Sesi telah ditutup. Buat latihan baru dari menu Simulasi baru.'); return;}
       if (['done', 'scoring', 'evaluation_failed'].includes(state.status)) {
         localMarker('removeItem'); closed = true; cleanup(); location.replace(`/sesi/${encodeURIComponent(sid)}/hasil`); return;

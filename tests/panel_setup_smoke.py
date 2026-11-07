@@ -43,6 +43,7 @@ def main():
         with sync_playwright() as p:
             browser = p.chromium.launch(channel='chrome', headless=True)
             page = browser.new_page(viewport={'width': 1440, 'height': 1000})
+            page.add_init_script("localStorage.setItem('preptiva-ui-language', 'id')")
             errors = []
             page.on('pageerror', lambda error: errors.append(str(error)))
             base = f'http://127.0.0.1:{port}'

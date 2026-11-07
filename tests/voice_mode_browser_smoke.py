@@ -5,6 +5,7 @@ No real account, microphone, or paid provider is used.
 """
 import asyncio
 import json
+import os
 from pathlib import Path
 import socket
 import threading
@@ -18,6 +19,8 @@ from playwright.sync_api import sync_playwright
 
 def main():
     storage.ROOT = Path(fixture.temporary.name) / 'storage'
+    artifacts = Path(os.environ.get('PREPTIVA_BROWSER_ARTIFACTS', str(Path(fixture.temporary.name) / 'artifacts')))
+    artifacts.mkdir(parents=True, exist_ok=True)
     speech.require_credentials = lambda persona: None
     speech.synthesize = fixture.tts
     speech.transcribe = fixture.transcribe
@@ -53,22 +56,26 @@ def main():
                                           viewport={'width': 1440, 'height': 1100})
             page = context.new_page()
             page.on('pageerror', lambda error: errors.append(str(error)))
+            page.add_init_script("localStorage.setItem('preptiva-ui-language', 'id')")
             page.goto(f'http://127.0.0.1:{port}/login')
             page.locator('[name=email]').fill('demo@interview.local')
             page.locator('[name=password]').fill('demo1234')
-            page.get_by_role('button', name='Masuk ke workspace').click()
+            page.get_by_role('button', name='Masuk', exact=True).click()
             page.wait_for_url('**/dashboard')
             page.goto(f'http://127.0.0.1:{port}/simulasi/baru')
+            page.locator('#setup-context > summary').click()
             page.locator('[name=cv_text]').fill(
                 'Lulusan baru Akuntansi. Proyek kuliah koperasi kampus dan organisasi mahasiswa. ' * 4)
-            page.locator('[name=career_stage]').select_option('fresh_graduate')
+            page.locator('#setup-select-career_stage-trigger').click()
+            page.locator('#setup-select-career_stage-menu [data-value="fresh_graduate"]').click()
             page.locator('[name=job_role]').fill('Accountant')
             page.locator('[name=industry]').fill('Finance')
             page.locator('[name=job_description]').fill(
                 'Prepare accurate reports and coordinate financial information with colleagues.')
-            page.locator('[name=question_count]').select_option('3')
-            page.locator('#interview-mode').select_option('panel')
-            page.locator('[name=panel][value=manager]').check()
+            page.locator('.setup-question-choice:has(input[value="3"])').click()
+            page.locator('#setup-select-interview_mode-trigger').click()
+            page.locator('#setup-select-interview_mode-menu [data-value="panel"]').click()
+            page.locator('label:has(input[name=panel][value=manager])').click()
             page.locator('[name=consent]').check()
             page.get_by_role('button', name='Siapkan wawancara').click()
             page.wait_for_url('**/ruang')
@@ -168,6 +175,7 @@ def main():
             assert page.locator('#text-answer-area').is_hidden()
             assert page.locator('#text-mode').is_checked()
             assert page.locator('#answer-timer').inner_text() == '00:00'
+            assert page.evaluate("window.voiceTestStream.getTracks().every(track => track.readyState === 'ended')")
             report['late_permission_cannot_override_interruption'] = True
 
             page.locator('#retry-question').click()
@@ -187,7 +195,7 @@ def main():
     finally:
         server.should_exit = True
         thread.join(timeout=10)
-        (fixture.ROOT / 'artifacts/voice-mode-browser-smoke.json').write_text(json.dumps(report, indent=2) + '\n')
+        (artifacts / 'voice-mode-browser-smoke.json').write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(report, indent=2))
 
 

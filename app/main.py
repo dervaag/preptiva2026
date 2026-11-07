@@ -14,6 +14,7 @@ from app.models import User
 from app.api import auth, sessions, dashboard, voice, profile
 from app.log import request_var
 from app.assets import asset_url
+from app.graphs.policy import UnsupportedGraphVersion
 
 
 @asynccontextmanager
@@ -27,6 +28,13 @@ async def lifespan(app):
 
 
 app = FastAPI(title='Preptiva — AI Interview Simulator', version='0.1.0', lifespan=lifespan)
+
+
+@app.exception_handler(UnsupportedGraphVersion)
+async def unsupported_graph_version(request, exc):
+    return JSONResponse({'detail': 'Versi sesi ini belum didukung server. Hubungi pengelola untuk melanjutkan.'}, status_code=503)
+
+
 app.add_middleware(SessionMiddleware, secret_key=settings.secret_key, session_cookie='isim_session',
                    same_site='lax', https_only=settings.cookie_secure, max_age=60*60*24*7)
 

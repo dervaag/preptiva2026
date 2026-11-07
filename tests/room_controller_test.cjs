@@ -8,7 +8,7 @@ const flush = async () => { for (let i = 0; i < 40; i++) await Promise.resolve()
 
 function fixture(options = {}) {
   let now = 0, nextTimer = 1;
-  const timers = new Map(), calls = [], plays = [], navigations = [], nodes = new Map();
+  const timers = new Map(), calls = [], plays = [], navigations = [], captures = [], nodes = new Map();
   class Element extends EventTarget {
     constructor(id = '') {
       super(); this.id = id; this.hidden = false; this.disabled = false; this.checked = false;
@@ -49,11 +49,12 @@ function fixture(options = {}) {
     'countdown-number','chat-log','chat-empty','chat-new-messages','chat-panel','record-controls','answer-timer','record','send','retry','replay','answer-preview','retry-upload','resume-flow',
     'question-progress','question-text','transcript','camera-toggle','mic-toggle','mirror-toggle','captions-toggle','chat-toggle','avatar-motion-toggle','fullscreen','leave-room','leave-dialog',
     'cancel-leave','confirm-leave','mirror','sound-bars','interviewer-initial','device-status','device-requirement','preflight-description','preflight-title','verification-status','preflight-body','chat-activity','chat-activity-label',
-    'panel-members','participant-count','text-mode','use-text','text-answer-area','text-answer','send-text','stop-audio','interruption','interruption-status','retry-question','skip-question',
+    'panel-members','participant-count','voice-mode','text-mode','use-text','use-voice','answer-mode-status','text-answer-area','text-answer','send-text','stop-audio','interruption','interruption-status','retry-question','skip-question',
     'realtime-mode','auto-send','barge-in','live-review','live-transcript'];
   ids.forEach(id => nodes.set(id, new Element(id)));
   ['preflight','room-countdown','record-controls','send','retry','retry-upload','resume-flow','answer-preview','stage-caption','preflight-error','room-error'].forEach(id => nodes.get(id).hidden = true);
   nodes.get('start').disabled = true; nodes.get('speaker-check').disabled = true;
+  nodes.get('voice-mode').checked = true;
   nodes.get('realtime-mode').checked = true; nodes.get('live-review').hidden = true;
   const document = new EventTarget(); document.body = {dataset:{sid:'fixture-session'}};
   document.hidden = false; document.visibilityState = 'visible'; document.fullscreenEnabled = false;
@@ -91,7 +92,7 @@ function fixture(options = {}) {
   class MediaRecorderFake extends EventTarget {
     static isTypeSupported() {return true;}
     constructor() {super(); this.state = 'inactive'; this.mimeType = 'audio/webm;codecs=opus';}
-    start() {this.state = 'recording';}
+    start() {this.state = 'recording'; captures.push(this);}
     stop() {this.state = 'inactive'; this.ondataavailable?.({data:new Blob(['audio'],{type:this.mimeType})}); queueMicrotask(() => this.onstop?.());}
   }
   const voices = [];
@@ -136,7 +137,10 @@ function fixture(options = {}) {
   const local = new Map(Object.entries(options.storage || {})), session = new Map();
   const storage = map => ({getItem:key=>map.get(key)??null,setItem:(key,value)=>map.set(key,String(value)),removeItem:key=>map.delete(key)});
   const location = {protocol:'http:',host:'fixture.local',replace:url=>navigations.push(url),assign:url=>navigations.push(url)};
-  const navigator = {userAgent:'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',platform:'Win32',maxTouchPoints:0,...options.device,mediaDevices:{getUserMedia:() => options.getUserMedia ? options.getUserMedia(new MediaStreamFake()) : Promise.resolve(new MediaStreamFake())},sendBeacon:(url,body)=>{calls.push([url,{method:'BEACON',body}]); return true;}};
+  const navigator = {userAgent:'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',platform:'Win32',maxTouchPoints:0,...options.device,mediaDevices:{getUserMedia:constraints => {
+    const acquired = new MediaStreamFake(tracks.filter(track => constraints.video !== false || track.kind !== 'video'));
+    return options.getUserMedia ? options.getUserMedia(acquired, constraints) : Promise.resolve(acquired);
+  }},sendBeacon:(url,body)=>{calls.push([url,{method:'BEACON',body}]); return true;}};
   const context = {console,document,window,navigator,location,localStorage:storage(local),sessionStorage:storage(session),performance:{now:()=>now},
     setTimeout:setTimeoutFake,clearTimeout:id=>timers.delete(id),setInterval:setIntervalFake,clearInterval:id=>timers.delete(id),
     requestAnimationFrame:fn=>setTimeoutFake(fn,16),cancelAnimationFrame:id=>timers.delete(id),
@@ -146,7 +150,7 @@ function fixture(options = {}) {
     showError:(selector,error)=>{const node=document.querySelector(selector);node.textContent=error.message||error;node.hidden=false;},toast(){}};
   Object.assign(window,{AudioContext:AudioContextFake,MediaRecorder:MediaRecorderFake,RealtimeVoice:RealtimeVoiceFake,matchMedia:context.matchMedia});
   vm.runInNewContext(source, context, {filename:sourcePath});
-  return {nodes,calls,plays,document,window,tracks,navigations,voices,advance,flush,local,get uploads(){return uploads;}};
+  return {nodes,calls,plays,document,window,tracks,navigations,voices,captures,advance,flush,local,get uploads(){return uploads;}};
 }
 
 async function verify(f) {
@@ -157,6 +161,12 @@ async function verify(f) {
 }
 async function start(f) {await verify(f);f.nodes.get('start').click();await flush();await f.advance(3100);}
 async function answer(f) {f.nodes.get('record').click();await f.advance(1000);f.nodes.get('record').click();await flush();f.nodes.get('send').click();await flush();}
+async function startText(f) {
+  await flush();
+  f.nodes.get('text-mode').checked = true; f.nodes.get('text-mode').dispatchEvent(new Event('change'));
+  f.nodes.get('focus-check').checked = true; f.nodes.get('focus-check').dispatchEvent(new Event('change'));
+  f.nodes.get('start').click(); await flush(); await f.advance(3100);
+}
 
 (async () => {
   const ready = fixture(); await flush();
@@ -353,28 +363,68 @@ async function answer(f) {f.nodes.get('record').click();await f.advance(1000);f.
   assert.equal(typed.nodes.get('chat-log').children.filter(child=>child.className==='chat-message chat-message--candidate').length,1);
   console.log('PASS desktop-only text startup and multipart text answers preserve chat idempotency');
 
-  const modes = fixture(); await flush();
-  modes.nodes.get('text-mode').checked = true;
-  modes.nodes.get('text-mode').dispatchEvent(new Event('change'));
-  modes.nodes.get('focus-check').checked = true;
-  modes.nodes.get('focus-check').dispatchEvent(new Event('change'));
-  modes.nodes.get('start').click(); await flush(); await modes.advance(3100);
-  modes.nodes.get('text-answer').value = 'Draf tetap tersedia';
-  assert.equal(modes.nodes.get('use-text').hidden, false);
+  let permissionRequests = 0, denyMicrophone = true;
+  const modes = fixture({getUserMedia:(stream,constraints) => {
+    permissionRequests++; assert.equal(constraints.video,false,'text-to-voice only requests a microphone');
+    return denyMicrophone ? Promise.reject(new DOMException('Denied','NotAllowedError')) : Promise.resolve(stream);
+  }});
+  await flush(); assert.equal(modes.nodes.get('voice-mode').checked,true,'voice is the default');
+  await startText(modes); assert.equal(permissionRequests,0,'text startup never requests microphone access');
+  modes.nodes.get('text-answer').value='Draf jawaban tetap ada.';
+  modes.nodes.get('text-answer').dispatchEvent(new Event('input'));
+  modes.nodes.get('use-voice').click(); await flush();
+  assert.equal(modes.nodes.get('text-answer-area').hidden,false);
+  assert.equal(modes.nodes.get('text-mode').checked,true);
+  assert.equal(modes.nodes.get('use-voice').disabled,false,'denied access can be retried');
+  assert.match(modes.nodes.get('room-error').textContent,/Izin mikrofon/);
+  assert.equal(modes.nodes.get('text-answer').value,'Draf jawaban tetap ada.');
+  denyMicrophone=false; modes.nodes.get('use-voice').click(); await flush();
+  assert.equal(modes.nodes.get('voice-mode').checked,true);
+  assert.equal(modes.nodes.get('text-mode').checked,false);
+  assert.equal(modes.nodes.get('record-controls').hidden,false);
+  assert.equal(modes.captures.length,0,'changing modes never starts a recorder');
+  assert.equal(modes.nodes.get('answer-mode-status').textContent,'Mode jawaban: Rekam suara');
+  modes.nodes.get('record').click(); await modes.advance(1000); modes.nodes.get('record').click(); await flush();
+  const preview = modes.nodes.get('answer-preview').src;
   modes.nodes.get('use-text').click(); await flush();
-  assert.equal(modes.nodes.get('text-answer-area').hidden, true);
-  modes.nodes.get('realtime-mode').checked = false;
-  modes.nodes.get('record').click(); await modes.advance(1000);
-  modes.nodes.get('record').click(); await flush();
-  const savedPreview = modes.nodes.get('answer-preview').src;
-  modes.nodes.get('use-text').click(); await flush();
-  assert.equal(modes.nodes.get('text-answer-area').hidden, false);
-  assert.equal(modes.nodes.get('text-answer').value, 'Draf tetap tersedia');
-  modes.nodes.get('use-text').click(); await flush();
-  assert.equal(modes.nodes.get('answer-preview').src, savedPreview);
-  assert.equal(modes.nodes.get('answer-preview').hidden, false);
-  assert.equal(modes.nodes.get('send').hidden, false);
-  console.log('PASS text startup returns to microphone and mode switches preserve drafts and recordings');
+  assert.equal(modes.nodes.get('text-answer').value,'Draf jawaban tetap ada.');
+  modes.nodes.get('use-voice').click(); await flush();
+  assert.equal(permissionRequests,2,'existing live microphone is reused');
+  assert.equal(modes.nodes.get('answer-preview').src,preview,'recorded audio survives mode changes');
+  assert.equal(modes.nodes.get('answer-preview').hidden,false);
+  assert.equal(modes.nodes.get('send').hidden,false);
+  modes.nodes.get('send').click(); await flush();
+  assert.equal(modes.calls.find(([url])=>url.includes('/answers'))[1].body.has('audio'),true);
+  assert.equal(modes.nodes.get('text-answer').value,'','draft is cleared for the next question');
+  console.log('PASS text-to-voice permission retry, explicit capture, retained drafts and audio, and fresh next question');
+
+  let releaseMicrophone, delayedTracks;
+  const delayedMode = fixture({getUserMedia:stream => {
+    delayedTracks=stream.getTracks(); return new Promise(resolve=>{releaseMicrophone=()=>resolve(stream);});
+  }});
+  await startText(delayedMode);
+  delayedMode.nodes.get('use-voice').click(); await flush();
+  delayedMode.document.hidden=true; delayedMode.document.dispatchEvent(new Event('visibilitychange')); await flush();
+  releaseMicrophone(); await flush();
+  assert(delayedTracks.every(track=>track.readyState==='ended'),'permission granted after interruption stops all acquired tracks');
+  assert.equal(delayedMode.nodes.get('interruption').hidden,false);
+  assert.equal(delayedMode.nodes.get('record-controls').hidden,true);
+  assert.equal(delayedMode.nodes.get('room-status').textContent,'PERTANYAAN DIJEDA');
+  assert.equal(delayedMode.nodes.get('text-mode').checked,true,'late permission cannot change the selected mode');
+  assert.equal(delayedMode.captures.length,0);
+  delayedMode.document.hidden=false; delayedMode.nodes.get('retry-question').click(); await flush();
+  assert.equal(delayedMode.nodes.get('use-voice').disabled,false,'Retry re-enables the voice action');
+  assert.equal(delayedMode.nodes.get('text-answer-area').hidden,false);
+  console.log('PASS interrupted text-to-voice permission stays discarded and Retry remains usable');
+
+  const failedAudioMode = fixture({answerEvents:()=>[{type:'error',message:'Pemrosesan gagal.'}]});
+  await flush(); await start(failedAudioMode); await answer(failedAudioMode);
+  assert.equal(failedAudioMode.nodes.get('use-text').hidden,false,'audio upload error still offers text');
+  failedAudioMode.nodes.get('use-text').click(); await flush();
+  assert.equal(failedAudioMode.nodes.get('text-answer-area').hidden,false);
+  failedAudioMode.nodes.get('use-voice').click(); await flush();
+  assert.equal(failedAudioMode.nodes.get('send').hidden,false,'failed audio remains available after switching back');
+  console.log('PASS upload errors allow switching modes without discarding the recording');
 
   const panel=fixture({state:{panel:[{key:'hr',name:'Rina',title:'HR Interviewer'},{key:'user',name:'Andi',title:'Technical Lead'},{key:'manager',name:'Hendra',title:'Hiring Manager'}]},
     result:{action:'next',response_interviewer:'hr',response_text:'Terima kasih.',follow_up_question:null,next_question:{id:3,kind:'main',main_order:2,interviewer:'user',persona:{name:'Andi',title:'Technical Lead'},question_text:'Bagaimana Anda menguji hasil kerja?',audio_url:null}}});
@@ -439,6 +489,24 @@ async function answer(f) {f.nodes.get('record').click();await f.advance(1000);f.
   assert.equal(live.calls.filter(([url])=>url.endsWith('/voice-latency')).length,1,'replay must not duplicate first-playing latency');
   console.log('PASS realtime partial chat, manual review, corrected receipt upload, and once-per-answer latency');
 
+  const liveModes = fixture({state:realtimeState}); await startText(liveModes);
+  liveModes.nodes.get('use-voice').click(); await flush();
+  assert.equal(liveModes.voices.length,1,'switching from text initializes realtime microphone support');
+  assert.equal(liveModes.voices[0].url,undefined,'realtime connection waits for an explicit record click');
+  liveModes.nodes.get('record').click(); await flush(); liveModes.nodes.get('record').click(); await flush();
+  liveModes.nodes.get('live-transcript').value='Koreksi saya disimpan.';
+  liveModes.nodes.get('use-text').click(); await flush();
+  liveModes.nodes.get('text-answer').value='Alternatif draf teks.';
+  liveModes.nodes.get('use-voice').click(); await flush();
+  assert.equal(liveModes.nodes.get('live-review').hidden,false);
+  assert.equal(liveModes.nodes.get('live-transcript').value,'Koreksi saya disimpan.');
+  assert.equal(liveModes.nodes.get('text-answer').value,'Alternatif draf teks.');
+  liveModes.nodes.get('send').click(); await flush();
+  const switchedCapture = liveModes.calls.find(([url])=>url.includes('/answers'))[1].body;
+  assert.equal(switchedCapture.get('capture_token'),'capture-1');
+  assert.equal(switchedCapture.get('corrected_transcript'),'Koreksi saya disimpan.');
+  console.log('PASS text-to-realtime requires explicit capture and retains corrected transcripts across mode switches');
+
   let completeLate;
   const interruptedLive = fixture({state:realtimeState,realtimeFinish:()=>new Promise(resolve=>{completeLate=resolve;})});
   await flush(); await start(interruptedLive); interruptedLive.nodes.get('record').click(); await flush();
@@ -477,4 +545,15 @@ async function answer(f) {f.nodes.get('record').click();await f.advance(1000);f.
   assert.match(barge.voices[0].url,/\/voice\/1$/); assert.equal(barge.nodes.get('room-status').textContent,'MENDENGARKAN ANDA');
   barge.window.dispatchEvent(new Event('pagehide')); await flush(); assert.equal(barge.voices[0].destroyed,true);
   console.log('PASS explicit barge-in hands a question to capture and pagehide destroys realtime audio');
+
+  const textBarge = fixture({state:realtimeState,holdAudio:url=>url==='/question.mp3'}); await flush(); await verify(textBarge);
+  textBarge.nodes.get('barge-in').checked=true;
+  await startText(textBarge);
+  textBarge.voices[0].callbacks.onActivity(); await flush();
+  assert.equal(textBarge.voices[0].url,undefined,'barge-in ignores microphone activity when text mode is selected');
+  assert.equal(textBarge.nodes.get('room-status').textContent,'MENDENGARKAN');
+  textBarge.nodes.get('stop-audio').click(); await flush();
+  assert.equal(textBarge.nodes.get('text-answer-area').hidden,false);
+  assert.equal(textBarge.voices[0].url,undefined);
+  console.log('PASS text mode never starts barge-in capture even with live microphone and opt-in');
 })().catch(error=>{console.error(error);process.exitCode=1;});

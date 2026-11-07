@@ -13,8 +13,8 @@
     teamwork: 'Kerja sama', adaptability: 'Adaptasi', leadership: 'Kepemimpinan',
   };
   const levelLabels = {junior: 'Junior', middle: 'Middle', senior: 'Senior', manager: 'Manager'};
-  const statusLabels = {preparing: 'Menyiapkan', ready: 'Siap dimulai', running: 'Berlangsung', scoring: 'Menilai', evaluation_failed: 'Penilaian tertunda', done: 'Selesai', failed: 'Ditutup / gagal'};
-  const activeStatuses = new Set(['preparing', 'ready', 'running', 'scoring', 'evaluation_failed']);
+  const statusLabels = {preparing: 'Menyiapkan', preparation_failed: 'Persiapan tertunda', ready: 'Siap dimulai', running: 'Berlangsung', scoring: 'Menilai', evaluation_failed: 'Penilaian tertunda', done: 'Selesai', failed: 'Ditutup / gagal'};
+  const activeStatuses = new Set(['preparing', 'preparation_failed', 'ready', 'running', 'scoring', 'evaluation_failed']);
   let dateFormatter = new Intl.DateTimeFormat(window.PreptivaI18n?.locale || 'en-GB', {day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'});
   let shortDateFormatter = new Intl.DateTimeFormat(window.PreptivaI18n?.locale || 'en-GB', {day: 'numeric', month: 'short'});
   const pageSize = 8;
@@ -145,7 +145,9 @@
     } finally {if (focusController === controller) focusController = null;}
   }
   async function renderDashboard() {
-    const assessed = sessions.filter(scored).sort((first, second) => completedAt(first) - completedAt(second));
+    const allAssessed = sessions.filter(scored).sort((first, second) => completedAt(first) - completedAt(second));
+    const policy = session => session.aggregation_policy_version || 'legacy-owner-per-question';
+    const assessed = allAssessed.filter(session => policy(session) === policy(allAssessed.at(-1) || {}));
     node('stat-completed').textContent = String(sessions.filter(session => session.status === 'done').length);
     node('stat-average').textContent = assessed.length ? String(points(assessed.reduce((total, session) => total + session.total_score, 0) / assessed.length)) : '-';
     node('stat-best').textContent = assessed.length ? String(points(Math.max(...assessed.map(session => session.total_score)))) : '-';

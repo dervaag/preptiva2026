@@ -1,6 +1,13 @@
 'use strict';
 (() => {
   const dictionary = {
+    'Coba siapkan ulang':'Retry preparation', 'PERSIAPAN TERTUNDA':'PREPARATION PENDING',
+    'Persiapan tertunda':'Preparation pending', 'Persiapan belum selesai. Coba siapkan ulang.':'Preparation is incomplete. Try again.',
+    'Cara menjawab':'Answer mode', 'Rekam suara · gunakan kamera dan mikrofon':'Record audio · use camera and microphone',
+    'Teks · tanpa kamera/mikrofon':'Text · without camera/microphone', 'Gunakan mikrofon':'Use microphone',
+    'Mulai rekam suara':'Start recording', 'Mode jawaban: Teks':'Answer mode: Text', 'Mode jawaban: Rekam suara':'Answer mode: Audio',
+    'MENGAKTIFKAN MIKROFON':'ENABLING MICROPHONE', 'GILIRAN ANDA · MODE TEKS':'YOUR TURN · TEXT MODE',
+    'Aktifkan mikrofon, lalu tekan Mulai rekam suara. Draf teks tetap tersimpan selama pertanyaan ini.':'Enable your microphone, then press Start recording. Your text draft is kept during this question.',
     'Bahasa website':'Website language', 'Bahasa Indonesia':'Indonesian', 'Bahasa Inggris':'English',
     'Simulasi baru':'New simulation', 'Simulasi Baru':'New simulation', 'Riwayat':'History', 'Riwayat latihan':'Practice history',
     'Navigasi utama':'Main navigation', 'Navigasi footer':'Footer navigation', 'Lewati navigasi':'Skip navigation', 'Keluar':'Sign out',

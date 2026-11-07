@@ -102,6 +102,7 @@ def main():
             browser = playwright.chromium.launch(channel='chrome', headless=True)
             context = browser.new_context(viewport={'width': 1440, 'height': 1000})
             page = context.new_page()
+            page.add_init_script("localStorage.setItem('preptiva-ui-language', 'id')")
             page.on('pageerror', lambda error: errors.append(str(error)))
 
             def block_interview_requests(route):

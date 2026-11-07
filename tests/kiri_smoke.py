@@ -5,6 +5,7 @@ Run: .venv/bin/python tests/kiri_smoke.py
 """
 import argparse
 import json
+import os
 from pathlib import Path
 import secrets
 import subprocess
@@ -33,13 +34,14 @@ def main(url=URL):
     artifact_prefix = 'kiri' if url == URL else 'kiri-public'
     created_id = None
     browser = None
-    artifacts = ROOT/'artifacts'
-    artifacts.mkdir(exist_ok=True)
+    artifacts = Path(os.environ.get('PREPTIVA_BROWSER_ARTIFACTS', ROOT/'artifacts'))
+    artifacts.mkdir(parents=True, exist_ok=True)
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(channel='chrome',headless=True)
             context = browser.new_context(viewport={'width':1440,'height':1000})
             page = context.new_page()
+            page.add_init_script("localStorage.setItem('preptiva-ui-language', 'id')")
             page_errors = []
             page.on('pageerror',lambda error: page_errors.append(str(error)))
             def choose(name, value):
@@ -103,6 +105,7 @@ def main(url=URL):
             assert page.locator('[name=use_job_rubric]').is_disabled()
             report['draft_em_rubric_opt_in_form'] = True
             report['panel_and_candidate_background_form'] = True
+            page.locator('#account-menu > summary').click()
             page.locator('#logout').click()
             page.wait_for_url('**/login')
             assert get('/api/me')['status'] == 401

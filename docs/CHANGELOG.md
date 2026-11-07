@@ -1,19 +1,28 @@
 # Log perubahan
 
-## 2026-11-07 — Perbaikan pilihan panel dan cache antarmuka
+## 2026-11-07 — Pemulihan validasi jawaban dan diagnostik error
 
-- Menyamakan kartu avatar format tunggal dan panel. Panel memakai checkbox terpisah pada setiap kartu, warna pilihan oranye, serta jarak 20 px dari dropdown.
-- Menambahkan hash isi pada URL CSS/JavaScript agar browser mengambil controller dan style yang sesuai HTML terbaru. Tes Chrome mereproduksi mode Panel yang tetap menampilkan radio tunggal ketika bundle lama sudah tersimpan di cache.
-- Menambahkan tes cache dan pemilihan beberapa anggota dengan data sementara tanpa panggilan AI. Selector tes form lama dibatasi ke kelompok tunggal karena kartu kini dipakai di kedua format.
-- Verifikasi: 52 tes backend, Chrome untuk cache lama, pemilihan panel, payload form, dropdown dan keyboard lulus. Layout 320–1440 px diperiksa; server lokal juga memuat tiga checkbox aktif dengan jarak 20 px.
+- Memperbaiki aturan kutipan yang sebelumnya mustahil dipenuhi jawaban pendek seperti “Belum.”: kutipan pendek harus merupakan seluruh jawaban asli, bukan potongan jawaban panjang. Aturan bukti untuk skor kompetensi tetap sama.
+- Memperbaiki pemilihan konteks ketika jawaban panjang hanya menghasilkan fragmen pendek. Potongan tetap literal dari sumber asli; opsi kutipan diperiksa sebelum diberikan ke model.
+- Memasukkan validasi format, aksi, kutipan dan pertanyaan ke dalam satu kesempatan perbaikan keluaran AI. Probe yang dilarang oleh batas follow-up dibuang beserta kutipannya. Pertanyaan adaptif yang tetap tidak valid ditolak, tanpa menerima sumber yang dikarang.
+- Log `answer_failed` pada stream maupun JSON biasa menyertakan ID sesi/pertanyaan, tahap, kode alasan dan lokasi kode. Log serta instruksi repair tidak mencetak keluaran model, pesan exception mentah, isi CV, atau transkrip.
+- Penolakan keluaran AI setelah dua percobaan memberi respons 502 atau event error pada stream. Jawaban legacy tetap atomik; retry yang berhasil tidak menggandakan jawaban. HTTP 200 stream bukan penanda bahwa pemrosesan telah berhasil.
+- Verifikasi: 149 tes Python lulus dengan database sementara dan provider tiruan, termasuk 25 regresi baru, tanpa panggilan AI berbayar. Log lama tidak cukup untuk memastikan bahwa seluruh kejadian `ValueError` memiliki penyebab yang sama. Panduan: [log runtime](logging.md).
 
-## 2026-11-07 — Integrasi panel pada antarmuka Preptiva
+## 2026-11-07 — Orkestrasi LangGraph dengan versi per sesi
 
-- Menggabungkan pembaruan backend sampai `9ac2f90` dengan logo, form, ruang wawancara, dashboard, dan riwayat yang sudah diperbarui secara lokal. Checkpoint UI sebelum integrasi: `40844ca`.
-- Form memakai dropdown khusus untuk format tunggal/panel dan latar pengalaman. Panel memerlukan 2–3 pewawancara; jumlah pertanyaan berlaku untuk seluruh panel.
-- Ruang mengikuti nama, karakter, dan suara pewawancara aktif; chat mempertahankan penulis tiap giliran dan jumlah peserta mencakup kandidat. Mode teks, penghentian suara, Retry/Next, dan pemulihan penilaian terhubung ke kontrak backend terbaru. PC/laptop tetap wajib.
-- Dashboard dan riwayat mengenali seluruh anggota panel serta status penilaian tertunda. Memperbaiki penguncian tombol pemulihan ketika interupsi kedua terjadi saat permintaan Retry belum selesai.
-- Verifikasi lokal: 52 tes backend, 19 skenario controller, serta Chrome untuk form, dropdown, dashboard/riwayat, ruang, dan alur tunggal/panel hingga hasil lulus. Seluruh uji memakai data/perangkat sintetis dan provider tiruan; tidak melakukan panggilan AI berbayar atau deployment Kiri.
+- Menambahkan graph persiapan, satu giliran dan finalisasi, memakai fungsi/provider yang sudah ada. `ORCHESTRATION_ENGINE` default `legacy`; sesi baru dapat memilih `langgraph`, sedangkan sesi lama mempertahankan engine. Versi graph yang tidak didukung ditolak tanpa fallback diam-diam.
+- Checkpoint SQLAlchemy menyimpan referensi; ledger menyimpan hasil operasi, durasi, retry, model dan usage. Lease lintas proses serta pemeriksaan input mencegah jawaban ganda. Transkrip diterima disimpan sebelum respons AI; worker memulihkan pekerjaan yang ditinggalkan dan merekonsiliasi commit aplikasi yang mendahului checkpoint.
+- Koordinator mengutamakan cakupan/topik yang belum ditanyakan tanpa mengubah batas pertanyaan atau alokasi panel. Follow-up tetap milik persona utama. Handoff menyertakan sumber asli; Retry/Next, perangkat dan rekaman tetap dikendalikan browser.
+- Menambahkan penilaian awal independen per persona, tinjauan perbedaan yang tidak menimpa skor awal, serta agregasi `panel-evidence-equal-persona-v1`. Hasil dan tren dipisahkan menurut kebijakan penilaian. Rubrik tetap `validated: false`.
+- Operasi provider yang hasilnya ambigu memerlukan retry eksplisit. CLI inspeksi/pemulihan tidak mencetak dokumen atau kredensial; kasus STT sebelum transkrip tersimpan dapat diberi izin satu kali untuk kirim ulang audio yang sama.
+- Verifikasi: 124 tes Python lulus; 11 tes runtime juga lulus pada PostgreSQL terisolasi, termasuk proses mati/restart dan konkurensi. 29 skenario controller dan Chrome sintetis panel, audio–teks–audio, realtime/VAD, interupsi/Retry/Next hingga hasil lulus. Benchmark 12 sampel membandingkan overhead sintetis; token, biaya provider dan kualitas nyata belum diukur. Panduan: [orkestrasi LangGraph](langgraph-orchestration.md).
+
+## 2026-11-07 — Penggabungan frontend `codex/enhance-fe` ke `main`
+
+- Menggabungkan desain login, dashboard, form, ruang wawancara, hasil dan riwayat; menambahkan profil/CV serta pilihan bahasa antarmuka Indonesia–Inggris. Bahasa antarmuka terpisah dari bahasa wawancara.
+- Menyelesaikan konflik ruang wawancara dengan mempertahankan pilihan suara/teks, kembali ke mikrofon tanpa otomatis merekam, preservasi draf/rekaman, dan perlindungan izin terlambat setelah interupsi. Panel, realtime/VAD, rubrik pekerjaan dan alat benchmark Mohler tetap tersedia.
+- Menambahkan regresi akses/CSRF/isolasi profil, perubahan identitas/CV dan pergantian bahasa. CI memeriksa seluruh JavaScript dan menjalankan 29 skenario controller. Suite backend lokal: 84 tes lulus; uji Chrome memakai data dan provider sintetis, tanpa panggilan AI berbayar.
 
 ## 2026-11-07 — Pilihan jawaban suara dan kembali dari mode teks
 
@@ -31,6 +40,20 @@
 - Verifikasi terpisah: 3 tes impor/persiapan Mohler, 3 tes pembanding eksternal dan 3 tes audit lulus. Ini bukan klaim bahwa seluruh suite dijalankan ulang. Tidak ada run Mohler berbayar atau metrik AI–manusia; rubrik produksi dan `validated: false` dipertahankan.
 - Menyelaraskan dokumentasi setup, pipeline, API, penyimpanan, asesmen dan hasil pemeriksaan. Panduan operasional: [benchmark Mohler](mohler-benchmark.md).
 
+## 2026-11-07 — Perbaikan pilihan panel dan cache antarmuka
+
+- Menyamakan kartu avatar format tunggal dan panel. Panel memakai checkbox terpisah pada setiap kartu, warna pilihan oranye, serta jarak 20 px dari dropdown.
+- Menambahkan hash isi pada URL CSS/JavaScript agar browser mengambil controller dan style yang sesuai HTML terbaru. Tes Chrome mereproduksi mode Panel yang tetap menampilkan radio tunggal ketika bundle lama sudah tersimpan di cache.
+- Menambahkan tes cache dan pemilihan beberapa anggota dengan data sementara tanpa panggilan AI. Selector tes form lama dibatasi ke kelompok tunggal karena kartu kini dipakai di kedua format.
+- Verifikasi: 52 tes backend, Chrome untuk cache lama, pemilihan panel, payload form, dropdown dan keyboard lulus. Layout 320–1440 px diperiksa; server lokal juga memuat tiga checkbox aktif dengan jarak 20 px.
+
+## 2026-11-07 — Integrasi panel pada antarmuka Preptiva
+
+- Menggabungkan pembaruan backend sampai `9ac2f90` dengan logo, form, ruang wawancara, dashboard, dan riwayat yang sudah diperbarui secara lokal. Checkpoint UI sebelum integrasi: `40844ca`.
+- Form memakai dropdown khusus untuk format tunggal/panel dan latar pengalaman. Panel memerlukan 2–3 pewawancara; jumlah pertanyaan berlaku untuk seluruh panel.
+- Ruang mengikuti nama, karakter, dan suara pewawancara aktif; chat mempertahankan penulis tiap giliran dan jumlah peserta mencakup kandidat. Mode teks, penghentian suara, Retry/Next, dan pemulihan penilaian terhubung ke kontrak backend terbaru. PC/laptop tetap wajib.
+- Dashboard dan riwayat mengenali seluruh anggota panel serta status penilaian tertunda. Memperbaiki penguncian tombol pemulihan ketika interupsi kedua terjadi saat permintaan Retry belum selesai.
+- Verifikasi lokal: 52 tes backend, 19 skenario controller, serta Chrome untuk form, dropdown, dashboard/riwayat, ruang, dan alur tunggal/panel hingga hasil lulus. Seluruh uji memakai data/perangkat sintetis dan provider tiruan; tidak melakukan panggilan AI berbayar atau deployment Kiri.
 ## 2026-11-07 — Draf rubrik Engineering Manager dan alur validasi asesor
 
 - Menambahkan profil latihan EM/Manager opt-in dengan lima kompetensi, 25 jangkar, bobot usulan dan pemetaan sumber/tugas. Seluruh indikator disusun internal, ahli belum meninjau, dan validated tetap false.

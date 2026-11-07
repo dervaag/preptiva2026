@@ -20,6 +20,7 @@ def main():
         context = browser.new_context(permissions=['camera', 'microphone'],
                                       viewport={'width': 1440, 'height': 900})
         page = context.new_page()
+        page.add_init_script("localStorage.setItem('preptiva-ui-language', 'id')")
         page.on('pageerror', lambda error: failures.append(str(error)))
         page.add_init_script('''
           window.__deviceTracks = [];
@@ -71,7 +72,7 @@ def main():
                 page.screenshot(path=str(args.screenshots_dir / 'mobile.png'), full_page=True)
         page.set_viewport_size({'width': 1440, 'height': 900})
 
-        page.get_by_role('link', name='Preptiva', exact=True).focus()
+        page.locator('.setup-header').get_by_role('link', name='Preptiva', exact=True).focus()
         page.keyboard.press('Tab')
         assert page.evaluate('document.activeElement.getAttribute("href") === "/dashboard"')
         page.locator('[name=interviewer][value=hr]').focus()
@@ -97,7 +98,7 @@ def main():
         page.keyboard.press('Space')
         expect(page.locator('#setup-mirror-toggle')).to_have_attribute('aria-pressed', 'true')
         assert page.locator('#setup-camera').evaluate('(v) => getComputedStyle(v).transform.startsWith("matrix(-1")')
-        assert page.locator('.brand-symbol').evaluate('(v) => getComputedStyle(v).transform === "none"')
+        assert page.locator('.setup-header .brand-symbol').evaluate('(v) => getComputedStyle(v).transform === "none"')
         page.get_by_role('button', name='Buka fullscreen', exact=True).click()
         page.wait_for_function('document.fullscreenElement?.id === "setup-preview-panel"')
         page.get_by_role('button', name='Keluar fullscreen', exact=True).click()
@@ -109,7 +110,7 @@ def main():
         page.locator('#single-personas .setup-persona:has(input[value="user"])').click()
         expect(page.locator('#setup-persona-description')).to_contain_text('Andi')
         page.locator('[data-select="language"] [role=combobox]').click()
-        page.get_by_role('option', name='English', exact=True).click()
+        page.get_by_role('option', name='Bahasa Inggris', exact=True).click()
         page.locator('.setup-question-choice:has(input[value="5"])').click()
         page.get_by_role('button', name='Siapkan wawancara', exact=True).click()
         expect(page.locator('#setup-context')).to_have_attribute('open', '')

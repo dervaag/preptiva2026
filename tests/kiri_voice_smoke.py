@@ -20,7 +20,9 @@ def main(url):
     try:
         with sync_playwright() as p:
             browser=p.chromium.launch(channel='chrome',headless=True)
-            page=browser.new_page();page.goto(url+'/login')
+            page=browser.new_page()
+            page.add_init_script("localStorage.setItem('preptiva-ui-language', 'id')")
+            page.goto(url+'/login')
             if page.title()=='You are about to visit a shared site':
                 page.get_by_text('Continue to site',exact=True).click();page.wait_for_selector('[name=email]')
             response=page.evaluate('''async data => {const response=await fetch('/api/auth/register',{

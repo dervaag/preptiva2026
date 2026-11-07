@@ -16,6 +16,7 @@ def main():
         browser = p.chromium.launch(channel='chrome', headless=True)
         context = browser.new_context(viewport={'width': 1440, 'height': 900})
         page = context.new_page()
+        page.add_init_script("localStorage.setItem('preptiva-ui-language', 'id')")
         page.on('pageerror', lambda error: errors.append(str(error)))
         page.route('**/api/sessions', lambda route: (submissions.append(route.request.method), route.abort()))
         page.goto(args.base_url + '/dev-login')
@@ -49,7 +50,7 @@ def main():
           window.__languageEvents=[];
           for (const type of ['input','change']) document.querySelector('[name=language]').addEventListener(type, event => window.__languageEvents.push(event.type));
         }''')
-        choose('language', 'English')
+        choose('language', 'Bahasa Inggris')
         expect(page.locator('[name=language]')).to_have_value('en')
         expect(trigger('language')).to_have_attribute('aria-expanded', 'false')
         assert page.evaluate('window.__languageEvents') == ['input', 'change']
@@ -132,11 +133,12 @@ def main():
 
         touch = browser.new_context(viewport={'width':390,'height':844}, is_mobile=True, has_touch=True)
         mobile = touch.new_page()
+        mobile.add_init_script("localStorage.setItem('preptiva-ui-language', 'id')")
         mobile.on('pageerror', lambda error: errors.append(str(error)))
         mobile.route('**/api/sessions', lambda route: (submissions.append(route.request.method), route.abort()))
         mobile.goto(args.base_url + '/dev-login')
         mobile.locator('[data-select="language"] [role=combobox]').tap()
-        mobile.get_by_role('option', name='English', exact=True).tap()
+        mobile.get_by_role('option', name='Bahasa Inggris', exact=True).tap()
         expect(mobile.locator('[name=language]')).to_have_value('en')
         mobile.locator('#setup-context > summary').tap()
         mobile.locator('[data-select="gender"] [role=combobox]').tap()

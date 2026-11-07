@@ -50,6 +50,7 @@ def main():
         with sync_playwright() as p:
             browser=p.chromium.launch(channel='chrome',headless=True)
             page=browser.new_page(viewport={'width':1440,'height':1100});page.on('pageerror',lambda e:errors.append(str(e)))
+            page.add_init_script("localStorage.setItem('preptiva-ui-language', 'id')")
             def choose(name,value):
                 page.locator(f'[data-select="{name}"] [role=combobox]').click()
                 page.locator(f'#setup-select-{name}-menu [role=option][data-value="{value}"]').click()

@@ -79,6 +79,7 @@ def main():
             browser=p.chromium.launch(channel='chrome',headless=True,args=['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream',f'--use-file-for-fake-audio-capture={mic}'])
             context=browser.new_context(permissions=['camera','microphone'],viewport={'width':1440,'height':1100})
             page=context.new_page();page.on('pageerror',lambda error:failures.append(str(error)))
+            page.add_init_script("localStorage.setItem('preptiva-ui-language', 'id')")
             page.goto(f'http://127.0.0.1:{port}/login')
             page.locator('[name=email]').fill('demo@interview.local');page.locator('[name=password]').fill('demo1234')
             page.get_by_role('button',name='Masuk',exact=True).click();page.wait_for_url('**/dashboard')
@@ -155,10 +156,13 @@ def main():
             page.locator('#independent').check()
             with page.expect_download() as event:page.get_by_role('button',name='Unduh hasil penilaian JSON').click()
             print('Download event received',flush=True)
-            downloaded=json.loads(Path(event.value.path()).read_text())
+            download=event.value
+            downloaded=json.loads(Path(download.path()).read_text())
             assert len(downloaded['ratings'])==7 and all(r['score'] is None for r in downloaded['ratings'])
+            download.delete()
             report['assessor_packet_download']=True
             assert not failures,failures
+            context.close()
             browser.close();report.update(ok=True,**stats)
             print(json.dumps(report,indent=2))
     finally:

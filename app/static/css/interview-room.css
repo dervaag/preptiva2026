@@ -204,7 +204,9 @@
 .meeting-check-heading {display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 24px;}
 .meeting-speaker-row .meeting-check {margin-top: 3px; font-size: 11px;}
 .meeting-preflight-options {grid-column: 1/-1; display: grid; gap: 10px; border-top: 1px solid #eeedf0; padding-top: 16px;}
-.meeting-input-mode {grid-column: 1/-1;}
+.meeting-input-mode {grid-column: 1/-1; display: grid; gap: 10px; margin: 0; padding: 12px 14px; border: 1px solid var(--meeting-line); border-radius: 9px; min-width: 0;}
+.meeting-input-mode legend {font-size: 12px; font-weight: 500; padding: 0 5px;}
+.meeting-input-mode input[type="radio"] {flex-shrink: 0;}
 .meeting-dialog.is-text-mode .meeting-preflight-preview,
 .meeting-dialog.is-text-mode .meeting-microphone-row,
 .meeting-dialog.is-text-mode .meeting-speaker-row,
@@ -219,7 +221,9 @@
 .meeting-text-answer {display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 9px; padding-top: 10px;}
 .meeting-text-answer label {grid-column: 1/-1; font-size: 12px; font-weight: 500;}
 .meeting-text-answer textarea {grid-column: 1/-1; width: 100%; max-height: 180px; min-height: 85px; resize: vertical; border: 1px solid #d6d1cf; border-radius: 9px; padding: 11px 13px; font: inherit; font-size: 13px; color: #29272c; background: #fff; line-height: 1.6;}
-.meeting-text-answer .meeting-primary {grid-column: 2;}
+.meeting-text-answer .meeting-answer-actions {grid-column: 1/-1; justify-content: flex-start;}
+.meeting-text-answer small {grid-column: 1/-1; font-size: 11px; line-height: 1.6; color: var(--meeting-muted);}
+.meeting-answer-mode-status {font-size: 11px; color: var(--meeting-muted); margin: 0;}
 .meeting-interruption {display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 12px; padding: 15px 18px; border: 1px solid #d5b5a7; border-radius: 12px; background: #fff9f5;}
 .meeting-interruption h2 {font-size: 15px; margin: 0 0 5px;}
 .meeting-interruption p {font-size: 12px; line-height: 1.6; margin: 0 0 4px;}

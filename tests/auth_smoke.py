@@ -25,6 +25,7 @@ def main():
             browser = p.chromium.launch(channel='chrome', headless=True)
             context = browser.new_context(viewport={'width': 1440, 'height': 900})
             page = context.new_page(); page.set_default_timeout(4000)
+            page.add_init_script("localStorage.setItem('preptiva-ui-language', 'id')")
             errors, pending, registrations = [], [], []
             page.on('pageerror', lambda error: errors.append(str(error)))
             page.on('request', lambda request: registrations.append(request) if request.url.endswith('/api/auth/register') else None)

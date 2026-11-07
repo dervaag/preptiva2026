@@ -10,6 +10,15 @@ from app.ai.errors import check_response, provider_post
 async def complete(system, data, deep=False, tokens=1500):
     if not settings.openai_api_key:
         raise RuntimeError('OPENAI_API_KEY belum dikonfigurasi.')
+    from app.graphs.runtime import durable_call
+    return await durable_call('model', {'system': system, 'data': data, 'deep': deep,
+        'tokens': tokens, 'model': settings.model_deep if deep else settings.model_fast},
+        lambda: _complete(system, data, deep, tokens), paid=True)
+
+
+async def _complete(system, data, deep=False, tokens=1500):
+    if not settings.openai_api_key:
+        raise RuntimeError('OPENAI_API_KEY belum dikonfigurasi.')
     model = settings.model_deep if deep else settings.model_fast
     start = time.monotonic()
     async with httpx.AsyncClient(timeout=60) as client:
@@ -25,5 +34,8 @@ async def complete(system, data, deep=False, tokens=1500):
                     continue
             check_response(response, 'OpenAI')
             payload = response.json()
-            emit('llm_usage', model=model, ms=round((time.monotonic()-start)*1000), usage=payload.get('usage'))
+            elapsed = round((time.monotonic()-start)*1000)
+            emit('llm_usage', model=model, ms=elapsed, usage=payload.get('usage'))
+            from app.graphs.runtime import observe_usage
+            observe_usage(model, payload.get('usage') or {}, elapsed, attempt=attempt + 1)
             return json.loads(payload['choices'][0]['message']['content'])

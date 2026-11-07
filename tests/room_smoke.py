@@ -57,6 +57,7 @@ def main():
             browser=p.chromium.launch(channel='chrome',headless=True,args=['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream',f'--use-file-for-fake-audio-capture={mic}'])
             context=browser.new_context(permissions=['camera','microphone'],viewport={'width':1440,'height':900})
             page=context.new_page();page.on('pageerror',lambda error:errors.append(str(error)))
+            page.add_init_script("localStorage.setItem('preptiva-ui-language', 'id')")
             page.goto(f'http://127.0.0.1:{port}/dev-login')
             created=page.request.post(f'http://127.0.0.1:{port}/api/sessions',multipart={
                 'candidate_name':'Kandidat Uji','gender':'male','age':'28','job_role':'Product Designer','level':'middle','industry':'Technology',

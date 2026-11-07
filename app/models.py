@@ -110,3 +110,17 @@ class InterviewEvent(Base):
     kind: Mapped[str] = mapped_column(String(50))
     payload: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(default=now)
+
+
+class GraphTurnInput(Base):
+    """Accepted transcript for a graph attempt, separate from completed answers."""
+    __tablename__ = 'graph_turn_inputs'
+    __table_args__ = (UniqueConstraint('question_id', 'attempt'),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey('interview_sessions.id', ondelete='CASCADE'), index=True)
+    question_id: Mapped[int] = mapped_column(ForeignKey('interview_questions.id', ondelete='CASCADE'))
+    attempt: Mapped[str] = mapped_column(String(100))
+    input_hash: Mapped[str] = mapped_column(String(64))
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    status: Mapped[str] = mapped_column(String(20), default='pending')
+    created_at: Mapped[datetime] = mapped_column(default=now)

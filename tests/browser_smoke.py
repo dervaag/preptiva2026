@@ -106,6 +106,7 @@ def main():
             browser = p.chromium.launch(channel='chrome',headless=True,args=['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream', f'--use-file-for-fake-audio-capture={mic_file}'])
             context = browser.new_context(permissions=['camera','microphone'], viewport={'width':1440,'height':1100})
             page = context.new_page(); page.on('pageerror',lambda error: failures.append(str(error)))
+            page.add_init_script("localStorage.setItem('preptiva-ui-language', 'id')")
             def choose(name, value):
                 page.locator(f'#setup-select-{name}-trigger').click()
                 page.locator(f'#setup-select-{name}-menu [data-value="{value}"]').click()
@@ -189,9 +190,9 @@ def main():
                     page.locator('#send').click()
                 page.wait_for_url('**/hasil',timeout=30000)
                 page.wait_for_selector('.score-number'); assert page.locator('.score-number').inner_text().strip().startswith('80')
-                if panel_size > 1: assert page.locator('.panel-results article').count() == panel_size
+                if panel_size > 1: assert page.locator('.result-panel-scores article').count() == panel_size
                 if panel_size == 3:
-                    assert page.get_by_text('Pertanyaan dilewati — belum dinilai.').count() == 1
+                    assert page.get_by_text('Pertanyaan dilewati. Tidak ada jawaban yang dinilai.').count() == 1
                     assert page.locator('.coverage-summary').count() == 1
                 page.set_viewport_size({'width':390,'height':844})
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'Results overflow on mobile'
