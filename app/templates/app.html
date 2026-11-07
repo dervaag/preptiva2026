@@ -1,14 +1,18 @@
 <!doctype html>
-<html lang="id">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="{{ '#f3f2f3' if page == 'room' else '#f0f1f4' if page in ('form', 'dashboard', 'history', 'login', 'register') else '#153e35' }}"><title>{{ {'dashboard': 'Dashboard', 'history': 'Riwayat latihan', 'login': 'Masuk', 'register': 'Buat akun'}.get(page, 'Persiapkan langkah berikutnya') }} · Preptiva</title>
+<html lang="{{ 'id' if request.query_params.get('lang', request.cookies.get('preptiva_ui_language', 'en')) == 'id' else 'en' }}">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="{{ '#f3f2f3' if page == 'room' else '#f0f1f4' if page in ('form', 'dashboard', 'history', 'result', 'profile', 'login', 'register') else '#153e35' }}"><title>{{ {'dashboard': 'Dashboard', 'history': 'Riwayat latihan', 'result': 'Hasil wawancara', 'profile': 'Profil saya', 'login': 'Masuk', 'register': 'Buat akun'}.get(page, 'Persiapkan langkah berikutnya') }} · Preptiva</title>
 <link rel="icon" type="image/svg+xml" sizes="any" href="/static/images/preptiva-symbol.svg">
 <link rel="apple-touch-icon" href="/static/images/preptiva-symbol.png">
 <link rel="stylesheet" href="{{ asset_url('css/app.css') }}">
-{% if page in ('form', 'dashboard', 'history') %}<link rel="stylesheet" href="{{ asset_url('css/session-setup.css') }}"><link rel="stylesheet" href="{{ asset_url('css/custom-select.css') }}">{% endif %}
-{% if page in ('dashboard', 'history') %}<link rel="stylesheet" href="{{ asset_url('css/workspace.css') }}">{% endif %}
+{% if page in ('form', 'dashboard', 'history', 'result', 'profile') %}<link rel="stylesheet" href="{{ asset_url('css/session-setup.css') }}"><link rel="stylesheet" href="{{ asset_url('css/custom-select.css') }}"><link rel="stylesheet" href="{{ asset_url('css/account-menu.css') }}">{% endif %}
+{% if page in ('dashboard', 'history', 'result', 'profile') %}<link rel="stylesheet" href="{{ asset_url('css/workspace.css') }}">{% endif %}
+{% if page == 'profile' %}<link rel="stylesheet" href="{{ asset_url('css/profile.css') }}">{% endif %}
+{% if page == 'result' %}<link rel="stylesheet" href="{{ asset_url('css/result.css') }}">{% endif %}
 {% if page in ('login', 'register') %}<link rel="stylesheet" href="{{ asset_url('css/custom-select.css') }}"><link rel="stylesheet" href="{{ asset_url('css/auth.css') }}">{% endif %}
 {% if page == 'room' %}<link rel="stylesheet" href="{{ asset_url('css/interview-room.css') }}"><link rel="preload" as="image" href="/static/images/interviewers/office-background.png" fetchpriority="high">{% endif %}
 {% if page not in ('login', 'register') %}<link rel="stylesheet" href="{{ asset_url('css/site-footer.css') }}">{% endif %}
+<link rel="stylesheet" href="{{ asset_url('css/ui-language.css') }}">
+<script src="{{ asset_url('js/ui-language.js') }}" defer></script>
 </head>
 {% from 'partials/setup-icons.html' import icon %}
 {% macro brand(href, modifier='') -%}
@@ -17,22 +21,22 @@
   <span class="brand-name">Preptiva</span>
 </a>
 {%- endmacro %}
-<body class="{{ 'auth-page' if page in ('login', 'register') else 'meeting-page' if page == 'room' else 'setup-page workspace-page' if page in ('dashboard', 'history') else 'setup-page' if page == 'form' else '' }}" data-page="{{ page }}" data-sid="{{ sid }}">
-{% if page in ('form', 'dashboard', 'history') %}
-{% if page in ('dashboard', 'history') %}<a class="workspace-skip" href="#main-content">Lewati navigasi</a>{% endif %}
-<header class="setup-header{{ ' workspace-header' if page in ('dashboard', 'history') }}">
+<body class="{{ 'auth-page' if page in ('login', 'register') else 'meeting-page' if page == 'room' else 'setup-page workspace-page profile-page' if page == 'profile' else 'setup-page workspace-page result-page' if page == 'result' else 'setup-page workspace-page' if page in ('dashboard', 'history') else 'setup-page' if page == 'form' else '' }}" data-page="{{ page }}" data-sid="{{ sid }}">
+{% if page in ('form', 'dashboard', 'history', 'result', 'profile') %}
+{% if page in ('dashboard', 'history', 'result', 'profile') %}<a class="workspace-skip" href="#main-content">Lewati navigasi</a>{% endif %}
+<header class="setup-header{{ ' workspace-header' if page in ('dashboard', 'history', 'result', 'profile') }}">
   {{ brand('/dashboard') }}
-  <nav class="setup-nav" aria-label="Navigasi utama"><a href="/dashboard"{% if page == 'dashboard' %} aria-current="page"{% endif %}>Dashboard</a><a href="/simulasi/baru"{% if page == 'form' %} aria-current="page"{% endif %}>Simulasi baru</a><a href="/riwayat"{% if page == 'history' %} aria-current="page"{% endif %}>Riwayat</a></nav>
-  <div class="setup-account"><span class="setup-account-initial" aria-hidden="true">{{ user.name[:1] }}</span><span class="setup-account-name">{{ user.name }}</span><button id="logout" class="setup-logout" type="button" aria-label="Keluar" title="Keluar">{{ icon('logout') }}</button></div>
+  <nav class="setup-nav" aria-label="Navigasi utama"><a href="/dashboard"{% if page == 'dashboard' %} aria-current="page"{% endif %}>Dashboard</a><a href="/simulasi/baru"{% if page == 'form' %} aria-current="page"{% endif %}>Simulasi baru</a><a href="/riwayat"{% if page in ('history', 'result') %} aria-current="page"{% endif %}>Riwayat</a></nav>
+  <div class="setup-account">{% include 'partials/language-switch.html' %}{% include 'partials/account-menu.html' %}</div>
 </header>
 {% endif %}
-{% if user and page not in ('form', 'room', 'dashboard', 'history', 'login', 'register') %}
+{% if user and page not in ('form', 'room', 'dashboard', 'history', 'result', 'profile', 'login', 'register') %}
 <aside class="sidebar">
 {{ brand('/dashboard') }}
 <div class="workspace-label">RUANG LATIHAN ANDA</div><nav aria-label="Navigasi utama"><a href="/dashboard" class="{{ 'active' if page == 'dashboard' }}"><span>◫</span> Dashboard</a><a href="/simulasi/baru" class="{{ 'active' if page == 'form' }}"><span>◉</span> Simulasi baru <b>+</b></a><a href="/riwayat" class="{{ 'active' if page == 'history' }}"><span>◷</span> Riwayat latihan</a></nav><div class="sidebar-note"><span class="spark">✳</span><h3>Langkah kecil.<br>Kesempatan besar.</h3><p>Latihan hari ini untuk percakapan yang lebih percaya diri besok.</p><a href="/simulasi/baru">Mulai latihan ↗</a></div><div class="account"><span class="avatar">{{ user.name[:1] }}</span><div><strong>{{ user.name }}</strong><small>Akun personal</small></div><button id="logout" class="icon-button" aria-label="Keluar">↪</button></div></aside>
 {% endif %}
-<main id="main-content" class="{{ 'auth-main' if page in ('login', 'register') else 'meeting-main' if page == 'room' else 'workspace-main' if page in ('dashboard', 'history') else 'setup-main' if page == 'form' else 'main' if user else 'auth-main' }}">
-{% if user and page not in ('form', 'room', 'dashboard', 'history', 'login', 'register') %}<header class="topbar"><span>Workspace <span class="muted">/ {{ {'dashboard':'Dashboard','form':'Simulasi baru','history':'Riwayat latihan','room':'Ruang wawancara','result':'Hasil latihan'}.get(page) }}</span></span><span class="top-status"><i></i> Ruang untuk bertumbuh</span></header>{% endif %}
+<main id="main-content" class="{{ 'auth-main' if page in ('login', 'register') else 'meeting-main' if page == 'room' else 'workspace-main' if page in ('dashboard', 'history', 'result', 'profile') else 'setup-main' if page == 'form' else 'main' if user else 'auth-main' }}">
+{% if user and page not in ('form', 'room', 'dashboard', 'history', 'result', 'profile', 'login', 'register') %}<header class="topbar"><span>Workspace <span class="muted">/ {{ {'dashboard':'Dashboard','form':'Simulasi baru','history':'Riwayat latihan','room':'Ruang wawancara','result':'Hasil latihan'}.get(page) }}</span></span><span class="top-status"><i></i> Ruang untuk bertumbuh</span></header>{% endif %}
 <div class="content">
 {% if page in ('login', 'register') %}
 {% include 'partials/auth.html' %}
@@ -45,13 +49,17 @@
 {% elif page == 'room' %}
 {% include 'partials/interview-room.html' %}
 {% elif page == 'result' %}
-<div class="page-heading"><div><span class="eyebrow">REFLEKSI HARI INI. KEMAJUAN BESOK.</span><h1>Setiap jawaban, sebuah pelajaran.</h1><p class="muted" id="result-role">Menyiapkan refleksi latihan Anda…</p></div><a class="button" href="/simulasi/baru">Latihan lagi ↗</a></div><div id="result-content"><section class="panel empty"><span class="loading-spinner"></span><h2>Merangkai umpan balik Anda</h2><p>Menilai bukti jawaban dan menyusun saran untuk langkah berikutnya.</p></section></div>
+{% include 'partials/result.html' %}
+{% elif page == 'profile' %}
+{% include 'partials/profile.html' %}
 {% endif %}
 {% if user and page not in ('login', 'register', 'room') %}{% include 'partials/site-footer.html' %}{% endif %}
 </div></main>
 {% if user and page == 'room' %}{% include 'partials/site-footer.html' %}{% endif %}
-<div id="toast" class="toast" role="status" hidden></div><script src="{{ asset_url('js/app.js') }}" defer></script>{% if page == 'room' %}<script src="{{ asset_url('js/realtime-voice.js') }}" defer></script><script src="{{ asset_url('js/interview-room.js') }}" defer></script>{% endif %}
-{% if page in ('form', 'dashboard', 'history', 'login', 'register') %}<script src="{{ asset_url('js/custom-select.js') }}" defer></script>{% endif %}
+<div id="toast" class="toast" role="status" hidden></div>{% if page == 'result' %}<script src="{{ asset_url('js/result.js') }}" defer></script>{% endif %}<script src="{{ asset_url('js/app.js') }}" defer></script>{% if page == 'room' %}<script src="{{ asset_url('js/realtime-voice.js') }}" defer></script><script src="{{ asset_url('js/interview-room.js') }}" defer></script>{% endif %}
+{% if page in ('form', 'dashboard', 'history', 'profile', 'login', 'register') %}<script src="{{ asset_url('js/custom-select.js') }}" defer></script>{% endif %}
+{% if page in ('form', 'dashboard', 'history', 'result', 'profile') %}<script src="{{ asset_url('js/account-menu.js') }}" defer></script>{% endif %}
+{% if page == 'profile' %}<script src="{{ asset_url('js/profile.js') }}" defer></script>{% endif %}
 {% if page in ('login', 'register') %}<script src="{{ asset_url('js/auth.js') }}" defer></script>{% endif %}
 {% if page == 'form' %}<script src="{{ asset_url('js/session-setup.js') }}" defer></script>{% endif %}
 {% if page in ('dashboard', 'history') %}<script src="{{ asset_url('js/workspace.js') }}" defer></script>{% endif %}

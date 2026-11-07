@@ -1,0 +1,21 @@
+.account-menu {position: relative; font-family: 'DM Sans', sans-serif; min-width: 0;}
+.account-menu > summary {display: flex; align-items: center; gap: 9px; min-height: 42px; padding: 4px 9px 4px 4px; border: 1px solid transparent; border-radius: 10px; cursor: pointer; list-style: none;}
+.account-menu > summary::-webkit-details-marker {display: none;}
+.account-menu > summary:hover, .account-menu[open] > summary {background: #fff; border-color: #e1e3e9;}
+.account-avatar {width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; background: #fff; color: #33323a; font-size: 12px; font-weight: 500; flex-shrink: 0;}
+.account-menu-name {font-size: 12px; color: #33323a; max-width: 125px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;}
+.account-menu > summary > svg {width: 15px; height: 15px; color: #686b76; flex-shrink: 0;}
+.account-menu[open] > summary > svg {transform: rotate(180deg);}
+.account-popover {position: absolute; right: 0; top: calc(100% + 8px); width: 250px; max-width: calc(100vw - 32px); padding: 7px; z-index: 160; border: 1px solid #dfe1e8; border-radius: 13px; background: #fff; box-shadow: 0 12px 32px #27273518;}
+.account-popover-identity {padding: 12px 10px 15px; margin-bottom: 5px; border-bottom: 1px solid #eeeff3; text-align: left;}
+.account-popover-identity strong {display: block; font-size: 12px; font-weight: 550; color: #27272f; overflow-wrap: anywhere;}
+.account-popover-identity > span {display: block; font-size: 11px; color: #686b76; font-weight: 400; margin-top: 4px; overflow-wrap: anywhere;}
+.account-popover > a, .account-popover > button {display: flex; align-items: center; gap: 11px; min-height: 43px; width: 100%; border: 0; border-radius: 7px; padding: 10px; background: #fff; color: #33323a; font: 400 12px/1.5 'DM Sans', sans-serif; text-align: left; cursor: pointer;}
+.account-popover > a:hover, .account-popover > a[aria-current=page] {background: #f4f4f7;}
+.account-popover > button {color: #a13c25;}
+.account-popover > button:hover {background: #fff1eb;}
+.account-popover > button:disabled {opacity: .6; cursor: wait;}
+.account-popover svg {width: 17px; height: 17px; flex-shrink: 0; color: inherit;}
+.account-popover-divider {height: 1px; background: #eeeff3; margin: 5px 3px;}
+.account-menu > summary:focus-visible {outline: 3px solid #a6340d; outline-offset: 3px;}
+@media (max-width: 650px) {.account-menu-name {display: none;}.account-menu > summary {gap: 5px; padding-right: 3px;}.account-popover {width: 235px;}}

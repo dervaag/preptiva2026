@@ -15,8 +15,8 @@
   const levelLabels = {junior: 'Junior', middle: 'Middle', senior: 'Senior', manager: 'Manager'};
   const statusLabels = {preparing: 'Menyiapkan', ready: 'Siap dimulai', running: 'Berlangsung', scoring: 'Menilai', evaluation_failed: 'Penilaian tertunda', done: 'Selesai', failed: 'Ditutup / gagal'};
   const activeStatuses = new Set(['preparing', 'ready', 'running', 'scoring', 'evaluation_failed']);
-  const dateFormatter = new Intl.DateTimeFormat('id-ID', {day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'});
-  const shortDateFormatter = new Intl.DateTimeFormat('id-ID', {day: 'numeric', month: 'short'});
+  let dateFormatter = new Intl.DateTimeFormat(window.PreptivaI18n?.locale || 'en-GB', {day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'});
+  let shortDateFormatter = new Intl.DateTimeFormat(window.PreptivaI18n?.locale || 'en-GB', {day: 'numeric', month: 'short'});
   const pageSize = 8;
   let sessions = [], historyStatus = 'all', historyPage = 1, loaded = false, loading = false, disposed = false;
   let loadGeneration = 0, focusGeneration = 0, loadController = null, focusController = null;
@@ -248,6 +248,12 @@
     }
   }
   node('workspace-retry').addEventListener('click', load);
+  window.addEventListener('preptiva:languagechange', () => {
+    dateFormatter = new Intl.DateTimeFormat(window.PreptivaI18n.locale, {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    shortDateFormatter = new Intl.DateTimeFormat(window.PreptivaI18n.locale, {day:'numeric',month:'short'});
+    document.querySelectorAll('.ws-session-date time[datetime]').forEach(time => {time.textContent = dateText(time.dateTime);});
+    if (page === 'dashboard' && loaded) renderTrend(trendSessions);
+  });
   if (page === 'dashboard') {
     if (window.ResizeObserver) {
       chartObserver = new window.ResizeObserver(resizeTrend);

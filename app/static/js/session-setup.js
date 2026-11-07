@@ -2,6 +2,7 @@
 (() => {
   const form = document.querySelector('#session-form');
   if (!form || document.body.dataset.page !== 'form') return;
+  const ui = value => window.PreptivaI18n?.t(value) ?? value;
   const video = document.querySelector('#setup-camera');
   const cameraButton = document.querySelector('#setup-camera-toggle');
   const micButton = document.querySelector('#setup-mic-toggle');
@@ -132,7 +133,7 @@
   function validatePanel() {
     const panelMode = modeInput.value === 'panel';
     const count = panelInputs.filter(input => input.checked).length;
-    panelInputs[0].setCustomValidity(panelMode && count < 2 ? 'Pilih minimal dua pewawancara untuk panel.' : '');
+    panelInputs[0].setCustomValidity(panelMode && count < 2 ? ui('Pilih minimal dua pewawancara untuk panel.') : '');
   }
   function renderMode() {
     const panelMode = modeInput.value === 'panel';
@@ -158,9 +159,9 @@
     const pdf = form.elements.cv_pdf;
     const text = form.elements.cv_text;
     const file = pdf.files[0];
-    pdf.setCustomValidity(file?.size > 5 * 1024 * 1024 ? 'PDF maksimal 5 MB.' : '');
+    pdf.setCustomValidity(file?.size > 5 * 1024 * 1024 ? ui('PDF maksimal 5 MB.') : '');
     const hasCv = !!file || form.elements.use_last_cv.checked || text.value.trim().length >= 200;
-    text.setCustomValidity(hasCv ? '' : 'Unggah PDF atau tempel teks CV minimal 200 karakter.');
+    text.setCustomValidity(hasCv ? '' : ui('Unggah PDF atau tempel teks CV minimal 200 karakter.'));
   }
   ['cv_pdf', 'cv_text', 'use_last_cv'].forEach(name => {
     form.elements[name].addEventListener('input', validateCv);
@@ -171,6 +172,7 @@
     if (section) section.open = true;
   }, true);
   validateCv();
+  window.addEventListener('preptiva:languagechange', () => {validateCv(); validatePanel();});
   function dispose() {disposed = true; generation++; stopCamera(); stopMic();}
   window.addEventListener('pagehide', dispose);
   window.addEventListener('pageshow', () => {disposed = false;});

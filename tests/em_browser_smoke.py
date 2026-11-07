@@ -95,6 +95,7 @@ def main():
             assert 'draf' in page.locator('.rubric-notice').inner_text().lower()
             assert page.locator('.competency').count()==5
             for element in page.locator('.review-item > summary').all():element.click()
+            for element in page.locator('.result-evidence > summary').all():element.click()
             assert page.locator('.indicator-chain').count()==5
             assert page.get_by_text('Hasil peninjauan setelah tindakan belum dijelaskan.',exact=True).count()==5
             page.locator('.indicator-sources summary').first.click()

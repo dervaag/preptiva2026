@@ -1,0 +1,9 @@
+.ui-language-switch {display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 71px; min-height: 38px; padding: 7px 10px; border: 1px solid #d4d6df; border-radius: 9px; background: #fff; color: #555865; flex-shrink: 0; font: 500 11px/1.5 'DM Sans', sans-serif; cursor: pointer; transition: background .2s, border-color .2s;}
+.ui-language-switch .ui-language-icon {width: 16px !important; height: 16px !important; flex-shrink: 0; transition: transform .28s cubic-bezier(.2,.7,.2,1);}
+.ui-language-switch [data-language-label] {min-width: 17px;}
+.ui-language-switch:hover {border-color: #a3a6b2; background: #faf9f8;}
+.ui-language-switch[data-language=id] {background: #fff4ec; color: #963512; border-color: #d6b3a0;}
+.ui-language-switch[data-language=id] .ui-language-icon {transform: rotate(180deg);}
+.ui-language-switch:focus-visible {outline: 3px solid #a6340d; outline-offset: 3px;}
+@media (max-width:600px) {.setup-account {gap:7px;}.ui-language-switch {min-width:63px;gap:6px;padding:7px 8px;}}
+@media (prefers-reduced-motion:reduce) {.ui-language-switch,.ui-language-switch .ui-language-icon {transition:none;}}

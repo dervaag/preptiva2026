@@ -14,13 +14,15 @@
   if (document.body.dataset.page !== 'register') return;
   const password = form.elements.password;
   const confirmation = form.elements.password_confirm;
+  const ui = value => window.PreptivaI18n?.t(value) ?? value;
   function validatePasswords() {
-    password.setCustomValidity(password.value && (!/[A-Za-z]/.test(password.value) || !/\d/.test(password.value)) ? 'Gunakan huruf dan angka pada password.' : '');
-    confirmation.setCustomValidity(confirmation.value && confirmation.value !== password.value ? 'Konfirmasi password belum sama.' : '');
+    password.setCustomValidity(password.value && (!/[A-Za-z]/.test(password.value) || !/\d/.test(password.value)) ? ui('Gunakan huruf dan angka pada password.') : '');
+    confirmation.setCustomValidity(confirmation.value && confirmation.value !== password.value ? ui('Konfirmasi password belum sama.') : '');
   }
   [password, confirmation].forEach(input => {
     input.addEventListener('input', validatePasswords);
     input.addEventListener('change', validatePasswords);
   });
   validatePasswords();
+  window.addEventListener('preptiva:languagechange', validatePasswords);
 })();
