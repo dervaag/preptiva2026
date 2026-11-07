@@ -38,7 +38,7 @@ async def request_context(request: Request, call_next):
         # Cookies are ambient credentials: reject browser cross-origin mutations.
         origin = request.headers.get('origin')
         if request.method in ('POST','PUT','PATCH','DELETE') and (request.headers.get('sec-fetch-site') == 'cross-site' or
-            (origin and urlsplit(origin).netloc != request.headers.get('host'))):
+            (origin and urlsplit(origin).netloc != request.headers.get('host') and origin != settings.public_origin)):
             return JSONResponse({'detail': 'Cross-origin request ditolak.'}, status_code=403)
         response = await call_next(request)
         response.headers['X-Request-ID'] = rid

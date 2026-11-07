@@ -44,6 +44,13 @@ class TextAndScoringTests(unittest.TestCase):
             with self.subTest(values=values), self.assertRaises(ValidationError):
                 Settings(_env_file=None, **values)
 
+    def test_public_origin_must_be_an_exact_https_origin(self):
+        for origin in ('*', 'https://*.runkiri.cloud', 'http://app.example.com',
+                       'https://app.example.com/path', 'https://user@app.example.com',
+                       'https://app.example.com?query=1'):
+            with self.subTest(origin=origin), self.assertRaises(ValidationError):
+                Settings(_env_file=None, public_origin=origin)
+
     def test_config_reads_all_levels_and_lengths(self):
         config = Settings(_env_file=None, answer_seconds_junior=30, answer_seconds_middle=45,
             answer_seconds_senior=60, answer_seconds_manager=75, followups_demo=0, followups_short=3, followups_standard=5)
@@ -168,6 +175,30 @@ class SystemTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await self.client.get('/api/me')).status_code,401)
         response = await self.client.post('/api/auth/login', json={'email':'budi@example.com','password':'test12345'})
         self.assertEqual(response.status_code,200)
+
+    async def test_public_tunnel_origin_keeps_cross_site_protection(self):
+        public = 'https://test-public.runkiri.cloud'
+        credentials = {'email':'budi@example.com', 'password':'test12345'}
+        with patch.object(settings, 'public_origin', ''):
+            response = await self.other.post('/api/auth/login', json=credentials, headers={'Origin':public})
+            self.assertEqual(response.status_code, 403)
+        with patch.object(settings, 'public_origin', public):
+            response = await self.other.post('/api/auth/login', json=credentials,
+                headers={'Origin':public, 'Sec-Fetch-Site':'same-origin'})
+            self.assertEqual(response.status_code, 200)
+            for origin in ('https://attacker.example', public+'.attacker.example',
+                           'http://test-public.runkiri.cloud', 'https://other.runkiri.cloud'):
+                with self.subTest(origin=origin):
+                    response = await self.other.post('/api/auth/logout',
+                        headers={'Origin':origin, 'X-Forwarded-Host':origin.split('://')[1]})
+                    self.assertEqual(response.status_code, 403)
+            response = await self.other.post('/api/auth/logout',
+                headers={'Origin':public, 'Sec-Fetch-Site':'cross-site'})
+            self.assertEqual(response.status_code, 403)
+            self.assertEqual((await self.other.get('/api/me')).status_code, 200)
+            response = await self.other.post('/api/auth/logout',
+                headers={'Origin':public, 'Sec-Fetch-Site':'same-origin'})
+            self.assertEqual(response.status_code, 200)
 
     async def test_uuid_ownership_and_validation(self):
         sid, _, state = await self.ready_session()

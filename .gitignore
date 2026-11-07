@@ -1,6 +1,11 @@
 .venv/
 .env
+.env.kiri
 data/
 __pycache__/
 *.pyc
 .DS_Store
+*.pem
+*.key
+deploy/*.env
+deploy/*.tar.gz

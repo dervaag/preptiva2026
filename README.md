@@ -34,6 +34,14 @@ An explicit live-provider check is also available: `.venv/bin/python tests/live_
 
 ## Deployment
 
+Untuk Kiri lokal, jalankan `sh deploy/kiri.sh up`, lalu buka **https://preptiva.kiri.local**. Konfigurasi terpisah ada di `compose.kiri.yaml`; helper membuat `.env.kiri` dengan secret acak tanpa mengubah `.env` development. Lihat [panduan Kiri](docs/deployment-kiri.md) untuk pengaturan HTTPS, data PostgreSQL, dan operasional.
+
+Auto-deploy ke satu Mac Kiri tersedia di `.github/workflows/kiri.yml`: tes pada GitHub, lalu deployment commit `main` pada runner khusus `preptiva-kiri-bima`. Registrasi runner dan push workflow diperlukan sekali; lihat [aktivasi dan alur kolaborasi](docs/deployment-kiri.md#deployment-otomatis-hanya-mac-bima). Environment deployment disimpan lokal, terpisah dari checkout; volume PostgreSQL/Redis tetap digunakan saat aplikasi diperbarui.
+
+Akses internet tersedia melalui [Kiri Share](docs/deployment-kiri.md#akses-publik-melalui-kiri-share), yang meneruskan URL HTTPS publik ke web pada `127.0.0.1:18080`. URL Share bergantung pada sesi dan proses tunnel harus tetap berjalan; PostgreSQL/Redis tidak dipublish langsung.
+
+Autostart Share sudah dipasang untuk akun Mac ini. Jalankan `python3 deploy/kiri_share_service.py status` untuk melihat URL terbaru. Layanan mulai setelah login macOS, memulihkan proses Share, dan memperbarui origin aplikasi ketika URL berubah.
+
 The supplied Python backend runs locally or with Docker, PostgreSQL and an arq/Redis worker. It does not target Cloudflare Workers/Sites hosting. Set a random 32+ character secret and secure cookies in production, and terminate HTTPS at your ingress. Then run `docker compose up -d --build`. The web service binds to loopback port 8000. `deploy/nginx.conf` is an HTTP proxy reference; configure certificates at your ingress before production use. Set `DB_PASSWORD` for Compose. Provider settings are passed through `.env`; never commit it.
 
 See [implementation status](docs/implementation-status.md) for differences from the broader reference design and remaining validation work.

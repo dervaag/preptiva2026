@@ -1,6 +1,12 @@
 .venv
 .git
 .env
+.env.kiri
 data
 __pycache__
 tests
+*.pem
+*.key
+artifacts
+deploy/*.env
+deploy/*.tar.gz

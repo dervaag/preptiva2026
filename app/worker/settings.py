@@ -13,3 +13,4 @@ class WorkerSettings:
     redis_settings = RedisSettings.from_dsn(settings.redis_url or 'redis://localhost:6379/0')
     on_startup = startup
     job_timeout = 900
+    health_check_interval = 30

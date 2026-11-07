@@ -1,0 +1,54 @@
+name: Test and deploy Preptiva
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: '3.12'
+          cache: pip
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - run: pip install -r requirements.txt
+      - run: python -m unittest discover -s tests -v
+      - run: node --check app/static/js/app.js && node --check app/static/js/interview-room.js
+
+  deploy:
+    needs: test
+    if: >-
+      github.repository == 'dervaag/preptiva2026' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: [self-hosted, macOS, ARM64, preptiva-kiri-bima]
+    timeout-minutes: 30
+    concurrency:
+      group: preptiva-kiri-bima
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Deploy tested commit to Kiri
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          export PATH="/usr/local/bin:/opt/homebrew/bin:$HOME/.kiri/bin:$PATH"
+          python3 deploy/auto_kiri.py deploy --revision "$GITHUB_SHA"

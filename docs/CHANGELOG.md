@@ -1,5 +1,35 @@
 # Log perubahan
 
+## 2026-11-07 — Registrasi runner deployment GitHub
+
+- Memasang runner resmi ARM64 v2.338.2 setelah verifikasi checksum GitHub, di `~/actions-runner-preptiva`.
+- Mendaftarkan runner `preptiva-kiri-bima` ke `dervaag/preptiva2026` melalui prompt token interaktif dan menjalankannya sebagai service akun Mac. Koneksi GitHub berhasil dan runner siap menerima job.
+- Verifikasi sebelum push: 35 tes lokal, syntax JavaScript, dan `git diff --check` lulus. Token registrasi tidak disimpan dalam source proyek.
+
+## 2026-11-07 — Autostart Kiri Share
+
+- Mengaktifkan LaunchAgent akun Mac `com.preptiva.kiri-share` atas permintaan pengguna. Service dijalankan setelah login dan dipulihkan launchd jika berakhir; tunnel manual lama dihentikan setelah layanan penggantinya siap.
+- Menambahkan `deploy/kiri_share_service.py` untuk install/status/restart/stop. Runtime/config/log privat disimpan di Application Support, di luar folder IDE.
+- URL baru disinkronkan ke `PUBLIC_ORIGIN` pada environment shared, bootstrap, dan release aktif dengan lock deployment. Kredensial database, secret sesi, tag image, dan volume tetap dipertahankan.
+- Tiga tes service lulus. Restart layanan menghasilkan URL baru dan health publik kembali sehat; reboot macOS tidak dilakukan. URL terkini tersedia melalui perintah status karena nama tunnel belum direservasi permanen.
+- Smoke test Chrome setelah restart lulus untuk registrasi/login/logout, HTTPS, database/Redis, worker dan volume bersama. Pemeriksaan akhir mencatat satu proses Share aktif, origin tersinkron, serta kredensial tetap sama pada `artifacts/kiri-autostart.json`.
+
+## 2026-11-07 — Publikasi Preptiva melalui Kiri Share
+
+- Menambahkan binding web khusus loopback `127.0.0.1:18080` sebagai target tunnel publik; PostgreSQL/Redis tetap internal dan volume data dipertahankan.
+- Menambahkan `PUBLIC_ORIGIN` HTTPS yang dicocokkan persis agar login/registrasi tetap bekerja ketika tunnel mengganti header Host. Pemeriksaan origin lain dan `Sec-Fetch-Site: cross-site` tetap aktif; tidak mempercayai header forwarded dari klien.
+- Menambahkan opsi URL pada smoke test Kiri, penanganan konfirmasi pengunjung Kiri, serta artefak pemeriksaan publik terpisah.
+- Pada publikasi awal, Share berjalan manual dengan URL acak; autostart kemudian diaktifkan pada pembaruan di atas.
+- Verifikasi: 32 tes regresi lokal lulus. Smoke test Chrome pada URL publik lulus untuk HTTPS tepercaya, ketersediaan API kamera/mikrofon, registrasi/login/logout, cookie Secure/HttpOnly, health PostgreSQL/Redis, job worker, dan volume bersama. Akun uji dibersihkan dan tidak ada panggilan AI berbayar. Hasil: `artifacts/kiri-public-smoke.json`.
+
+## 2026-11-07 — Deployment otomatis ke satu Mac Kiri
+
+- Menambahkan workflow tes GitHub-hosted dan deployment `main` ke runner Mac ARM64 berlabel `preptiva-kiri-bima`; job PR tidak memakai runner deployment.
+- Menambahkan release terpisah, salinan environment lokal yang dipertahankan, image unik, lock deployment, pemeriksaan commit terbaru, healthcheck, dan pemulihan container release sebelumnya saat aktivasi gagal. Volume PostgreSQL/Redis/audio tetap pada project `preptiva`.
+- Mendokumentasikan registrasi runner sekali, alur push/PR/merge, dan batasan akses domain lokal serta pemulihan database. Auto-deploy belum aktif sampai runner terdaftar dan workflow dipush serta dijalankan sukses.
+- Menambahkan tes deployment untuk perlindungan kredensial, pengecualian key/data, kegagalan build/health, dan pencegahan commit kedaluwarsa.
+- Verifikasi: 30 tes lulus pada Python lokal dan container Python 3.12 tanpa jaringan; syntax JavaScript dan Compose valid; empat service Kiri healthy dan HTTPS `/health` mengembalikan PostgreSQL/Redis aktif. Environment deployment terpisah sudah disalin identik dengan permission `600`. Eksekusi workflow GitHub belum diuji.
+
 ## 2026-11-05 — Rencana rubrik berbasis referensi
 
 - Menambahkan `rubric-validation-plan.md`: penentuan kompetensi dari pekerjaan, pemetaan indikator ke sumber (diambil/diadaptasi/internal), indikator skor 1–5 konkret, gold set asesor, uji AI, dan target keluaran skor → kutipan → indikator → alasan belum naik tingkat → sumber.
@@ -52,6 +82,18 @@
 - Menghapus pertanyaan tambahan dari tanggapan aksi next ketika batas follow-up habis.
 - Tujuh tes regresi backend lulus sebelum pengembangan fitur persiapan perangkat.
 # 7 November 2026 — Implementasi awal dari spesifikasi
+
+## Deployment lokal Kiri
+
+- Menambahkan `compose.kiri.yaml` dengan web, worker, PostgreSQL, Redis, volume persisten, dan healthcheck. Worker menunggu web sehat agar inisialisasi skema pertama tidak bersamaan.
+- Menambahkan helper `deploy/kiri.sh`, pembuatan `.env.kiri` lokal dengan secret acak/mode `600`, dan panduan akses HTTPS `preptiva.kiri.local`.
+- Domain mengikuti resolver/CA lokal Kiri; konteks Docker ditargetkan secara eksplisit ke `kiri`. Deployment SSH tetap dibatalkan sesuai instruksi pengguna.
+- Verifikasi Kiri 0.1.18 berhasil: empat service healthy, HTTPS dipercaya Chrome/curl, autentikasi PostgreSQL, cookie aman, job arq, dan volume audio bersama. Pengujian tidak memanggil provider AI dan akun/file uji dibersihkan.
+
+## Persiapan akses VM
+
+- Membatasi izin private key lokal menjadi `400`, mengecualikan key dari Git/Docker, dan mengeluarkan key yang sudah terlacak dari index Git. Riwayat lama belum diubah.
+- Menambahkan pembuat paket source dengan allowlist dan panduan deployment VM. Akses SSH target timeout pada port 22; belum ada deployment atau perubahan layanan remote.
 
 ## Konfigurasi dan pengujian provider
 

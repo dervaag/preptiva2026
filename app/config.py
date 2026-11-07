@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     app_env: str = 'development'
     secret_key: str = 'dev-secret-change-me'
     cookie_secure: bool = False
+    # Exact external HTTPS origin when a tunnel rewrites the upstream Host header.
+    public_origin: str = Field(default='', pattern=r'^(?:https://[A-Za-z0-9][A-Za-z0-9.-]*(?::[0-9]+)?)?$')
     database_url: str = ''
     redis_url: str = ''
     ai_mock: bool = False
