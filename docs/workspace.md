@@ -1,5 +1,7 @@
 # Dashboard and history
 
+> Tinjauan dokumentasi: 7 November 2026, baseline `a4369f5`. [Status terkini dan batas verifikasi](current-state.md).
+
 The dashboard and history pages share the horizontal navigation, DM Sans typography, neutral background, and orange primary action used by simulation setup. Their partials live in `app/templates/partials/dashboard.html` and `history.html`; `workspace.css` and `workspace.js` load only on these two pages.
 
 ## Data and interaction
@@ -18,3 +20,7 @@ The dashboard and history pages share the horizontal navigation, DM Sans typogra
 Run `.venv/bin/python tests/workspace_smoke.py` for isolated Chrome checks. The test creates a temporary database and fixture assessments, checks score/ordering semantics, filters, sorting, pagination, keyboard dropdowns, retry behavior, and layouts from 320 to 1440 px. Pass `--screenshots-dir <directory>` to save stress screenshots. It does not call interview or provider APIs.
 
 The existing Python test suite can be run with `.venv/bin/python -m unittest discover -s tests -q`.
+
+## Bahasa hasil dan visibilitas jawaban
+
+Hasil memakai feedback AI dalam bahasa platform yang dipilih saat sesi dibuat, dengan fallback historis ke bahasa wawancara. Label UI tetap mengikuti pemilih bahasa saat ini; teks jawaban/bukti tidak diterjemahkan otomatis. Transkrip dan feedback hasil sekarang terbuka dan disertakan dalam print/PDF. Lihat [hasil](results.md).

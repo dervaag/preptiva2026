@@ -1,5 +1,7 @@
 # Pedoman dasar asesor Preptiva
 
+> Tinjauan dokumentasi: 7 November 2026, baseline `a4369f5`. [Status terkini dan batas verifikasi](current-state.md).
+
 Disusun 7 November 2026. Status: pedoman latihan dan tinjauan ahli, belum tervalidasi sebagai alat seleksi. Fokus awal Engineering Manager dengan persona Manager. Panduan ini menjelaskan penggunaan [rubrik EM](engineering-manager-rubric.md); tidak mengganti indikator, bobot, versi, atau snapshot runtime.
 
 ## Dasar yang dapat ditelusuri

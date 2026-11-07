@@ -1,5 +1,7 @@
 # Orkestrasi LangGraph Preptiva
 
+> Tinjauan dokumentasi: 7 November 2026, baseline `a4369f5`. [Status terkini dan batas verifikasi](current-state.md).
+
 Implementasi `langgraph-v1` menambahkan tiga graph di atas fungsi AI, database, FastAPI, dan Redis/arq yang sudah ada. Default konfigurasi tetap `ORCHESTRATION_ENGINE=legacy`; sesi baru dapat memakai `langgraph`. Tidak ada perubahan status validasi rubrik: panel AI dan persetujuan antar-model bukan penilaian tiga asesor manusia.
 
 ## Versi sesi dan aktivasi
@@ -148,3 +150,7 @@ Angka ini hanya mengukur tambahan kerja aplikasi/graph/database pada fixture den
 Baseline lokal 7 November 2026 (3 ulangan per skenario, 12 sampel): median tiga pertanyaan tunggal 29,188 ms legacy vs 485,154 ms graph; panel tiga persona 26,250 ms vs 489,559 ms. Tambahan sekitar 456–463 ms mencakup inisialisasi graph pertama dan SQLite pada mesin pengujian ini. Pada fixture panel tersebut, evaluasi logis bertambah dari 3 menjadi 8 karena penilaian silang sesuai lingkup persona. Rincian fase, hash source/fixture dan batas pengukuran tersimpan di [baseline sintetis](../artifacts/langgraph-synthetic-baseline.json).
 
 Pembandingan nyata masih memerlukan sampel yang diizinkan, model dan prompt yang dipin, batas biaya, tarif provider pada tanggal pengujian, serta pencatatan usage aktual. Bandingkan fase yang sama dan laporkan pekerjaan tambahan penilaian panel, bukan hanya total waktu. Penilaian kualitas pertanyaan dan kesesuaian skor memerlukan uji terpisah dengan tinjauan manusia. Benchmark Mohler tidak menggantikan pengujian evaluator interview produksi.
+
+## Gate bahasa dan akhir sesi terbaru
+
+Pada node penerimaan transkrip, pemeriksaan dominasi bahasa dilakukan sebelum `GraphTurnInput` disimpan. Perbedaan yang jelas menghasilkan payload `language_retry`, bukan komit jawaban atau routing baru. Kandidat mengulang pada pertanyaan sama; thread input baru dapat menerima jawaban yang diperbaiki. Short/uncertain answers tidak ditolak otomatis. Suara pengingat dibaca melalui endpoint bahasa yang tetap memeriksa ownership dan pertanyaan aktif. Finalisasi memakai `feedback_language`; penutup tidak menawarkan Q&A kandidat. Lihat [bahasa](languages-and-personas.md) dan [hasil](results.md).

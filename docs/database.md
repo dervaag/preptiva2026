@@ -1,5 +1,7 @@
 # Skema Database
 
+> Tinjauan dokumentasi: 7 November 2026, baseline `a4369f5`. [Status terkini dan batas verifikasi](current-state.md).
+
 Database: **PostgreSQL 16** (produksi) / **SQLite** (dev)
 
 ## Pembaruan keamanan dan retensi — 7 November 2026
@@ -19,10 +21,7 @@ SQLite memakai `AUTOINCREMENT` pada ID yang dibuat aplikasi agar ID terhapus tid
 
 ## Rancangan awal
 
-Tabel dibuat otomatis saat startup (`create_all`, idempotent). DDL referensi tersedia di `sql/01_schema.sql` dan bisa di-generate ulang dengan:
-```bash
-python -m app.scripts.dump_schema
-```
+Tabel dibuat dari metadata SQLAlchemy melalui `init_db()` pada startup. Model aktif berada di `app/models.py`, `app/graphs/models.py`, `app/security_models.py` dan `app/privacy_models.py`. Tidak ada `sql/01_schema.sql` atau `app.scripts.dump_schema` aktif pada baseline ini. Tabel/desain historis di bawah harus dibaca bersama model aktual dan status implementasi.
 
 ---
 
@@ -193,3 +192,7 @@ Kolom `interview_sessions.uuid` yang sudah ada digunakan pada seluruh URL dan pa
 ## Penyimpanan benchmark eksternal
 
 [Dataset Mohler](mohler-benchmark.md) disimpan sebagai Parquet sumber, manifest unduhan dan JSON di `data/external/mohler-v1/`. Pilot berada di `data/external/mohler-pilot-50/`; masukan AI dan label manusia dipisahkan dan diikat hash. Hasil run/report juga berupa berkas lokal. Tidak ada tabel, migrasi, seed pengguna atau perubahan snapshot sesi untuk benchmark ini. `data/` diabaikan Git dan dikecualikan dari image Docker.
+
+## Snapshot bahasa dan data graph terkini
+
+`script.settings.language` mengatur wawancara, `feedback_language` mengatur penjelasan hasil (fallback: bahasa wawancara). `language_retry` tidak menulis InterviewAnswer atau GraphTurnInput untuk jawaban ditolak; ledger/checkpoint graph dapat mencatat operasi gagal atau STT yang sudah selesai tanpa menerimanya sebagai unit penilaian. Graph memakai tabel `graph_executions`, `graph_operations`, `graph_checkpoints`, `graph_checkpoint_writes`, `graph_turn_inputs`; data domain tetap otoritas. Tidak ada kolom baru untuk gate bahasa.

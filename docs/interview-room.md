@@ -1,5 +1,7 @@
 # Ruang wawancara
 
+> Tinjauan dokumentasi: 7 November 2026, baseline `a4369f5`. [Status terkini dan batas verifikasi](current-state.md).
+
 Koreksi bahasa jawaban: event hasil dengan `action: language_retry` menampilkan/membacakan permintaan mengulang dalam bahasa wawancara, lalu mengembalikan kontrol ke pertanyaan yang sama dengan timer penuh. Tidak memanggil finish, tidak mengonsumsi retry rekaman tambahan, dan tidak membuat follow-up. Jawaban belum menjadi unit penilaian sampai dikirim dalam bahasa yang diterima. Rincian deteksi konservatif: [bahasa dan persona](languages-and-personas.md).
 
 Halaman `/sesi/{session_id}/ruang` memakai layout meeting: pewawancara besar, preview kandidat di sudut, percakapan di kanan, dan toolbar bawah. Pada ponsel percakapan berada di bawah stage. Layar pendek dapat di-scroll agar kontrol tetap terjangkau.

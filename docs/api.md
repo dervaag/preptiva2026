@@ -1,5 +1,7 @@
 # Referensi API
 
+> Tinjauan dokumentasi: 7 November 2026, baseline `a4369f5`. [Status terkini dan batas verifikasi](current-state.md).
+
 Pembaruan bahasa jawaban: `/api/sessions/{sid}/answers` dapat mengembalikan HTTP 200 dengan `action: language_retry`, `question_id`, `expected_language`, `transcript`, `response_text`, `response_audio_url` dan `is_last: false`. Pada streaming, payload dikirim sebagai event `type: result`. Ini permintaan mengulang dalam bahasa sesi, bukan jawaban terkomit; jangan memajukan giliran atau memanggil finish. `/api/sessions/{sid}/speech/language/{question_id}` menyediakan suara pengingat tetap bagi pertanyaan aktif milik pengguna. Lihat [kebijakan bahasa](languages-and-personas.md).
 
 Pembaruan bahasa hasil, 7 November 2026: `POST /api/sessions` menerima form opsional `feedback_language=id|en`. Browser mengisinya dari bahasa platform saat sesi dibuat; jika tidak dikirim, server memakai `language` wawancara. Nilai disimpan di snapshot sesi. `GET /api/sessions/{sid}/result` menyertakan `feedback_language`; untuk sesi lama field ini menggunakan fallback bahasa wawancara. Mengganti bahasa UI kemudian tidak memicu terjemahan/penilaian ulang hasil tersimpan. Lihat [kebijakan hasil](results.md).
@@ -134,7 +136,7 @@ Buat sesi wawancara baru.
 | `company` | string | – | opsional |
 | `question_count` | integer | – | `3`, `5`, atau `7` (default 7) |
 | `interviewer` | `hr`/`user`/`manager` | ✓ | |
-| `language` | `id`/`en` | – | Bahasa sesi, default `id`; jawaban campuran diterima |
+| `language` | `id`/`en` | – | Bahasa wawancara, default `id`; perbedaan dominan bahasa dapat menghasilkan `language_retry` |
 | `consent` | boolean | ✓ | harus `true` |
 | `use_last_cv` | boolean | – | pakai CV dari sesi sebelumnya |
 | `cv_text` | string | * | teks CV (min 200 karakter) |

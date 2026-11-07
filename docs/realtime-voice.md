@@ -1,5 +1,7 @@
 # Audio realtime dan VAD
 
+> Tinjauan dokumentasi: 7 November 2026, baseline `a4369f5`. [Status terkini dan batas verifikasi](current-state.md).
+
 Sesi baru dengan `REALTIME_VOICE_ENABLED=true` memakai transkripsi audio bertahap dan TTS streaming. Sesi lama mengikuti snapshot saat dibuat. Kunci API tetap di server; `.env` yang sudah diisi tidak perlu diganti. PostgreSQL dan Redis tetap dipakai seperti sebelumnya.
 
 ## Alur pengguna
@@ -43,3 +45,7 @@ Event `voice_first_playing` mencatat selisih waktu browser dari Selesai bicara/p
 Probe asli 7 November mencatat delta transkrip, VAD mulai/berhenti, receipt tersimpan dan TTS chunk pertama 449 ms dari permintaan audio. Itu satu sampel lokal sintetis, tidak mencakup waktu LLM/pengguna atau kualitas aksen nyata. Pengujian suara fisik, kebisingan, jaringan lambat, aksesibilitas dan distribusi latensi produksi tetap perlu dilanjutkan.
 
 Protokol mengikuti [OpenAI Realtime transcription](https://developers.openai.com/api/docs/guides/realtime-transcription), [VAD](https://developers.openai.com/api/docs/guides/realtime-vad), dan [ElevenLabs TTS stream](https://elevenlabs.io/docs/api-reference/text-to-speech/stream). Alur percakapan dan penilaian tetap ditangani orchestrator aplikasi, bukan model audio yang bebas membuat giliran.
+
+## Pemeriksaan bahasa sesudah transkrip
+
+Transkrip final yang dikirim, termasuk koreksi, melewati gate bahasa yang sama dengan teks/audio unggahan. Jika dominan berbeda dari bahasa wawancara dengan keyakinan tinggi, server tidak menerima jawaban sebagai unit penilaian dan mengirim `language_retry`. Controller membuang capture pengiriman lama, membacakan pengingat bila audio tersedia, lalu memberi kesempatan menjawab ulang pada pertanyaan yang sama. Tidak ada perubahan model STT atau provider/fallback. Lihat [kebijakan bahasa](languages-and-personas.md).

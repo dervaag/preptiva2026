@@ -1,5 +1,7 @@
 # Pipeline AI
 
+> Tinjauan dokumentasi: 7 November 2026, baseline `a4369f5`. [Status terkini dan batas verifikasi](current-state.md).
+
 Sebelum respons/follow-up, jawaban yang terdeteksi dominan memakai bahasa Indonesia/Inggris berbeda dari bahasa sesi dikembalikan sebagai `language_retry`. Pemeriksaan dilakukan sebelum jawaban penilaian diterima di legacy maupun graph. Pengingat meminta ulang dalam bahasa sesi tanpa memajukan pertanyaan, menambah follow-up atau menutup sesi; jawaban singkat/tidak pasti tidak ditolak otomatis. Lihat [kebijakan bahasa](languages-and-personas.md).
 
 Penutup sesi: tidak ada fase kandidat bertanya kepada panel. Blueprint baru memakai slot `reflection`, bukan `candidate_questions`; generator/adaptasi menolak ajakan agar kandidat mengajukan pertanyaan. Penutup baru memakai teks tetap Indonesia/Inggris yang menjelaskan sesi selesai dan hasil akan diproses. Payload penutup sesi lama dengan pertanyaan/ajakan Q&A diganti pada jalur state/akhir giliran dan endpoint suara, agar teks dan audio tidak bertentangan. Pertanyaan utama dan follow-up yang memang meminta jawaban kandidat tetap berjalan seperti biasa.
@@ -35,7 +37,7 @@ Konfigurasi proyek menggunakan ElevenLabs Multilingual v2 untuk prepared dan liv
 
 Tidak ada perpindahan otomatis ke OpenAI TTS atau speechSynthesis browser. Kegagalan suara dilaporkan dan percakapan dapat dilanjutkan melalui teks; tidak memakai suara provider lain. UI hanya membunyikan nada Web Audio lokal pada tes speaker, bukan suara pengganti pewawancara. Cache audio mempertimbangkan provider, model, voice, instruksi, versi pengaturan suara dan teks. Memutar ulang cache tidak melakukan panggilan provider.
 
-STT proyek tetap `openai:gpt-4o-transcribe`; tidak memakai realtime microphone streaming. Konfigurasi provider lain ditolak; tidak ada fallback STT yang diaktifkan.
+STT proyek tetap `openai:gpt-4o-transcribe`; mendukung unggahan audio serta transport realtime sesuai snapshot sesi. Konfigurasi provider lain ditolak; tidak ada fallback STT yang diaktifkan.
 
 ## Penilaian
 

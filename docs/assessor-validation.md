@@ -1,5 +1,7 @@
 # Menyiapkan pembandingan AI–asesor
 
+> Tinjauan dokumentasi: 7 November 2026, baseline `a4369f5`. [Status terkini dan batas verifikasi](current-state.md).
+
 Mulai dari [pedoman dasar asesor](pedoman-asesor.md) untuk sumber, fokus kompetensi dan urutan penilaian satu jawaban.
 
 ## Audit kesiapan yang dapat diulang

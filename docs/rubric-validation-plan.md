@@ -1,5 +1,7 @@
 # Rencana rubrik berbasis referensi dan pengujiannya
 
+> Tinjauan dokumentasi: 7 November 2026, baseline `a4369f5`. [Status terkini dan batas verifikasi](current-state.md).
+
 Status 7 November 2026: **draf rubrik khusus dan implementasi teknis tersedia; tinjauan ahli serta penilaian manusia belum dilakukan**. Rubrik umum tetap `2026-11-05.2`; draf Engineering Manager/persona Manager menggunakan `2026-11-07.em.1` melalui pilihan eksplisit pada form. Keduanya `validated: false`.
 
 Pembaruan 7 November 2026: pemisahan persona, guidebook pertanyaan, adaptasi berdasarkan CV/percakapan, dan panel telah diimplementasikan secara terpisah; lihat [guidebook](question-guidebook.md). Hal itu tidak menyelesaikan validasi rubrik oleh asesor yang direncanakan di dokumen ini.

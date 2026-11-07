@@ -14,6 +14,14 @@ if (typeof window !== 'undefined') {
   });
 }
 function resultPoints(score) {return typeof score === 'number' && Number.isFinite(score) ? Math.round(Math.max(0, Math.min(5, score)) * 20) : null;}
+function hasRecordedAssessment(competency) {
+  // The API includes the whole rubric, even when no answer assessed a competency.
+  // Keep actual evaluations visible, including ones that could not produce a score.
+  return resultPoints(competency.score) !== null || competency.assessed_units > 0 ||
+    ['measured', 'insufficient', 'unusable_transcript'].includes(competency.status) ||
+    (Array.isArray(competency.evidence) && competency.evidence.length > 0) ||
+    (Array.isArray(competency.source_refs) && competency.source_refs.length > 0);
+}
 function resultList(items, empty) {
   return items?.length ? `<ul class="result-feedback-list">${items.map(item => `<li>${esc(item)}</li>`).join('')}</ul>` : `<p class="result-muted">${esc(empty)}</p>`;
 }
@@ -26,7 +34,7 @@ function renderResult(r) {
   const personRoles = {hr: 'HR', user: 'User', manager: 'Manager'};
   const statusLabels = {measured: 'Bukti cukup', insufficient: 'Bukti terbatas', not_assessed: 'Belum dinilai', unusable_transcript: 'Transkrip tidak dapat digunakan'};
   const scoreLabel = score === null ? 'Belum terukur' : r.label || 'Hasil latihan';
-  const orderedCompetencies = [...competencies].sort((a, b) => Number(resultPoints(a.score) === null) - Number(resultPoints(b.score) === null));
+  const orderedCompetencies = competencies.filter(c => c.key !== 'teamwork' && hasRecordedAssessment(c)).sort((a, b) => Number(resultPoints(a.score) === null) - Number(resultPoints(b.score) === null));
   return `<nav class="result-sections" aria-label="Bagian hasil"><a href="#result-overview">Ringkasan hasil</a><a href="#result-competencies">Kompetensi</a>${review.study_recommendations?.length ? '<a href="#result-next">Latihan berikutnya</a>' : ''}<a href="#result-answers">Tinjau jawaban</a></nav>
     ${assessmentNotice(assessment)}
     ${score === null ? '<section class="ws-panel result-score-explanation" role="status"><h2>Skor belum tersedia</h2><p>Jawaban Anda tetap tersimpan dan dapat dibaca di bawah. Belum ada kompetensi berbobot dengan bukti yang cukup dan terverifikasi untuk menghitung skor keseluruhan. Ini bukan nilai nol. Lihat alasan penilaian pada setiap jawaban untuk mengetahui bukti yang masih diperlukan.</p></section>' : ''}

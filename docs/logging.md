@@ -1,5 +1,7 @@
 # Panduan log runtime
 
+> Tinjauan dokumentasi: 7 November 2026, baseline `a4369f5`. [Status terkini dan batas verifikasi](current-state.md).
+
 Diperbarui: 7 November 2026. Log perubahan kode terpisah di [CHANGELOG.md](CHANGELOG.md).
 
 ## Format dan lokasi
@@ -51,3 +53,7 @@ Kutipan singkat seperti “Belum.” boleh menjadi sumber pertanyaan klarifikasi
 ## Privasi dan operasional
 
 Jangan mencatat API key, header Authorization, cookie, isi CV, atau transkrip mentah. Jangan menyalin log produksi ke Markdown. ID sesi dan request juga perlu perlindungan akses serta retensi yang sesuai. Error provider bisa memuat detail teknis; lakukan redaksi sebelum membagikan log. Konsumsi token/karakter adalah estimasi biaya; tagihan provider menjadi sumber biaya aktual.
+
+## Diagnostik koreksi bahasa
+
+Event `answer_language_retry` menandai permintaan ulang, bukan jawaban diterima atau skor gagal. Event ini tidak memasukkan transkrip ke log. Pada graph, operasi deteksi/accept yang gagal tidak boleh diartikan sebagai jawaban penilaian tersimpan. Periksa hasil domain/state sebelum menyimpulkan progres. Tidak ada inferensi biaya/latensi baru dari event ini.

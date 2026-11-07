@@ -1,5 +1,7 @@
 # Dashboard and history implementation plan
 
+> Arsip rencana implementasi. Checklist dan perintah di bawah adalah catatan saat rancangan dibuat, bukan status live. Tinjauan 7 November 2026: [status implementasi terkini](../../current-state.md).
+
 **Goal:** Make training progress and previous sessions immediately useful, using the user's dashboard reference and the approved Preptiva visual direction.
 
 **Architecture:** Keep the current FastAPI endpoints. Render Jinja page partials inside the setup page's horizontal navigation shell. A page-scoped stylesheet and controller handle dashboard statistics, chart, session rows, history search, filters, and pagination.

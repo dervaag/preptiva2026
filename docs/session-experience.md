@@ -1,5 +1,7 @@
 # Persiapan perangkat, fokus sesi, dan waktu tunggu
 
+> Tinjauan dokumentasi: 7 November 2026, baseline `a4369f5`. [Status terkini dan batas verifikasi](current-state.md).
+
 Diperbarui: 7 November 2026.
 
 ## Pemeriksaan sebelum mulai
@@ -52,3 +54,7 @@ Bahasa wawancara dan fokus persona dijelaskan di [languages-and-personas.md](lan
 ## Transisi pertanyaan terakhir
 
 Ketika aksi next pada pertanyaan utama terakhir (termasuk setelah follow-up terakhir), tanggapan dibersihkan dari ajakan meneruskan pertanyaan dalam Indonesia/English sebelum audio dibuat, lalu UI memutar penutup. Pada pertanyaan lain transisi lanjut tetap diizinkan. Jawaban yang sudah tersimpan bersifat idempotent dan tidak ditulis ulang otomatis.
+
+## Bahasa jawaban, penutup dan hasil
+
+Jawaban dominan dalam bahasa lain yang terdeteksi pasti memicu pengingat teks/suara untuk mengulang di pertanyaan sama dengan timer penuh. Tidak mengurangi tambahan kuota rekaman/follow-up dan tidak memanggil finish. Wawancara berakhir dengan penutup yang menyatakan hasil akan diproses, tanpa mengajak kandidat bertanya. Nilai/feedback tampil otomatis setelah finalisasi; transkrip terbuka dan ikut PDF. Detail: [bahasa](languages-and-personas.md), [hasil](results.md).

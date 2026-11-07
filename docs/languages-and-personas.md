@@ -1,5 +1,7 @@
 # Bahasa sesi, konteks campuran, persona, dan variasi
 
+> Tinjauan dokumentasi: 7 November 2026, baseline `a4369f5`. [Status terkini dan batas verifikasi](current-state.md).
+
 Diperbarui: 7 November 2026. Rubrik baru: `2026-11-05.2`.
 
 ## Wawancara adaptif dan panel

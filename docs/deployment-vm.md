@@ -1,5 +1,7 @@
 # Arsip rencana deployment VM
 
+> Tinjauan dokumentasi: 7 November 2026, baseline `a4369f5`. [Status terkini dan batas verifikasi](current-state.md).
+
 **Status 7 November 2026: rencana deployment VM dibatalkan oleh pengguna. Target deployment aktif adalah satu mesin Kiri di Mac pengguna**, dengan PostgreSQL, Redis, Kiri Share dan auto-deploy GitHub. Ikuti [deployment-kiri.md](deployment-kiri.md) untuk menjalankan dan memelihara target aktif.
 
 Dokumen ini menyimpan catatan rencana VM dan hanya dipakai bila deployment VM diputuskan kembali. Target lama yang diberikan adalah `ubuntu@43.218.46.146`, SSH port 22, tanpa domain. Pada pemeriksaan 7 November 2026, koneksi SSH timeout sebelum autentikasi; tidak ada file yang diunggah atau layanan VM yang diubah dalam upaya tersebut. Status/IP VM saat ini belum diperiksa ulang.

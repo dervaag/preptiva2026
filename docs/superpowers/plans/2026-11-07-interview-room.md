@@ -1,5 +1,7 @@
 # Rencana ruang wawancara Preptiva
 
+> Arsip rencana implementasi. Checklist dan perintah di bawah adalah catatan saat rancangan dibuat, bukan status live. Tinjauan 7 November 2026: [status implementasi terkini](../../current-state.md).
+
 ## Lingkup yang disetujui
 
 Menerapkan referensi pemilik proyek menjadi ruang meeting compact dengan chat, modal verifikasi perangkat, countdown 3-2-1, dan tiga pewawancara 3D beranimasi. Melanjutkan DM Sans, logo, dan oranye dari form. Mempertahankan format rekaman dan aturan penutupan sesi; tambahan instruksi pengguna mewajibkan PC/laptop melalui gate UI dan API start.

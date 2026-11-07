@@ -1,5 +1,7 @@
 # Menjalankan Preptiva di Kiri
 
+> Tinjauan dokumentasi: 7 November 2026, baseline `a4369f5`. [Status terkini dan batas verifikasi](current-state.md).
+
 Target: Kiri lokal di Mac. Docker context yang dipakai selalu `kiri`, tanpa mengganti context default Docker Desktop. Project Compose bernama `preptiva`.
 
 ## Persiapan sekali

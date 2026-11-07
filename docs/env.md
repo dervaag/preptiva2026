@@ -1,5 +1,7 @@
 # Referensi Environment Variables
 
+> Tinjauan dokumentasi: 7 November 2026, baseline `a4369f5`. [Status terkini dan batas verifikasi](current-state.md).
+
 File konfigurasi: `.env` (copy dari `.env.example`)
 
 ## Status implementasi 7 November 2026
@@ -20,7 +22,7 @@ File konfigurasi: `.env` (copy dari `.env.example`)
 |----------|---------|------------|
 | `APP_ENV` | `development` | `development` atau `production` |
 | `SECRET_KEY` | `dev-secret-change-me` | Secret key untuk session cookie. **Wajib diganti di produksi.** |
-| `COOKIE_SECURE` | `false` | Set `true` setelah HTTPS aktif (wajib untuk kamera di HP/luar localhost) |
+| `COOKIE_SECURE` | `false` | Set `true` setelah HTTPS aktif (wajib untuk deployment HTTPS; wawancara hanya desktop/laptop) |
 
 ### Keamanan akun dan retensi
 
@@ -56,7 +58,7 @@ CV profil tidak kedaluwarsa otomatis. Login kedua ditolak selama sesi pertama ak
 | Variable | Default | Keterangan |
 |----------|---------|------------|
 | `OPENAI_API_KEY` | `` | API key OpenAI. Wajib untuk wawancara nyata |
-| `MODEL_FAST` | `gpt-4o-mini` | Model untuk parse CV/JD, respond, transcribe decision |
+| `MODEL_FAST` | `gpt-4o-mini` | Model untuk parse CV/JD dan respons teks; STT memakai STT_MODEL |
 | `MODEL_DEEP` | `gpt-4o` | Model untuk generate pertanyaan, evaluate, summarize |
 
 ---
@@ -66,13 +68,9 @@ CV profil tidak kedaluwarsa otomatis. Login kedua ditolak selama sesi pertama ak
 | Variable | Default | Keterangan |
 |----------|---------|------------|
 | `TTS_PROVIDER` | `elevenlabs` | Provider tunggal; tidak berpindah suara saat gagal |
-| `TTS_MODEL` | `gpt-4o-mini-tts` | Model OpenAI TTS. `tts-1` juga valid (lebih murah, dijadwalkan pensiun 6 Jan 2027) |
 | `TTS_LIVE_TIMEOUT_SEC` | `30.0` | Timeout TTS untuk tanggapan/follow-up (kandidat menunggu) |
 | `TTS_PREPARED_TIMEOUT_SEC` | `60.0` | Timeout TTS untuk intro/pertanyaan/penutup (dibuat saat prepare) |
 | `TTS_CACHE` | `true` | Cache TTS berdasarkan hash konten dalam `data/audio/<uuid>/cache/`, terpisah per sesi. Cache global lama dibersihkan maintenance. |
-| `TTS_VOICE_HR` | `nova` | Suara OpenAI TTS untuk interviewer HR |
-| `TTS_VOICE_USER` | `onyx` | Suara OpenAI TTS untuk interviewer User/Technical |
-| `TTS_VOICE_MANAGER` | `alloy` | Suara OpenAI TTS untuk interviewer Manager |
 
 ### ElevenLabs (konfigurasi suara proyek)
 
@@ -93,10 +91,8 @@ CV profil tidak kedaluwarsa otomatis. Login kedua ditolak selama sesi pertama ak
 
 | Variable | Default | Keterangan |
 |----------|---------|------------|
-| `STT_PROVIDER` | `openai` | Provider STT: `openai` atau `deepgram` |
+| `STT_PROVIDER` | `openai` | Provider STT: hanya `openai` |
 | `STT_MODEL` | `gpt-4o-transcribe` | Model OpenAI STT. Alternatif: `gpt-4o-mini-transcribe`, `whisper-1` |
-| `DEEPGRAM_API_KEY` | `` | API key Deepgram (hanya jika `STT_PROVIDER=deepgram`) |
-| `DEEPGRAM_MODEL` | `nova-3` | Model Deepgram |
 
 ---
 
@@ -104,7 +100,7 @@ CV profil tidak kedaluwarsa otomatis. Login kedua ditolak selama sesi pertama ak
 
 | Variable | Default | Keterangan |
 |----------|---------|------------|
-| `AI_MOCK` | `false` | Harus `false`; dummy hanya tersedia untuk isian form awal |
+| `AI_MOCK` | `false` | Harus `false`; startup menolak true; tidak ada wawancara dummy |
 | `MAX_FOLLOWUPS_ENABLED` | `true` | Aktifkan/matikan fitur follow-up |
 | `FOLLOWUPS_DEMO` | `1` | Maks follow-up untuk mode demo (3 pertanyaan) |
 | `FOLLOWUPS_SHORT` | `2` | Maks follow-up untuk mode singkat (5 pertanyaan) |
@@ -119,24 +115,23 @@ CV profil tidak kedaluwarsa otomatis. Login kedua ditolak selama sesi pertama ak
 
 ---
 
-## Estimasi Harga (USD)
+## Konfigurasi historis yang tidak aktif
 
-Dipakai untuk laporan biaya internal per sesi di log. Cek ulang di halaman harga resmi provider.
+`TTS_MODEL`, `TTS_VOICE_*`, `DEEPGRAM_*` dan `PRICE_*` tidak dibaca oleh alur aktif. Jangan menggunakannya untuk mengaktifkan fallback atau mengklaim biaya aktual. Tidak ada harga provider yang otomatis diperbarui dari environment. `DB_PASSWORD` dibaca Compose; kunci provider hanya berada di server.
 
-| Variable | Default | Keterangan |
-|----------|---------|------------|
-| `PRICE_STT_PER_MIN` | `0.006` | gpt-4o-transcribe per menit |
-| `PRICE_OPENAI_TTS_PER_1K_CHARS` | `0.02` | gpt-4o-mini-tts per 1k karakter |
-| `PRICE_ELEVEN_PREPARED_PER_1K_CHARS` | `0.10` | ElevenLabs Multilingual v2 |
-| `PRICE_ELEVEN_LIVE_PER_1K_CHARS` | `0.05` | ElevenLabs Flash v2.5 |
-| `PRICE_FAST_IN_PER_1M` | `0.15` | gpt-4o-mini input per 1M token |
-| `PRICE_FAST_OUT_PER_1M` | `0.60` | gpt-4o-mini output per 1M token |
-| `PRICE_DEEP_IN_PER_1M` | `2.50` | gpt-4o input per 1M token |
-| `PRICE_DEEP_OUT_PER_1M` | `10.00` | gpt-4o output per 1M token |
+## Orkestrasi dan realtime
 
-`STT_FALLBACK_PROVIDER` default kosong; transkripsi tetap OpenAI. Nilai PRICE_* adalah konfigurasi estimasi historis, bukan harga otomatis atau tagihan aktual. Karena live TTS kini Multilingual v2, jangan memakai asumsi biaya Flash untuk laporan biaya.
+| Variable | Default kode | Penggunaan |
+| --- | --- | --- |
+| `ORCHESTRATION_ENGINE` | `legacy` | `legacy` atau `langgraph`, dipin per sesi baru |
+| `REALTIME_VOICE_ENABLED` | `true` | Transport suara realtime untuk sesi baru |
+| `VAD_SILENCE_MS` | `1200` | Jeda VAD yang dikirim ke transkripsi realtime |
+| `VAD_THRESHOLD` | `0.5` | Ambang VAD dalam rentang konfigurasi |
+| `PUBLIC_ORIGIN` | kosong | Origin HTTPS eksternal yang tepat untuk proxy/tunnel; bukan daftar bebas origin |
 
-Bahasa dipilih per sesi di form/API (`language=id|en`), bukan environment global. Fullscreen dan mirror adalah opsi browser, bukan pengaturan `.env`. STT tetap model yang sama; bahasa audio tidak dipaksa ke Indonesia.
+Lihat [graph](langgraph-orchestration.md) dan [realtime](realtime-voice.md). `STT_FALLBACK_PROVIDER` harus kosong. Gate bahasa lokal tidak memerlukan environment variable atau panggilan LLM tambahan.
+
+Bahasa wawancara dipilih per sesi (`language=id|en`); bahasa hasil (`feedback_language`) diambil dari UI saat sesi dibuat. Keduanya bukan environment global. Fullscreen dan mirror adalah opsi browser, bukan pengaturan `.env`. STT tetap model yang sama; bahasa audio tidak dipaksa ke Indonesia.
 
 ## Konfigurasi benchmark Mohler
 

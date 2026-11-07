@@ -1,5 +1,7 @@
 # Acuan dan rubrik asesmen
 
+> Tinjauan dokumentasi: 7 November 2026, baseline `a4369f5`. [Status terkini dan batas verifikasi](current-state.md).
+
 Versi: `2026-11-05.2`. Tanggal tinjauan: 5 November 2026.
 
 ## Sumber dan penerapannya
@@ -53,3 +55,7 @@ Mulai 7 November 2026, [profil EM/persona Manager](engineering-manager-rubric.md
 ## Benchmark akademik eksternal
 
 [Mohler ASAG](mohler-benchmark.md) menyediakan rating manusia untuk jawaban akademik ilmu komputer dan telah diunduh sebagai benchmark terpisah. Rata-rata label sumber memakai skala 0–5, berbeda dari rubrik wawancara 1–5 dan agregat skala 100; jangan mengonversinya menjadi skor kompetensi sesi. Pilot berisi 50 jawaban setelah mengecualikan label rata-rata yang tidak konsisten. Prompt benchmark bukan evaluator produksi. Belum ada run model atau hasil AI–manusia; sumber ini tidak mengubah rubrik, bobot, versi atau status validasi sesi.
+
+## Bahasa sebelum penerimaan jawaban
+
+Aturan rubrik tentang campuran bahasa dan tidak menghukum aksen tetap berlaku pada bukti yang dinilai. Secara terpisah, alur wawancara kini meminta jawaban ulang ketika bahasa dominan jelas berbeda dari bahasa sesi; penolakan ini tidak menghasilkan skor atau bukti ketidakmampuan. Teks/istilah teknis campuran dan deteksi yang tidak pasti tidak otomatis ditolak. Blok rubrik runtime, versi serta bobot tidak berubah dalam tinjauan dokumentasi ini.

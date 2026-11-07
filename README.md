@@ -1,8 +1,14 @@
 # Preptiva
 
+> Tinjauan dokumentasi: 7 November 2026, baseline `a4369f5`. [Status terkini dan batas verifikasi](docs/current-state.md).
+
 AI interview practice built from the specifications in `docs/`: FastAPI, async SQLAlchemy, Jinja2, vanilla JavaScript, OpenAI and ElevenLabs. Indonesian UI with Indonesian or English interview sessions.
 
 Interviews now support CV-grounded questions, academic/project experience for fresh graduates, adaptive next questions, and panels of two or three interviewers with separate HR/User/Manager scopes. See the [question guidebook](docs/question-guidebook.md) for role boundaries, methodology and limitations.
+
+## Latest interview behavior
+
+The website supports Indonesian/English. Interview language is separate from feedback language, which is captured from the platform selection when a session is created. Clear wrong-language answers trigger a text/audio reminder and a retry on the same question; short or uncertain inputs are handled conservatively. This does not consume another follow-up or produce a score. The closing does not invite candidate Q&A. Results and feedback are produced automatically after finalization; transcripts are expanded and included in print/PDF. See [current status](docs/current-state.md), [language policy](docs/languages-and-personas.md) and [results](docs/results.md).
 
 ## Run locally
 

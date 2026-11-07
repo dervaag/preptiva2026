@@ -1,5 +1,7 @@
 # Guidebook wawancara adaptif dan panel
 
+> Tinjauan dokumentasi: 7 November 2026, baseline `a4369f5`. [Status terkini dan batas verifikasi](current-state.md).
+
 Versi panduan: `2026-11-07.1`. Status: adaptasi internal untuk latihan, **belum tervalidasi untuk seleksi kerja**. Rubrik skor tetap `2026-11-05.2`, `validated: false`; pekerjaan validasi asesor tetap ada di [rencana validasi](rubric-validation-plan.md).
 
 Sumber runtime adalah [question-guidebook.json](question-guidebook.json). Setiap sesi baru menyimpan salinan panduan beserta versi dan hash. Isi panduan berupa tujuan penggalian, bukan daftar kalimat pertanyaan untuk diulang. Ada 21 sudut HR, 20 User, dan 20 Manager. Pemilihan stabil dalam satu sesi dan dapat berbeda antarsesi.

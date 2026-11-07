@@ -1,5 +1,19 @@
 # Log perubahan
 
+## 2026-11-07 — Sembunyikan kompetensi tanpa catatan penilaian di hasil
+
+- Memfilter placeholder `not_assessed` yang tidak memiliki skor, unit penilaian atau bukti pada kartu hasil. Evaluasi bukti terbatas/transkrip tidak dapat digunakan dan hasil historis dengan skor tetap terlihat.
+- Mempertahankan denominator cakupan asli, kontrak API dan data asesmen. Menambahkan pemeriksaan Chrome untuk campuran hasil terukur/bukti terbatas/placeholder serta keadaan tanpa evaluasi.
+
+> Riwayat dipertahankan sesuai commit saat itu. Untuk perilaku aktif pada baseline `a85d0da`, lihat [status terkini](current-state.md).
+
+## 2026-11-07 — Rekonsiliasi seluruh dokumentasi dengan baseline terbaru
+
+- Menambahkan status terkini sebagai indeks kebijakan bahasa, penutup, hasil, graph, benchmark dan batas verifikasi. Seluruh Markdown proyek ditautkan ke status tersebut; rencana historis dan changelog diberi konteks arsip.
+- Menulis ulang arsitektur, setup dan development agar mengikuti modul serta perintah aktual; menghapus provider/modul/konfigurasi historis dari tabel aktif. Memperbarui penyimpanan, API, realtime, recovery, UI dan privasi untuk `language_retry` serta `feedback_language`.
+- Menyediakan kembali arsitektur dan flow English terpisah dengan status implementasi LangGraph yang benar. Memperbarui indeks lengkap dokumen.
+- Verifikasi dokumentasi: seluruh tautan berkas lokal valid, `git diff --check` lulus dan dua blok rubrik runtime identik dengan baseline. Tidak ada panggilan provider, perubahan rubrik atau pemeriksaan deployment baru.
+
 ## 2026-11-07 — Persiapan Studio dan aktivasi LangGraph
 
 - Menambahkan konfigurasi Agent Server dan tiga inspector metadata untuk Studio. Inspector menampilkan status/durasi/percobaan node yang sudah tercatat, memeriksa hash rencana dan tidak menjalankan provider atau memulihkan checkpoint aplikasi.

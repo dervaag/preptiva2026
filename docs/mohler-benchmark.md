@@ -1,5 +1,7 @@
 # Menggunakan benchmark Mohler di Preptiva
 
+> Tinjauan dokumentasi: 7 November 2026, baseline `a4369f5`. [Status terkini dan batas verifikasi](current-state.md).
+
 Dataset sudah diunduh pada 7 November 2026 ke `data/external/mohler-v1/`, di luar Git. Jumlahnya 2.442 jawaban dengan dua rating manusia: 2.273 open-ended dan 169 closed-ended. Sumber: [nkazi/MohlerASAG](https://huggingface.co/datasets/nkazi/MohlerASAG), revisi tetap `dac06732b42d01a5169f543f6d272f1476cced3e`. Dataset card distributor menyatakan CC BY 4.0. Atribusi Mohler, Bunescu dan Mihalcea (2011), tautan paper, lisensi, revisi, perubahan dan hash berkas disimpan di `manifest.json`; dokumentasi sumber asli juga disimpan lokal.
 
 ## Pemeriksaan kualitas sumber

@@ -1,5 +1,13 @@
 # Hasil wawancara
 
+## Visibilitas kompetensi berdasarkan catatan evaluasi
+
+Atas pilihan tampilan pengguna, kartu dengan key `teamwork` disembunyikan meski memiliki catatan evaluasi. Ini mencakup nama khusus untuk key tersebut pada profil EM. Data, rincian bukti jawaban, perhitungan skor dan denominator cakupan tetap dipertahankan; filter hanya berlaku pada daftar kartu kompetensi.
+
+UI menyembunyikan placeholder rubrik dengan `status: not_assessed`, tanpa skor, unit penilaian atau bukti. Kompetensi tetap tampil jika ada skor numerik valid, `assessed_units > 0`, status evaluasi (`measured`, `insufficient`, `unusable_transcript`), kutipan atau referensi sumber. Dengan demikian bukti terbatas tetap terlihat meski skor null; ketiadaan skor saja tidak menjadi alasan menyembunyikan hasil. Jika seluruh kompetensi belum dinilai, tampilkan keadaan kosong. Ini hanya filter presentasi; API, data tersimpan, skor, bobot dan denominator cakupan tidak diubah.
+
+> Tinjauan dokumentasi: 7 November 2026, baseline `a4369f5`. [Status terkini dan batas verifikasi](current-state.md).
+
 Halaman `/sesi/{uuid}/hasil` memakai shell dashboard/riwayat: navigasi horizontal, DM Sans, lebar konten 1160 px, latar netral dan aksi oranye. Sidebar hasil versi lama tidak lagi ditampilkan.
 
 - Skor /100, ringkasan, perubahan terhadap sesi sebanding, cakupan bukti dan jumlah jawaban menjadi ringkasan utama.
@@ -30,3 +38,7 @@ Penilaian berjalan setelah finalisasi; ringkasan merupakan akhir percakapan, buk
 Verifikasi tambahan: tes kebijakan bahasa dan feedback tanpa pertanyaan, penyimpanan bahasa hasil terpisah pada API, regresi finalisasi graph/rubrik, serta label Indonesia/Inggris di browser. Provider AI ditiru dalam tes; belum ada evaluasi ulang pada sesi produksi.
 
 Verifikasi perubahan ini dibatasi pada syntax/diff, helper rubrik Node, dan satu pemeriksaan Chrome dengan payload sintetis: panel, skor null, bukti/rubrik khusus, keyboard, state penilaian tertunda, serta viewport 320/390/768/1440 px. Seluruh mutasi API diblokir; tidak ada provider atau data sesi asli yang diubah. Browser non-Chromium dan screen reader belum diuji.
+
+## Hasil sesudah koreksi bahasa jawaban
+
+Respons `language_retry` bukan jawaban penilaian dan tidak masuk daftar jawaban/coverage hasil. Hanya jawaban yang diterima yang dipakai finalisasi. Deteksi bahasa tidak menghasilkan penalti kompetensi atau skor nol. Bahasa feedback hasil tetap mengikuti snapshot dari platform, terpisah dari bahasa pengingat selama wawancara.

@@ -1,5 +1,7 @@
 # Rubrik Engineering Manager — persona Manager
 
+> Tinjauan dokumentasi: 7 November 2026, baseline `a4369f5`. [Status terkini dan batas verifikasi](current-state.md).
+
 Versi `2026-11-07.em.1`, disusun 7 November 2026. **Draf internal untuk latihan dan tinjauan ahli; belum ditinjau ahli pekerjaan dan belum divalidasi.** Penggunaan draf harus dipilih secara eksplisit. Rubrik umum dan snapshot sesi lama tetap berlaku untuk konteks lain.
 
 Lima kompetensi di bawah memakai key penyimpanan yang sudah ada, tetapi definisi dan jangkar penilaiannya khusus lingkup kerja Engineering Manager. Key `teamwork` berarti kepemimpinan tim dalam profil ini, dan `leadership` berarti pengembangan orang. Ini bukan perubahan arti untuk sesi dengan rubrik umum. Bobot 25/20/20/20/15 adalah usulan internal; sumber tidak menetapkan bobot tersebut.

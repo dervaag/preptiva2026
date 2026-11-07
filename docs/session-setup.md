@@ -1,5 +1,7 @@
 # Form simulasi baru
 
+> Tinjauan dokumentasi: 7 November 2026, baseline `a4369f5`. [Status terkini dan batas verifikasi](current-state.md).
+
 Halaman `/simulasi/baru` memakai fondasi visual baru dari referensi pemilik proyek: navigasi horizontal, panel putih dua kolom di desktop, pratinjau perangkat di kiri dan pengaturan wawancara di kanan. Pada mobile kedua panel tersusun vertikal dan tombol aksi mengikuti isi form tanpa menutupinya.
 
 DM Sans mengikuti teks logo. Latar abu-abu, tipografi charcoal, dan aksen oranye menjaga fokus pada pilihan sesi dan tombol Siapkan wawancara. Bayangan panel membedakan satu ruang kerja dari latar; warna avatar membedakan tiga persona AI. Ikon perangkat menggambarkan tindakan masing-masing, bukan dekorasi. ENERGY 1 / RHYTHM 1 / MOTION 1; tidak ada animasi baru.
@@ -53,3 +55,7 @@ Tes dropdown memeriksa pointer, sentuhan mobile, keyboard, dismissal, FormData/r
 URL CSS/JavaScript menyertakan hash isi file melalui `app/assets.py`, sehingga cache versi sebelumnya tidak mencampur HTML baru dengan controller lama. `tests/panel_setup_smoke.py` menyiapkan cache lama di Chrome, lalu memeriksa pemilihan 2/3 anggota, keyboard, validasi minimum, perpindahan ke format tunggal, serta layout 320–1440 px dengan database sementara dan tanpa provider.
 
 Pengukuran kontras perubahan ini: helper text 5.31:1, teks CTA 6.03:1, fokus 6.73:1, ikon perangkat 5.11:1. Border input memakai #858a97 di atas putih. Gate ini berlaku pada halaman form baru, bukan audit menyeluruh halaman lain.
+
+## Pilihan bahasa dan snapshot hasil
+
+Bahasa platform dan wawancara tetap terpisah. Saat form dikirim, browser mengisi `feedback_language` berdasarkan UI yang dipilih; server menyimpannya bersama `language` wawancara. Jika field hasil tidak dikirim, fallback adalah bahasa wawancara. Pilihan sesi tidak diubah oleh pergantian UI berikutnya. Jawaban yang terdeteksi jelas berbeda bahasa akan diminta ulang, bukan otomatis diteruskan. Lihat [bahasa](languages-and-personas.md).

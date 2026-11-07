@@ -1,5 +1,7 @@
 # Benchmark eksternal penilaian manusia
 
+> Tinjauan dokumentasi: 7 November 2026, baseline `a4369f5`. [Status terkini dan batas verifikasi](current-state.md).
+
 Pemeriksaan sumber: 7 November 2026. Tiga dataset wawancara di bawah belum diunduh. Tindak lanjut: [Mohler ASAG telah diunduh dan disiapkan sebagai benchmark terpisah](mohler-benchmark.md); belum ada metrik AI–manusia dari run model. Status rubrik tetap `validated: false`.
 
 ## Hasil pemeriksaan penggunaan

@@ -1,5 +1,7 @@
 # Cleansing CV/JD dan chunking dokumen
 
+> Tinjauan dokumentasi: 7 November 2026, baseline `a4369f5`. [Status terkini dan batas verifikasi](current-state.md).
+
 Diperbarui: 5 November 2026.
 
 ## Cleansing konservatif
@@ -31,3 +33,7 @@ Ekstraksi chunk menambah panggilan/token dan waktu persiapan pada dokumen panjan
 ## Verifikasi dan log
 
 Tes mencakup preservasi angka/istilah/identitas, idempotensi cleansing, margin PDF, batas input, preservasi bagian akhir dokumen, deduplikasi, dan konkurensi. Event `documents_chunked` mencatat jumlah karakter/chunk tanpa isi CV/JD; `llm_usage` dengan step `parse_chunk` mencatat token masing-masing panggilan.
+
+## Cleansing bukan pemeriksaan bahasa
+
+Cleansing/chunking tetap memproses CV/JD tanpa menerjemahkan bukti asli. Gate `answer_language.py` adalah tahap lain setelah STT/koreksi atau input teks jawaban, sebelum penerimaan jawaban. Pengingat salah bahasa tidak mengubah CV, JD atau transkrip menjadi bahasa lain.

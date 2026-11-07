@@ -1,5 +1,7 @@
 # Implementation status — 7 November 2026
 
+> Tinjauan dokumentasi: 7 November 2026, baseline `a4369f5`. [Status terkini dan batas verifikasi](current-state.md).
+
 Studio setup: three localhost Agent Server inspectors visualize recorded preparation/turn/finalization metadata without rerunning providers or altering application checkpoints. A synthetic demo runs the real production graphs in an isolated database, and CLI list/inspect exposes UUIDs and plan-hash checks. Studio uses a separate Python 3.12 environment with cloud tracing disabled; the web UI awaits the operator’s LangSmith account/API key. See [setup and commands](langgraph-orchestration.md#studio-lokal-dan-sesi-demonstrasi).
 
 `FE-TERBARU` integration: updated branding/default avatars, dashboard, profile/results layouts and room preflight/notifications are merged with the current backend. Profile/setup forms use PDF uploads or saved CV; API text-CV compatibility remains. Job descriptions require five words. Password confirmation, privacy deletion/receipts, retention, selected-answer-language enforcement, bilingual feedback, visible transcripts, null-score explanations and print/PDF disclosures are retained across the frontend merge.
@@ -65,3 +67,7 @@ The Nginx file is an HTTP proxy example for an HTTPS ingress, not a bundled cert
 The [Mohler benchmark](mohler-benchmark.md) has been downloaded at a pinned source revision: 2,442 human-rated academic CS answers, including 2,273 open-ended and 169 closed-ended answers. All original scores are preserved; 214 inconsistent source averages are flagged and excluded from the deterministic 50-answer pilot. Inputs and labels are separate, hash-bound local files under ignored `data/external/`.
 
 Download/prepare/run/report tooling and three importer/preparation tests are available; the three external-comparison and three readiness-audit tests also passed in their respective runs. These are separate from the historical regression counts above. The model runner uses the application client with a separate reference-based scoring prompt, not the production interview evaluator. No paid Mohler run or AI–human metrics exist yet. EM expert review, independent human ratings and consensus remain pending. No general/non-IT validity claim or `validated: true` is introduced.
+
+## Latest language and closing update
+
+At baseline `a85d0da`, clear Indonesian/English answer mismatches return `language_retry` before assessment acceptance on legacy and graph paths. The same question stays active, with a spoken/text reminder and no extra follow-up, score or finish. Interview language and snapshotted platform feedback language are separate. Closing no longer invites candidate Q&A. Transcripts and feedback are visible by default and included in print/PDF. Most recent targeted verification: 7 language-gate tests, 50 system tests and the controller suite passed with synthetic providers. Public deployment has not been verified by this documentation review.

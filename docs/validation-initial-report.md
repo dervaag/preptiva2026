@@ -1,5 +1,7 @@
 # Hasil pemeriksaan awal penilaian
 
+> Tinjauan dokumentasi: 7 November 2026, baseline `a4369f5`. [Status terkini dan batas verifikasi](current-state.md).
+
 Tanggal: 7 November 2026. Ruang lingkup: profil Engineering Manager/persona Manager. Ini hasil verifikasi teknis dan kesiapan studi, bukan hasil validasi akurasi penilaian.
 
 ## Hasil yang benar-benar dijalankan
@@ -44,3 +46,7 @@ AI dapat membantu menyiapkan rubrik, menguji perangkat lunak dan menghitung perb
 ## Tindak lanjut dataset publik
 
 Pemeriksaan akses dan ketentuan tiga dataset serta pembanding skor eksternal dicatat di [benchmark eksternal](external-benchmark.md). RecruitView tidak sesuai untuk penggunaan aplikasi ini menurut ketentuan dataset card; MIT dan AVI memerlukan izin. Tindak lanjut: [Mohler sudah diunduh](mohler-benchmark.md), dengan 2.442 jawaban bernilai manusia dan pilot 50 jawaban terpisah dari dataset EM. Belum ada metrik AI–manusia yang dihasilkan. Tes alat pembanding dan impor Mohler terpisah dari 17 tes awal di atas.
+
+## Verifikasi perangkat lunak berikutnya
+
+Pada baseline `a85d0da`, 7 tes gate bahasa dan 50 tes sistem serta suite controller lulus setelah integrasi main. Ini menguji pengingat bahasa, giliran tetap, audio/teks dan tidak adanya finish tambahan. Angka 17 pada tabel awal tetap merupakan hasil pemeriksaan awal, bukan total seluruh tes terbaru. Tidak ada rating manusia EM, hasil model Mohler atau klaim validitas baru dari pemeriksaan ini.

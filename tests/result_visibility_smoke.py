@@ -18,6 +18,22 @@ def main():
             page.add_style_tag(path=str(ROOT / 'app/static/css' / name))
         for name in ('app.js', 'result.js'):
             page.add_script_tag(path=str(ROOT / 'app/static/js' / name))
+        # Full-rubric placeholders should not look like missing results.
+        visibility = dict(total_score=3, competencies=[
+            dict(key='communication', name='Communication', score=3, status='measured', assessed_units=1),
+            dict(key='technical', name='Technical', score=None, status='not_assessed', assessed_units=0, evidence=[]),
+            dict(key='teamwork', name='Teamwork', score=None, status='insufficient', assessed_units=1),
+            dict(key='analytical', name='Analytical', score=None, status='unusable_transcript', assessed_units=1),
+            dict(key='adaptability', name='Adaptability', score=None, status='not_assessed', assessed_units=0),
+        ], coverage=dict(measured=1,total=5,weighted_percent=20))
+        page.evaluate('(data) => document.querySelector("#result-content").innerHTML = renderResult(data)', visibility)
+        expect(page.locator('.result-competency')).to_have_count(2)
+        assert page.locator('.result-competency h3').all_text_contents() == ['Communication', 'Analytical']
+        # Keep the denominator honest; filtering cards must not fabricate full coverage.
+        expect(page.locator('.result-metrics')).to_contain_text('1 dari 5 kompetensi')
+        page.evaluate('document.querySelector("#result-content").innerHTML = renderResult({competencies:[{key:"technical",name:"Technical",score:null,status:"not_assessed",assessed_units:0}]})')
+        expect(page.locator('.result-competency')).to_have_count(0)
+        expect(page.locator('.result-competency-list')).to_contain_text('Belum ada kompetensi yang dinilai.')
         fixture = dict(total_score=None, competencies=[dict(key='technical', name='Technical', score=None,
             status='insufficient', evidence=[])], coverage=dict(measured=0, total=6, weighted_percent=0),
             review=dict(summary='Evidence is limited.', improvements=['Explain the testing steps.']),

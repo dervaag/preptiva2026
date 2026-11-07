@@ -1,5 +1,7 @@
 # Simulation Setup Redesign Implementation Plan
 
+> Arsip rencana implementasi. Checklist dan perintah di bawah adalah catatan saat rancangan dibuat, bukan status live. Tinjauan 7 November 2026: [status implementasi terkini](../../current-state.md).
+
 > **For agentic workers:** Use superpowers:executing-plans to implement these tasks in the active Preptiva checkout.
 
 **Goal:** Redesign the new-simulation form from the user's approved reference while preserving session creation.

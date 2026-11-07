@@ -1,5 +1,7 @@
 # Status implementasi brief panel
 
+> Tinjauan dokumentasi: 7 November 2026, baseline `a4369f5`. [Status terkini dan batas verifikasi](current-state.md).
+
 Diperbarui 7 November 2026. Acuan tambahan: berkas pengguna `preptiva_panel_interview_brief.md`, versi usulan `2026-11-07.1`. Isi brief diperlakukan sebagai rancangan produk. Keputusan pengguna setelah membaca brief mengganti usulan resume: **pindah tab atau koneksi putus menghentikan pertanyaan aktif; pengguna memilih Retry atau Next**. Tidak otomatis melanjutkan sisa rekaman/waktu.
 
 ## Perilaku yang diterapkan
@@ -52,3 +54,7 @@ Lihat [persiapan validasi asesor](assessor-validation.md) dan [rencana rubrik](r
 ## Benchmark eksternal setelah implementasi panel
 
 [Mohler](mohler-benchmark.md) sudah tersedia sebagai dataset lokal bernilai manusia beserta pilot 50 jawaban. Ini jalur CLI penilaian akademik terpisah; bukan data panel, konsensus antarpersona atau kalibrasi asesor EM. Tidak ada perubahan peristiwa/checkpoint, skor sesi atau status `validated`. Run AI benchmark belum dilakukan.
+
+## Pembaruan penerimaan jawaban dan penutup
+
+Gate bahasa berlaku sebelum jawaban penilaian diterima: `language_retry` meminta ulang pada pertanyaan sama tanpa follow-up atau penutupan. Slot baru terakhir adalah refleksi, bukan kandidat bertanya kepada panel. Penutup teks/audio menyatakan sesi selesai dan finalisasi otomatis. Hasil memakai bahasa platform yang dipin saat sesi dibuat. Lihat [bahasa](languages-and-personas.md) dan [hasil](results.md). LangGraph sekarang tersedia sebagai engine opsional, dengan detail pada [operasi graph](langgraph-orchestration.md).

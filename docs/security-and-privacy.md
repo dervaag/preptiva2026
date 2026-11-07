@@ -1,5 +1,7 @@
 # Keamanan akun dan pengelolaan data
 
+> Tinjauan dokumentasi: 7 November 2026, baseline `a4369f5`. [Status terkini dan batas verifikasi](current-state.md).
+
 Kebijakan yang dipilih pemilik aplikasi pada 7 November 2026: tolak login kedua selama sesi pertama aktif; audio tersimpan 7 hari; riwayat, transkrip dan hasil 90 hari; CV profil sampai dihapus pengguna. Ini dokumentasi kontrol aplikasi dan hasil pengujian, bukan sertifikasi keamanan atau pernyataan kepatuhan hukum.
 
 ## Login dan sesi
@@ -94,3 +96,7 @@ Tes yang menjadi bukti implementasi:
 Suite autentikasi/penghapusan juga dijalankan pada PostgreSQL 16 sementara yang berbeda dari produksi, termasuk pengujian lintas proses dan row lock. Bukti ringkas dan batas cakupan ada di `artifacts/security-privacy-evidence.json`; data/password akun nyata tidak digunakan dalam pengujian regresi.
 
 Rujukan desain: [OWASP Authentication](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html), [OWASP Session Management](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html), dan [OWASP CSRF Prevention](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html). Rujukan tersebut menjadi pertimbangan desain, bukan sertifikasi aplikasi.
+
+## Gate bahasa dan data kandidat
+
+Permintaan ulang bahasa tidak disimpan sebagai InterviewAnswer/GraphTurnInput atau unit penilaian. Graph masih dapat menyimpan ledger hasil STT yang sudah selesai dan checkpoint gagal sesuai mekanisme recovery; penghapusan/retensi sesi tetap mencakup data graph tersebut. Endpoint `/speech/language/{question_id}` hanya membacakan pesan tetap untuk pertanyaan aktif milik pengguna. Tidak menerima teks arbitrer atau membuka kredensial.
