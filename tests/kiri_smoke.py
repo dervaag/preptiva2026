@@ -114,6 +114,23 @@ asyncio.run(main())
 ''')
         assert output == 'worker-ok'
         report['redis_worker_job'] = True
+        event_schema = container_python('''
+import asyncio
+from sqlalchemy import inspect
+from app.db import engine
+async def main():
+    async with engine.connect() as connection:
+        def verify(sync):
+            schema = inspect(sync)
+            assert schema.has_table('interview_events')
+            assert any(set(c['column_names']) == {'session_id','event_key'} for c in schema.get_unique_constraints('interview_events'))
+        await connection.run_sync(verify)
+    await engine.dispose()
+    print('events-schema-ok')
+asyncio.run(main())
+''')
+        assert event_schema == 'events-schema-ok'
+        report['durable_event_schema'] = True
         probe = '/app/data/.kiri-check-' + uuid.uuid4().hex
         try:
             container_python(f'from pathlib import Path; Path({probe!r}).write_text("from-web")')

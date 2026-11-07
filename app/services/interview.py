@@ -16,7 +16,7 @@ def public_question(q, session):
 
 async def turns(db, session):
     questions = list((await db.scalars(select(InterviewQuestion).where(InterviewQuestion.session_id == session.id).order_by(InterviewQuestion.main_order, InterviewQuestion.id))).all())
-    answers = list((await db.scalars(select(InterviewAnswer).join(InterviewQuestion).where(InterviewQuestion.session_id == session.id))).all())
+    answers = list((await db.scalars(select(InterviewAnswer).join(InterviewQuestion).where(InterviewQuestion.session_id == session.id).order_by(InterviewQuestion.main_order, InterviewQuestion.id))).all())
     return questions, answers
 
 
@@ -32,6 +32,7 @@ async def state(db, session):
             'script': {k: session.script.get(k) for k in ('intro', 'closing', 'fillers', 'settings')},
             'questions': [public_question(q, session) for q in questions if q.kind == 'main'],
             'current_turn': public_question(current, session),
+            'checkpoint': session.script.get('checkpoint', {}),
             'answered_mains': sum(q.kind == 'main' and q.id in answered for q in questions)}
 
 

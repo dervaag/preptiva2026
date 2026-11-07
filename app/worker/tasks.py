@@ -5,9 +5,12 @@ from app.models import InterviewSession, InterviewQuestion, InterviewAnswer, Ses
 from app.ai import orchestrator, speech
 from app.ai import guidebook
 from app.ai.blueprint import blueprint, PERSONAS
-from app.ai.scoring import verified_scores, aggregate
+from app.ai.scoring import verified_scores, aggregate, coverage
+from app.services.events import record, checkpoint
+from app.services.locks import local_lock
 from app.log import emit, session_var
 from app.ai.errors import ProviderError
+from app.config import settings
 
 
 async def fail(sid, stage, reason=None):
@@ -53,7 +56,8 @@ async def prepare_session(ctx, sid):
             utterances = [('intro.mp3', prepared['intro'], roles[0]), ('closing.mp3', prepared['closing'], closing_persona)]
             utterances += [(f'q{i}.mp3', q['question_text'], speakers[str(i)]) for i, q in enumerate(prepared['questions'], 1)
                            if not dynamic or i == 1]
-            urls = await asyncio.gather(*(speech.synthesize(text, persona, session.uuid, name) for name, text, persona in utterances))
+            urls = await asyncio.gather(*(speech.optional_synthesize(text, persona, session.uuid, name,
+                timeout=settings.tts_prepared_timeout_sec) for name, text, persona in utterances))
             await db.refresh(session)
             if session.status != 'preparing':
                 return
@@ -67,7 +71,10 @@ async def prepare_session(ctx, sid):
                     'conversation_turns': 0} for i, q in enumerate(prepared['questions'], 1)}}
             for i, q in enumerate(prepared['questions'], 1):
                 fields = {key: q[key] for key in ('slot', 'category', 'question_text', 'expected_points', 'competencies')}
-                db.add(InterviewQuestion(session_id=sid, main_order=i, audio_file=f'q{i}.mp3' if not dynamic or i == 1 else None, **fields))
+                audio_url = dict(zip((u[0] for u in utterances), urls)).get(f'q{i}.mp3')
+                db.add(InterviewQuestion(session_id=sid, main_order=i, audio_file=f'q{i}.mp3' if audio_url else None, **fields))
+            checkpoint(session, 'ready', active_panelist=roles[0], remaining_seconds=session.answer_seconds)
+            await record(db, session, 'ready', 'session_prepared', {'guidebook_version': context['guidebook']['version']})
             session.status = 'ready'
             await db.commit()
     except Exception as exc:
@@ -78,10 +85,15 @@ async def prepare_session(ctx, sid):
 
 
 async def finalize_session(ctx, sid):
+    async with local_lock(('evaluation', sid)):
+        await _finalize_session(ctx, sid)
+
+
+async def _finalize_session(ctx, sid):
     token = session_var.set(sid)
     try:
         async with SessionLocal() as db:
-            session = await db.get(InterviewSession, sid)
+            session = await db.scalar(select(InterviewSession).where(InterviewSession.id == sid).with_for_update())
             if not session or session.status != 'scoring':
                 return
             questions = list((await db.scalars(select(InterviewQuestion).where(InterviewQuestion.session_id == sid).order_by(InterviewQuestion.main_order, InterviewQuestion.id))).all())
@@ -94,14 +106,26 @@ async def finalize_session(ctx, sid):
                 group = [q for q in questions if q.main_order == main.main_order]
                 group_answers = [by_question[q.id] for q in group if q.id in by_question]
                 transcript = '\n'.join(a.transcript for a in group_answers)
+                source_turns = [{'turn_id': f'q{a.question_id}', 'transcript': a.transcript} for a in group_answers]
+                if group_answers and all(a.result_payload.get('skipped') for a in group_answers):
+                    for a in group_answers:
+                        a.eval_status = 'done'
+                    continue
+                main_answer = by_question.get(main.id)
+                if main_answer and main_answer.eval_status == 'done':
+                    evaluations.append(main_answer.competency_scores)
+                    for a in group_answers:
+                        for key in stars:
+                            stars[key] |= a.star.get(key, False)
+                    continue
                 # Do not give HR the technical rubric rows or another panelist's scores.
                 rubric = '\n'.join(line for line in session.script['assessment']['rubric'].splitlines()
                     if not line.startswith('| ') or line.split('|')[1].strip() in set(main.competencies) | {'Kompetensi', '---'})
                 evaluation = await orchestrator.evaluate({**guidebook.context_for(session, persona),
-                    'question': main.question_text, 'transcript': transcript,
+                    'question': main.question_text, 'transcript': transcript, 'source_turns': source_turns,
                     'competencies': main.competencies, 'rubric': rubric,
                     'job_role': session.job_role, 'level': session.level, 'language': session.script['settings']['language']})
-                scores = verified_scores(evaluation['competency_scores'], transcript, main.competencies)
+                scores = verified_scores(evaluation['competency_scores'], transcript, main.competencies, source_turns)
                 evaluations.append(scores)
                 for a in group_answers:
                     a.eval_status = 'done'
@@ -111,10 +135,11 @@ async def finalize_session(ctx, sid):
                         a.competency_scores = scores
                     for key in stars:
                         stars[key] |= a.star[key]
-                await db.commit()
+                await record(db, session, f'evidence:{main.id}', 'evidence_extracted', {'question_id': main.id,
+                             'answer_turn_ids': [t['turn_id'] for t in source_turns], 'competencies': list(scores)})
             total, competencies = aggregate(evaluations, session.script['assessment']['weights'])
             review = await orchestrator.summarize({'evaluations': [{'scores': a.competency_scores, 'feedback': a.feedback} for a in answers],
-                'total_score': total, 'job_role': session.job_role, 'language': session.script['settings']['language']})
+                'total_score': total, 'coverage': coverage(competencies), 'job_role': session.job_role, 'language': session.script['settings']['language']})
             for c in competencies:
                 stored = await db.get(SessionCompetency, (sid, c['key']))
                 stored.score = c['score']
@@ -123,9 +148,17 @@ async def finalize_session(ctx, sid):
             session.star_summary = stars
             session.finished_at = now()
             session.status = 'done'
+            checkpoint(session, 'completed')
+            await record(db, session, 'evaluation_completed', 'evaluation_completed', {'coverage': coverage(competencies)})
             await db.commit()
     except Exception as exc:
         emit('job_failed', job='finalize_session', error_type=type(exc).__name__)
-        await fail(sid, 'Penilaian wawancara', str(exc) if isinstance(exc, ProviderError) else None)
+        async with SessionLocal() as db:
+            session = await db.get(InterviewSession, sid)
+            if session and session.status == 'scoring':
+                session.status = 'evaluation_failed'
+                session.error_message = 'Penilaian belum selesai. Jawaban tersimpan; coba nilai ulang.'
+                await record(db, session, 'evaluation_failed:' + str(now().timestamp()), 'evaluation_failed', {'error_type': type(exc).__name__})
+                await db.commit()
     finally:
         session_var.reset(token)

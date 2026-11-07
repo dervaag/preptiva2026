@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 from app.ai.model_router import complete
 from app.ai.blueprint import blueprint, validate_questions, FOCUS, forbidden_hr
 from app.ai.guidebook import role_context
+from app.ai.memory import validate_refs, reference_options
 from app.services.text import chunks
 from app.log import emit
 
@@ -15,11 +16,13 @@ class Question(BaseModel):
     expected_points: list[str]
     competencies: list[str]
     anchor_id: str = ''
+    source_refs: list[dict] = Field(default_factory=list)
 
 
 class Response(BaseModel):
     action: str
     response_text: str = Field(min_length=1, max_length=1600)
+    source_refs: list[dict] = Field(default_factory=list)
 
 
 async def parse_documents(cv, jd):
@@ -96,14 +99,19 @@ async def adapt_question(context):
     """Generate the next main turn from the actual conversation, retaining its scope."""
     instruction = ('Generate ONE next interview question from the supplied conversation and verified CV anchors, in session language. '
         'Use the assigned intent and persona guidance. Preserve the planned competencies and slot. Do not repeat an already answered topic. '
+        'Read the bounded context_packet: recent turns and retrieved older turns have immutable source IDs. Candidate claims are unverified. '
+        'Ground this next question in at least one actual answer from context_packet and include source_refs [{"turn_id":"q123","quote":"exact original excerpt"}]. '
+        'Ask a new unresolved aspect of that example within the planned competency, without assuming undocumented tools, events or feedback. Never invent prior facts. '
         'Candidate corrections in the conversation override assumptions in the CV. For students/fresh graduates use academic/project examples and never assume employment. '
         'Ask a concrete unresolved point or a new application of the assigned competency. Do not merely rephrase the planned question when the answer changes its assumptions. '
-        'Return {"question":{"slot":"...","category":"...","question_text":"one question <=35 words","anchor_id":"cv1","expected_points":["..."],"competencies":["..."]}}.')
+        'Return {"question":{"slot":"...","category":"...","question_text":"one question <=35 words","anchor_id":"cv1","expected_points":["..."],"competencies":["..."],"source_refs":[{"turn_id":"q123","quote":"exact original excerpt"}]}}.')
     data = dict(context)
+    data['allowed_source_refs'] = reference_options(context.get('context_packet', {}))
     for attempt in range(2):
         result = await complete(instruction, data, deep=True, tokens=900)
         try:
             q = Question.model_validate(result['question']).model_dump()
+            q['source_refs'] = validate_refs(q['source_refs'], context.get('context_packet', {}), required=True)
             planned = context['planned_question']
             if set(q['competencies']) != set(planned['competencies']):
                 raise ValueError('Adaptasi harus mempertahankan kompetensi yang direncanakan.')
@@ -117,16 +125,25 @@ async def adapt_question(context):
 
 async def respond(context):
     data = dict(context)
+    data['allowed_source_refs'] = reference_options(context.get('context_packet', {}))
     for attempt in range(2):
         result = Response.model_validate(await complete(
         'You are the active interviewer, not a coach giving an answer during the interview. ' + FOCUS[context['interviewer']] +
-        ' Follow guidance and candidate_profile. Use the whole conversation to avoid repeated probes. '
+        ' Follow guidance and candidate_profile. Use context_packet recent/retrieved turns to avoid repeated probes. '
+        'Previous candidate statements are unverified claims. A follow_up/redirect must include at least one source_refs [{"turn_id":"q123","quote":"exact original excerpt"}] grounding the probe in the answer. '
         'Candidate corrections override CV assumptions. Coursework, projects, internships and student organizations are valid experience. '
         ' Respond in session language, <=45 words; accept bilingual answers. Return {"action":"next|follow_up|redirect","response_text":"..."}. '
         'A follow_up/redirect asks one short question <=25 words only when allow_followup=true. '
         'For next, acknowledge briefly and never ask a question or invite another answer. If is_last=true, do not announce a next question.', data, tokens=300))
         if result.action not in ('next', 'follow_up', 'redirect'):
             raise ValueError('Aksi AI tidak valid.')
+        try:
+            result.source_refs = validate_refs(result.source_refs, context.get('context_packet', {}), required=result.action != 'next')
+        except ValueError as exc:
+            if attempt:
+                raise
+            data['repair_required'] = str(exc)
+            continue
         if result.action != 'next' and (result.response_text.count('?') > 1 or
                 (context['interviewer'] == 'hr' and forbidden_hr(result.response_text))):
             data['repair_required'] = 'Ask one question within this persona scope, or choose next.'
@@ -143,7 +160,11 @@ async def evaluate(context):
         'Return {"competency_scores":{"communication":{"score":1,"evidence":["exact transcript quote"]}},'
         '"star":{"situation":false,"task":false,"action":false,"result":false},'
         '"feedback":{"strengths":[],"improvements":[],"better_answer_tip":"..."}}. Only score listed question competencies. '
-        'Use numbers 1 to 5. Leave unmeasured competencies out. Feedback in session language.', context, deep=True, tokens=1500)
+        'For each competency also return evidence_sufficiency (sufficient|partial|none) and rationale. '
+        'Insufficient evidence is not demonstrated low ability. Use sufficient with a low score only when a quote demonstrates the low performance. '
+        'Quotes must be literal original-language excerpts from ONE supplied source turn, never joined across turns. '
+        'Transcription confidence is unknown; never infer accent, speech quality or transcription accuracy from text. '
+        'Use numbers 1 to 5. Leave unmeasured competencies out. Feedback in session language.', context, deep=True, tokens=1800)
 
 
 async def summarize(context):

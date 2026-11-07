@@ -8,7 +8,9 @@ from uuid import uuid4
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from app.ai import orchestrator, guidebook
+from app.ai import orchestrator, guidebook, memory
+from app.ai.assessment import snapshot
+from types import SimpleNamespace
 from app.ai.blueprint import forbidden_hr, blueprint
 
 FRESH = ('Lulusan baru S1 Akuntansi, belum pernah bekerja penuh waktu. Proyek kuliah menyusun laporan keuangan '
@@ -54,6 +56,9 @@ async def main(selected=None):
         dynamic = {**guidebook.role_context(context, next_role), 'planned_question':prepared['questions'][1],
                    'intent':prepared['plan'][1], 'asked_questions':[prepared['questions'][0]['question_text']],
                    'conversation':[{'interviewer':roles[0], 'question':prepared['questions'][0]['question_text'], 'answer':answer}]}
+        first_turn = {**dynamic.pop('conversation')[0], 'turn_id':'q1', 'question_id':1, 'competencies':prepared['questions'][0]['competencies']}
+        planned = SimpleNamespace(id=2,kind='main',**{k:prepared['questions'][1][k] for k in ('question_text','competencies','slot')})
+        dynamic['context_packet'] = memory.packet(SimpleNamespace(script={'assessment':snapshot(roles[0],roles)}), [first_turn], planned, next_role)
         case['adaptive_next'] = await orchestrator.adapt_question(dynamic)
         case['guidebook_sha256'] = context['guidebook']['sha256']
         report['cases'].append(case)

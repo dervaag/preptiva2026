@@ -370,3 +370,12 @@ CV/JD dibersihkan sebelum penyimpanan sesi baru, termasuk CV yang dipakai ulang.
 State menyertakan `panel`. Setiap pertanyaan publik menyertakan `interviewer` dan `persona`; respons jawaban menyertakan `response_interviewer`. `next_question` dapat berbeda dari rencana awal karena dibentuk ulang berdasarkan percakapan. Gunakan pertanyaan/audio dari respons terbaru. Follow-up memakai pembicara yang sama dengan pertanyaan utama.
 
 Result menyertakan `panel_results` (skor dan kompetensi tiap persona). Field lama tetap tersedia. Metadata panduan/profil/pembagian giliran disnapshot dalam JSON script, tanpa kolom database baru. Sesi lama tanpa flag adaptasi mempertahankan pertanyaan lama. API tidak menandai rubrik sebagai tervalidasi hanya karena panel atau guidebook sudah aktif.
+
+
+## Interupsi pertanyaan dan bukti — 7 November 2026
+
+- `POST /api/sessions/{uuid}/interrupt` menerima JSON `{question_id, reason}` (`tab_hidden|offline|reload|device_lost`). Jawaban `{already_completed, state}`. Interupsi menghentikan pertanyaan, bukan sesi; checkpoint menyimpan ID interupsi dan waktu nol. Jika jawaban sudah tersimpan, `already_completed=true` tanpa menginterupsi giliran berikutnya.
+- `POST /api/sessions/{uuid}/recover` menerima JSON `{question_id, interruption_id, action}`. `retry` mengembalikan state dengan pertanyaan sama dan waktu penuh; `next` menyimpan jawaban berstatus dilewati dan mengembalikan payload jawaban normal. Perintah berulang idempoten; status yang kedaluwarsa ditolak 409.
+- `answers` menerima salah satu `audio` atau `text_answer` (1–8.000 karakter), bersama field durasi/pertanyaan yang sudah ada. Jawaban teks melewati STT. Audio hasil dapat `null` jika TTS gagal. Payload menambahkan `turn_id`, `input_mode`, `skipped`, `source_refs`.
+- `state.checkpoint` menyediakan fase, pertanyaan, pembicara dan status interupsi. `finish` juga menerima `evaluation_failed` untuk mengantrekan penilaian ulang; jawaban tetap tersimpan.
+- `result.coverage` terpisah dari skor untuk sesi dengan kebijakan bukti baru. `competency_scores` menambahkan status, kecukupan, provisional, alasan, serta rujukan kutipan/offset. Skor sementara tidak masuk agregat baru. Sesi lama mempertahankan skor/snapshot historis.

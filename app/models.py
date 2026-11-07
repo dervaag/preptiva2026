@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import uuid4
 from typing import Optional
-from sqlalchemy import String, Text, ForeignKey, JSON, DateTime, Integer, Float, Boolean, Index
+from sqlalchemy import String, Text, ForeignKey, JSON, DateTime, Integer, Float, Boolean, Index, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -99,3 +99,14 @@ class InterviewAnswer(Base):
     star: Mapped[dict] = mapped_column(JSON, default=dict)
     feedback: Mapped[dict] = mapped_column(JSON, default=dict)
     eval_status: Mapped[str] = mapped_column(String(20), default='pending')
+
+
+class InterviewEvent(Base):
+    __tablename__ = 'interview_events'
+    __table_args__ = (UniqueConstraint('session_id', 'event_key'),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey('interview_sessions.id', ondelete='CASCADE'), index=True)
+    event_key: Mapped[str] = mapped_column(String(100))
+    kind: Mapped[str] = mapped_column(String(50))
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(default=now)

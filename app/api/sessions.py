@@ -6,6 +6,7 @@ from uuid import uuid4
 from typing import Literal, Optional
 from fastapi import APIRouter, Depends, Form, File, UploadFile, HTTPException, Request
 from fastapi.responses import FileResponse, StreamingResponse
+from pydantic import BaseModel
 from sqlalchemy import select, func, update
 from app.db import get_db, SessionLocal
 from app.deps import current_user, owned_session
@@ -13,8 +14,8 @@ from app.models import InterviewSession, InterviewQuestion, InterviewAnswer, Ses
 from app.ai import speech, orchestrator
 from app.ai.assessment import snapshot
 from app.ai.blueprint import forbidden_hr
-from app.ai import guidebook
-from app.ai.scoring import aggregate, label
+from app.ai import guidebook, memory
+from app.ai.scoring import aggregate, label, coverage
 from app.config import settings
 from app.jobs import enqueue
 from app.services.text import validate_text, extract_pdf
@@ -23,6 +24,7 @@ from app.storage import safe_audio_path
 from app.log import emit
 from app.services.locks import local_lock
 from app.ai.errors import ProviderError
+from app.services.events import record, checkpoint
 
 router = APIRouter()
 
@@ -64,11 +66,15 @@ async def create_session(candidate_name: str = Form(..., min_length=2, max_lengt
         interviewer=interviewer, question_count=question_count, answer_seconds=settings.answer_seconds_for(level),
         max_followups=settings.followups_for(question_count),
         script={'settings': {'language': language, 'retry_limit': settings.retry_limit, 'panel': roles,
-                            'career_stage': career_stage, 'dynamic_questions': True},
-                'guidebook': guidebook.snapshot(), 'assessment': assessment})
+                            'career_stage': career_stage, 'dynamic_questions': True,
+                            'interruption_policy': 'retry_or_skip', 'evidence_policy': memory.VERSION},
+                'guidebook': guidebook.snapshot(), 'assessment': assessment,
+                'runtime': {'orchestration_version': memory.VERSION, 'model_fast': settings.model_fast,
+                            'model_deep': settings.model_deep, 'stt_model': settings.stt_model}})
     db.add(session)
     user.last_cv_text = cv
     await db.flush()
+    await record(db, session, 'created', 'session_created', {'memory_version': memory.VERSION})
     for key, weight in assessment['weights'].items():
         db.add(SessionCompetency(session_id=session.id, competency=key, weight=weight))
     await db.commit()
@@ -97,7 +103,9 @@ async def session_state(session=Depends(owned_session), db=Depends(get_db)):
 async def start(session=Depends(owned_session), db=Depends(get_db)):
     if session.status not in ('ready', 'running'):
         raise HTTPException(409, 'Sesi belum siap atau telah berakhir.')
-    await db.execute(update(InterviewSession).where(InterviewSession.id == session.id, InterviewSession.status == 'ready').values(status='running', started_at=now()))
+    changed = await db.execute(update(InterviewSession).where(InterviewSession.id == session.id, InterviewSession.status == 'ready').values(status='running', started_at=now()))
+    if changed.rowcount:
+        await record(db, session, 'started', 'session_started')
     await db.commit()
     return {'status': 'running'}
 
@@ -112,7 +120,7 @@ async def process_answer(sid, *args, **kwargs):
             raise HTTPException(502, str(exc)) from exc
 
 
-async def _process_answer(sid, owner_id, question_id, content, filename, duration_ms, retry_count, think_ms, timed_out, events=None):
+async def _process_answer(sid, owner_id, question_id, content, filename, duration_ms, retry_count, think_ms, timed_out, events=None, skip=False, interruption_id=None, text_answer=None):
     # Row lock spans provider work: one turn at a time, also across web processes in PostgreSQL.
     async with SessionLocal() as db:
         session = await db.scalar(select(InterviewSession).where(InterviewSession.uuid == sid, InterviewSession.user_id == owner_id).with_for_update())
@@ -132,22 +140,25 @@ async def _process_answer(sid, owner_id, question_id, content, filename, duratio
         current = next((q for q in questions if q.id not in answered), None)
         if not current or current.id != question_id:
             raise HTTPException(409, 'Jawab pertanyaan aktif terlebih dahulu.')
-        transcript = await speech.transcribe(content, filename, session.script['settings']['language'])
-        if not transcript:
+        interrupted = session.script.get('checkpoint', {})
+        if interrupted.get('phase') == 'interrupted':
+            if not skip or interruption_id != interrupted.get('interruption_id'):
+                raise HTTPException(409, 'Pertanyaan terhenti. Pilih Retry atau Next.')
+        elif skip:
+            raise HTTPException(409, 'Pertanyaan tidak sedang terhenti.')
+        transcript = '' if skip else text_answer if text_answer is not None else await speech.transcribe(content, filename, session.script['settings']['language'])
+        if not transcript and not skip:
             raise HTTPException(422, 'Ucapan tidak terdeteksi. Rekam ulang jawaban.')
         if events:
             await events.put({'type': 'transcript', 'transcript': transcript})
-        group = [a.transcript for a in answers if any(q.id == a.question_id and q.main_order == current.main_order for q in questions)] + [transcript]
         allow = current.kind == 'main' and sum(q.kind != 'main' for q in questions) < session.max_followups
         is_last = current.main_order == session.question_count
         persona = guidebook.speaker(session, current.main_order)
-        by_id = {q.id: q for q in questions}
-        conversation = [{'interviewer': guidebook.speaker(session, by_id[a.question_id].main_order),
-                         'question': by_id[a.question_id].question_text, 'answer': a.transcript} for a in answers]
-        conversation.append({'interviewer': persona, 'question': current.question_text, 'answer': transcript})
+        conversation = memory.dialogue(session, questions, answers, current, transcript)
+        context_packet = memory.packet(session, conversation, current, persona)
         deadline = asyncio.get_running_loop().time() + settings.respond_timeout_sec
-        response = await asyncio.wait_for(orchestrator.respond({**guidebook.context_for(session, persona),
-            'question': current.question_text, 'transcripts': group, 'conversation': conversation,
+        response = {'action': 'next', 'response_text': 'Pertanyaan dilewati.' if session.script['settings']['language'] == 'id' else 'Question skipped.'} if skip else await asyncio.wait_for(orchestrator.respond({**guidebook.context_for(session, persona),
+            'question': current.question_text, 'context_packet': context_packet,
             'expected_points': current.expected_points, 'interviewer': persona, 'job_role': session.job_role,
             'language': session.script['settings']['language'], 'allow_followup': allow, 'is_last': is_last}),
             timeout=settings.respond_timeout_sec)
@@ -162,8 +173,8 @@ async def _process_answer(sid, owner_id, question_id, content, filename, duratio
             sentences = [s for s in sentences if '?' not in s and not re.search(r'(pertanyaan (berikut|selanjut)|next question|let.s move|mari (lanjut|beralih))', s, re.I)]
             text = ' '.join(sentences).strip() or ('Terima kasih.' if session.script['settings']['language'] == 'id' else 'Thank you.')
         audio_name = f'r_{uuid4().hex}.mp3'
-        audio_url = await asyncio.wait_for(speech.synthesize(text, persona, sid, audio_name, live=True),
-            timeout=max(0, deadline - asyncio.get_running_loop().time()))
+        audio_url = None if skip else await speech.optional_synthesize(text, persona, sid, audio_name, live=True,
+            timeout=min(settings.tts_live_timeout_sec, max(0, deadline - asyncio.get_running_loop().time())))
         # A close request must win if the user leaves during STT/LLM/TTS.
         await db.refresh(session)
         if session.status != 'running':
@@ -173,7 +184,7 @@ async def _process_answer(sid, owner_id, question_id, content, filename, duratio
         if action != 'next':
             follow = InterviewQuestion(session_id=session.id, kind='follow_up', main_order=current.main_order,
                 parent_question_id=current.id, slot=current.slot, category=current.category, question_text=text,
-                expected_points=current.expected_points, competencies=current.competencies, audio_file=audio_name)
+                expected_points=current.expected_points, competencies=current.competencies, audio_file=audio_name if audio_url else None)
             db.add(follow)
             await db.flush()
         else:
@@ -183,58 +194,76 @@ async def _process_answer(sid, owner_id, question_id, content, filename, duratio
                 planned = {key: getattr(next_q, key) for key in ('slot', 'category', 'question_text', 'expected_points', 'competencies')}
                 dynamic_context = {**guidebook.context_for(session, next_persona), 'planned_question': planned,
                     'intent': session.script.get('question_plan', {}).get(str(next_q.main_order), {}),
-                    'conversation': conversation, 'asked_questions': [item['question'] for item in conversation]}
-                revised = await asyncio.wait_for(orchestrator.adapt_question(dynamic_context),
+                    'context_packet': memory.packet(session, conversation, next_q, next_persona),
+                    'asked_questions': [item['question'] for item in conversation]}
+                # Skipping supplies no new answer to adapt to; the grounded plan remains usable during outages.
+                revised = planned if skip else await asyncio.wait_for(orchestrator.adapt_question(dynamic_context),
                     timeout=max(0, deadline - asyncio.get_running_loop().time()))
                 revised_audio = f'q{next_q.main_order}_{uuid4().hex}.mp3'
-                await asyncio.wait_for(speech.synthesize(revised['question_text'], next_persona, sid, revised_audio, live=True),
-                    timeout=max(0, deadline - asyncio.get_running_loop().time()))
+                revised_url = await speech.optional_synthesize(revised['question_text'], next_persona, sid, revised_audio, live=True,
+                    timeout=min(settings.tts_live_timeout_sec, max(0, deadline - asyncio.get_running_loop().time())))
                 # Do not commit an adaptation if the candidate has closed the room meanwhile.
                 await db.refresh(session)
                 if session.status != 'running':
                     raise HTTPException(409, 'Sesi telah ditutup.')
                 for key in ('slot', 'category', 'question_text', 'expected_points', 'competencies'):
                     setattr(next_q, key, revised[key])
-                next_q.audio_file = revised_audio
+                next_q.audio_file = revised_audio if revised_url else None
                 provenance = {**session.script.get('question_provenance', {}), str(next_q.main_order): {
                     'anchor_id': revised.get('anchor_id', ''), 'adapted_after_question_id': current.id,
-                    'conversation_turns': len(conversation), 'interviewer': next_persona}}
+                    'conversation_turns': len(conversation), 'interviewer': next_persona,
+                    'source_refs': revised.get('source_refs', [])}}
                 session.script = {**session.script, 'question_provenance': provenance}
         last = action == 'next' and next_q is None
         answer = InterviewAnswer(question_id=question_id, transcript=transcript, duration_sec=duration_ms / 1000,
-            wpm=round(len(transcript.split()) / max(duration_ms / 60000, .01)),
+            wpm=0 if text_answer is not None else round(len(transcript.split()) / max(duration_ms / 60000, .01)),
             filler_count=len(re.findall(r'\b(um|uh|eh|eee|hmm)\b', transcript, re.I)),
             retry_count=retry_count, timed_out=timed_out, think_sec=think_ms / 1000, response_action=action, response_text=text)
         db.add(answer)
         await db.flush()
         result = {'answer_id': answer.id, 'transcript': transcript, 'action': action, 'response_text': text,
+            'turn_id': f'q{current.id}', 'skipped': skip, 'input_mode': 'text' if text_answer is not None else 'skipped' if skip else 'audio',
+            'source_refs': response.get('source_refs', []),
             'response_interviewer': persona,
             'response_audio_url': audio_url, 'follow_up_question': public_question(follow, session),
             'next_question': public_question(next_q, session), 'is_last': last, 'closing': session.script['closing'] if last else None}
         answer.result_payload = result
+        target = follow or next_q
+        checkpoint(session, 'closing' if last else 'question_ready', target,
+                   active_panelist=guidebook.speaker(session, target.main_order) if target else persona,
+                   remaining_seconds=session.answer_seconds if target else 0, interruption_id=None)
+        await record(db, session, f'answer:{current.id}', 'question_skipped' if skip else 'answer_completed',
+                     {'turn_id': f'q{current.id}', 'question_id': current.id, 'answer_id': answer.id,
+                      'source_refs': response.get('source_refs', []), 'memory_version': memory.VERSION})
+        if target and guidebook.speaker(session, target.main_order) != persona:
+            await record(db, session, f'handoff:{current.id}', 'panelist_handoff',
+                         {'from': persona, 'to': guidebook.speaker(session, target.main_order), 'question_id': target.id})
         await db.commit()
         return result
 
 
 @router.post('/api/sessions/{sid}/answers')
-async def answer(sid: str, request: Request, question_id: int = Form(...), audio: UploadFile = File(...),
+async def answer(sid: str, request: Request, question_id: int = Form(...), audio: Optional[UploadFile] = File(None),
+    text_answer: Optional[str] = Form(None, min_length=1, max_length=8000),
     duration_ms: int = Form(..., ge=100, le=302000), retry_count: int = Form(0, ge=0, le=10),
     think_ms: int = Form(0, ge=0, le=3600000), timed_out: bool = Form(False), stream: bool = False,
     session=Depends(owned_session)):
     if session.status != 'running':
         raise HTTPException(409, 'Sesi tidak aktif.')
-    content = await audio.read(25 * 1024 * 1024 + 1)
-    if not content or len(content) > 25 * 1024 * 1024:
+    if text_answer is not None and (audio is not None or not text_answer.strip()):
+        raise HTTPException(422, 'Kirim salah satu: audio atau jawaban teks yang terisi.')
+    content = await audio.read(25 * 1024 * 1024 + 1) if audio else b''
+    if text_answer is None and (not content or len(content) > 25 * 1024 * 1024):
         raise HTTPException(413, 'Audio wajib diisi dan maksimal 25 MB.')
-    extension = (audio.filename or '').rsplit('.', 1)[-1].lower()
-    if extension not in ('webm', 'ogg', 'mp4', 'm4a', 'mp3', 'wav'):
+    extension = ((audio.filename or '') if audio else '').rsplit('.', 1)[-1].lower()
+    if text_answer is None and extension not in ('webm', 'ogg', 'mp4', 'm4a', 'mp3', 'wav'):
         raise HTTPException(422, 'Format audio tidak didukung.')
     args = (sid, session.user_id, question_id, content, f'answer.{extension}', duration_ms, retry_count, think_ms, timed_out)
     if not stream:
-        return await process_answer(*args)
+        return await process_answer(*args, text_answer=text_answer)
     async def generate():
         queue = asyncio.Queue()
-        task = asyncio.create_task(process_answer(*args, events=queue))
+        task = asyncio.create_task(process_answer(*args, events=queue, text_answer=text_answer))
         try:
             while not task.done():
                 try:
@@ -255,31 +284,92 @@ async def answer(sid: str, request: Request, question_id: int = Form(...), audio
     return StreamingResponse(generate(), media_type='application/x-ndjson', headers={'X-Accel-Buffering':'no', 'Cache-Control':'no-store'})
 
 
+class Interruption(BaseModel):
+    question_id: int
+    reason: Literal['tab_hidden', 'offline', 'reload', 'device_lost'] = 'reload'
+
+
+@router.post('/api/sessions/{sid}/interrupt')
+async def interrupt(sid: str, data: Interruption, session=Depends(owned_session)):
+    async with local_lock(('answer', sid)), SessionLocal() as db:
+        session = await db.scalar(select(InterviewSession).where(InterviewSession.id == session.id).with_for_update())
+        if session.status != 'running':
+            raise HTTPException(409, 'Sesi tidak aktif.')
+        questions, answers = await turns(db, session)
+        answered = {a.question_id for a in answers}
+        current = next((q for q in questions if q.id not in answered), None)
+        if not current or current.id != data.question_id:
+            return {'already_completed': True, 'state': await state(db, session)}
+        prior = session.script.get('checkpoint', {})
+        if prior.get('phase') != 'interrupted' or prior.get('question_id') != current.id:
+            event_id = uuid4().hex
+            checkpoint(session, 'interrupted', current, remaining_seconds=0,
+                       active_panelist=guidebook.speaker(session, current.main_order), interruption_id=event_id)
+            await record(db, session, f'interrupt:{event_id}', 'question_interrupted',
+                         {'question_id': current.id, 'reason': data.reason})
+            await db.commit()
+        return {'already_completed': False, 'state': await state(db, session)}
+
+
+class Recovery(BaseModel):
+    question_id: int
+    interruption_id: str
+    action: Literal['retry', 'next']
+
+
+@router.post('/api/sessions/{sid}/recover')
+async def recover(sid: str, data: Recovery, session=Depends(owned_session)):
+    if data.action == 'next':
+        return await process_answer(sid, session.user_id, data.question_id, b'', '', 0, 0, 0, True,
+                                    skip=True, interruption_id=data.interruption_id)
+    async with local_lock(('answer', sid)), SessionLocal() as db:
+        session = await db.scalar(select(InterviewSession).where(InterviewSession.id == session.id).with_for_update())
+        previous = session.script.get('checkpoint', {})
+        if session.status != 'running':
+            raise HTTPException(409, 'Sesi tidak aktif.')
+        if previous.get('recovered_interruption_id') == data.interruption_id and previous.get('question_id') == data.question_id:
+            return await state(db, session)
+        if previous.get('phase') != 'interrupted' or previous.get('interruption_id') != data.interruption_id or previous.get('question_id') != data.question_id:
+            raise HTTPException(409, 'Status pertanyaan sudah berubah. Muat ulang status sesi.')
+        question = await db.get(InterviewQuestion, data.question_id)
+        checkpoint(session, 'question_ready', question, remaining_seconds=session.answer_seconds,
+                   interruption_id=None, recovered_interruption_id=data.interruption_id)
+        await record(db, session, f'retry:{data.interruption_id}', 'question_retried', {'question_id': question.id})
+        await db.commit()
+        return await state(db, session)
+
+
 @router.post('/api/sessions/{sid}/finish')
 async def finish(session=Depends(owned_session), db=Depends(get_db)):
     if session.status in ('done', 'scoring'):
         return {'status': session.status}
-    if session.status != 'running':
+    if session.status not in ('running', 'evaluation_failed'):
         raise HTTPException(409, 'Sesi tidak aktif.')
     questions, answers = await turns(db, session)
     if not questions or len(answers) != len(questions):
         raise HTTPException(409, 'Selesaikan seluruh pertanyaan terlebih dahulu.')
-    changed = await db.execute(update(InterviewSession).where(InterviewSession.id == session.id, InterviewSession.status == 'running').values(status='scoring'))
+    changed = await db.execute(update(InterviewSession).where(InterviewSession.id == session.id,
+        InterviewSession.status.in_(['running', 'evaluation_failed'])).values(status='scoring', error_message=None))
+    if changed.rowcount:
+        await record(db, session, 'evaluation_requested:' + uuid4().hex, 'evaluation_requested')
     await db.commit()
     if changed.rowcount:
         try:
             await enqueue('finalize_session', session.id)
         except Exception:
-            from app.worker.tasks import fail
-            await fail(session.id, 'Antrean penilaian')
+            await db.execute(update(InterviewSession).where(InterviewSession.id == session.id, InterviewSession.status == 'scoring').values(
+                status='evaluation_failed', error_message='Antrean penilaian tidak tersedia; coba nilai ulang.'))
+            await db.commit()
             raise HTTPException(503, 'Antrean penilaian tidak tersedia.')
     return {'status': 'scoring'}
 
 
 @router.post('/api/sessions/{sid}/close')
 async def close(session=Depends(owned_session), db=Depends(get_db)):
-    await db.execute(update(InterviewSession).where(InterviewSession.id == session.id,
-        InterviewSession.status.in_(['ready', 'running'])).values(status='failed', error_message='Sesi ditutup karena halaman ditinggalkan.', finished_at=now()))
+    changed = await db.execute(update(InterviewSession).where(InterviewSession.id == session.id,
+        InterviewSession.status.in_(['ready', 'running'])).values(status='failed', error_message='Sesi diakhiri oleh pengguna.', finished_at=now()))
+    if changed.rowcount:
+        await record(db, session, 'cancelled', 'session_cancelled')
     await db.commit()
     return {'ok': True}
 
@@ -296,6 +386,7 @@ async def result(session=Depends(owned_session), db=Depends(get_db)):
     previous = next((s for s in candidates if s.level == session.level and
         sorted(guidebook.panel_roles(s)) == sorted(guidebook.panel_roles(session)) and
         s.script.get('guidebook', {}).get('sha256') == session.script.get('guidebook', {}).get('sha256') and
+        s.script.get('settings', {}).get('evidence_policy') == session.script.get('settings', {}).get('evidence_policy') and
         s.script.get('assessment', {}).get('sha256') == session.script['assessment'].get('sha256')), None)
     previous_score = previous.total_score if previous else None
     by_id = {a.question_id: a for a in answers}
@@ -309,6 +400,7 @@ async def result(session=Depends(owned_session), db=Depends(get_db)):
         panel_results.append({'interviewer': persona, 'total_score': score, 'competencies': measured})
     return {'session_id': session.uuid, 'status': 'done', 'job_role': session.job_role, 'level': session.level,
         'panel_results': panel_results,
+        'coverage': coverage(competencies) if session.script.get('settings', {}).get('evidence_policy') else None,
         'total_score': session.total_score, 'label': label(session.total_score), 'previous_score': previous_score,
         'delta': round(session.total_score - previous_score, 2) if previous_score is not None and session.total_score is not None else None,
         'competencies': competencies, 'unmeasured': [c['key'] for c in competencies if c['score'] is None],
@@ -316,6 +408,8 @@ async def result(session=Depends(owned_session), db=Depends(get_db)):
         'assessment': {k: session.script['assessment'][k] for k in ('version','sha256','validated')},
         'items': [{**public_question(q, session), 'transcript': by_id[q.id].transcript,
                    'feedback': by_id[q.id].feedback, 'competency_scores': by_id[q.id].competency_scores,
+                   'skipped': by_id[q.id].result_payload.get('skipped', False),
+                   'input_mode': by_id[q.id].result_payload.get('input_mode', 'audio'),
                    'wpm': by_id[q.id].wpm, 'filler_count': by_id[q.id].filler_count} for q in questions if q.id in by_id]}
 
 

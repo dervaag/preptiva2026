@@ -387,8 +387,8 @@ class SystemTests(unittest.IsolatedAsyncioTestCase):
         context = self.adapt_mock.call_args.args[0]
         self.assertEqual(context['interviewer'], 'user')
         self.assertEqual(context['candidate_profile']['career_stage'], 'fresh_graduate')
-        self.assertEqual(len(context['conversation']), 2)
-        self.assertIn('35 persen', context['conversation'][-1]['answer'])
+        self.assertEqual(len(context['context_packet']['recent_turns']), 2)
+        self.assertIn('35 persen', context['context_packet']['recent_turns'][-1]['answer'])
         third = (await self.send_answer(sid, next_turn['next_question']['id'])).json()
         self.assertEqual(third['next_question']['interviewer'], 'manager')
         self.assertEqual(third['response_interviewer'], 'user')
@@ -468,6 +468,88 @@ class SystemTests(unittest.IsolatedAsyncioTestCase):
         self.assertLessEqual(maximum,2)
         self.assertTrue(any('FINAL_FACT' in data['cv'] for data in seen))
         self.assertEqual(parsed['cv_summary']['skills'],['Research'])
+
+
+    async def test_question_interruption_retry_skip_and_duplicate_delivery(self):
+        from app.models import InterviewEvent
+        sid, internal, initial = await self.ready_session(panel=['hr','user'])
+        await self.client.post(f'/api/sessions/{sid}/start')
+        qid = initial['current_turn']['id']
+        payload = {'question_id':qid,'reason':'tab_hidden'}
+        interrupted = (await self.client.post(f'/api/sessions/{sid}/interrupt',json=payload)).json()['state']
+        self.assertEqual(interrupted['status'],'running')
+        self.assertEqual(interrupted['checkpoint']['remaining_seconds'],0)
+        duplicate = (await self.client.post(f'/api/sessions/{sid}/interrupt',json=payload)).json()['state']
+        self.assertEqual(interrupted['checkpoint'],duplicate['checkpoint'])
+        self.assertEqual((await self.send_answer(sid,qid)).status_code,409)
+        data = {'question_id':qid,'interruption_id':interrupted['checkpoint']['interruption_id'],'action':'retry'}
+        retried = (await self.client.post(f'/api/sessions/{sid}/recover',json=data)).json()
+        self.assertEqual(retried['current_turn']['id'],qid)
+        self.assertEqual(retried['checkpoint']['remaining_seconds'],initial['answer_seconds'])
+        repeated = (await self.client.post(f'/api/sessions/{sid}/recover',json=data)).json()
+        self.assertEqual(repeated['checkpoint'],retried['checkpoint'])
+        interrupted = (await self.client.post(f'/api/sessions/{sid}/interrupt',json=payload)).json()['state']
+        data.update(action='next',interruption_id=interrupted['checkpoint']['interruption_id'])
+        with patch('app.api.sessions.speech.synthesize',AsyncMock(return_value=None)), \
+             patch('app.api.sessions.speech.transcribe',AsyncMock()) as stt:
+            skipped = await self.client.post(f'/api/sessions/{sid}/recover',json=data)
+            self.assertEqual(skipped.status_code,200,skipped.text)
+            result = skipped.json()
+            duplicate = await self.client.post(f'/api/sessions/{sid}/recover',json=data)
+            self.assertEqual(result,duplicate.json())
+            self.assertTrue(result['skipped'])
+            self.assertEqual(result['next_question']['main_order'],2)
+            stt.assert_not_called()
+        late = (await self.client.post(f'/api/sessions/{sid}/interrupt',json=payload)).json()
+        self.assertTrue(late['already_completed'])
+        self.assertEqual(late['state']['checkpoint']['phase'],'question_ready')
+        async with SessionLocal() as db:
+            events = (await db.scalars(select(InterviewEvent).where(InterviewEvent.session_id==internal))).all()
+            self.assertEqual(sum(e.kind=='question_skipped' for e in events),1)
+            self.assertEqual(sum(e.kind=='question_retried' for e in events),1)
+        await self.register(self.other,'other@example.com')
+        self.assertEqual((await self.other.post(f'/api/sessions/{sid}/interrupt',json=payload)).status_code,404)
+        self.assertEqual((await self.other.post(f'/api/sessions/{sid}/recover',json=data)).status_code,404)
+
+    async def test_text_answer_and_tts_failure_keep_interview_usable(self):
+        sid, _, initial = await self.ready_session()
+        await self.client.post(f'/api/sessions/{sid}/start')
+        with patch('app.api.sessions.speech.transcribe',AsyncMock()) as stt, \
+             patch('app.api.sessions.speech.synthesize',AsyncMock(side_effect=RuntimeError('voice unavailable'))), \
+             patch('app.api.sessions.orchestrator.respond',AsyncMock(return_value={'action':'next','response_text':'Terima kasih.'})):
+            response = await self.client.post(f'/api/sessions/{sid}/answers',data={
+                'question_id':initial['current_turn']['id'],'duration_ms':100,'text_answer':'Saya mengukur hasil eksperimen.'})
+        self.assertEqual(response.status_code,200,response.text)
+        self.assertEqual(response.json()['input_mode'],'text')
+        self.assertIsNone(response.json()['response_audio_url'])
+        self.assertIsNone(response.json()['next_question']['audio_url'])
+        stt.assert_not_called()
+
+    async def test_skipped_session_and_failed_evaluation_can_be_retried(self):
+        sid, internal, initial = await self.ready_session()
+        await self.client.post(f'/api/sessions/{sid}/start')
+        for q in initial['questions']:
+            result = (await self.client.post(f'/api/sessions/{sid}/interrupt',json={'question_id':q['id']})).json()
+            with patch('app.api.sessions.speech.synthesize',AsyncMock(return_value=None)):
+                skip = await self.client.post(f'/api/sessions/{sid}/recover',json={'question_id':q['id'],
+                    'interruption_id':result['state']['checkpoint']['interruption_id'],'action':'next'})
+            self.assertEqual(skip.status_code,200,skip.text)
+        with patch('app.api.sessions.enqueue',AsyncMock()):
+            await self.client.post(f'/api/sessions/{sid}/finish')
+        with patch('app.worker.tasks.orchestrator.summarize',AsyncMock(side_effect=RuntimeError('temporary failure'))):
+            await finalize_session({},internal)
+        self.assertEqual((await self.client.get(f'/api/sessions/{sid}/state')).json()['status'],'evaluation_failed')
+        with patch('app.api.sessions.enqueue',AsyncMock()):
+            await self.client.post(f'/api/sessions/{sid}/finish')
+        with patch('app.worker.tasks.orchestrator.evaluate',AsyncMock()) as evaluator, \
+             patch('app.worker.tasks.orchestrator.summarize',AsyncMock(return_value={'summary':'Belum ada jawaban.','strengths':[],'improvements':[],'study_recommendations':[]})):
+            await finalize_session({},internal)
+            await finalize_session({},internal)
+        evaluator.assert_not_called()
+        result = (await self.client.get(f'/api/sessions/{sid}/result')).json()
+        self.assertIsNone(result['total_score'])
+        self.assertEqual(result['coverage']['measured'],0)
+        self.assertTrue(all(i['skipped'] for i in result['items']))
 
 
 class SpeechConfigTests(unittest.IsolatedAsyncioTestCase):
@@ -581,3 +663,59 @@ class GuidebookTests(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class MemoryAndEvidenceTests(unittest.TestCase):
+    def test_packet_bounds_and_retrieves_source_claim_without_inventing_verification(self):
+        from types import SimpleNamespace
+        from app.ai import memory
+        session=SimpleNamespace(script={'assessment':snapshot('hr')})
+        question=SimpleNamespace(id=70,question_text='Apa strategi rekonsiliasi yang digunakan?',competencies=['technical'],kind='main',slot='behavior')
+        turns=[{'turn_id':f'q{i}','question_id':i,'question':'Apa pengalaman Anda?', 'interviewer':'hr',
+                'answer':('Saya melakukan rekonsiliasi bank. ' if i == 1 else 'Saya berkolaborasi dengan teman. ') * 400,
+                'competencies':['technical'] if i == 1 else ['communication']} for i in range(1,25)]
+        data=memory.packet(session,turns,question,'user')
+        self.assertLessEqual(len(json.dumps(data,ensure_ascii=False)),memory.PACKET_CHARS)
+        self.assertEqual(len(data['recent_turns']),3)
+        self.assertIn('q1',[t['turn_id'] for t in data['retrieved_turns']])
+        self.assertTrue(all(f['verification_status']=='unverified' for f in data['candidate_facts']))
+        quote='Saya melakukan rekonsiliasi bank.'
+        self.assertEqual(memory.validate_refs([{'turn_id':'q1','quote':quote}],data)[0]['quote'],quote)
+        for ref in ({'turn_id':'q999','quote':quote},{'turn_id':'q1','quote':'I managed one hundred employees.'}):
+            with self.assertRaises(ValueError): memory.validate_refs([ref],data)
+        with self.assertRaises(ValueError): memory.validate_refs([],data,required=True)
+        for fact in data['candidate_facts']:
+            original = next(t['answer'] for t in turns if t['turn_id'] == fact['source_turn_id'])
+            self.assertIn(fact['quote'],original)
+        self.assertEqual(len(turns[0]['answer']),len('Saya melakukan rekonsiliasi bank. ')*400)
+
+    def test_insufficient_evidence_is_not_low_ability_and_quotes_keep_turn_boundaries(self):
+        source=[{'turn_id':'q1','transcript':'Saya tidak memeriksa hasil sebelum mengirim laporan.'},
+                {'turn_id':'q2','transcript':'Saya mengukur hasil eksperimen.'}]
+        scores=verified_scores({'technical':{'score':5,'evidence':['laporan. Saya mengukur']},
+            'communication':{'score':1,'evidence':['Saya tidak memeriksa hasil sebelum mengirim laporan.'],'evidence_sufficiency':'sufficient'},
+            'teamwork':{'score':4,'evidence':['Saya mengukur hasil eksperimen.'],'evidence_sufficiency':'partial'}},
+            ' '.join(t['transcript'] for t in source),['technical','communication','teamwork'],source)
+        self.assertEqual(scores['technical']['score'],2)
+        self.assertEqual(scores['technical']['status'],'insufficient')
+        self.assertEqual(scores['teamwork']['score_status'],'provisional')
+        self.assertEqual(scores['communication']['source_refs'][0]['turn_id'],'q1')
+        total,items=aggregate([scores],WEIGHTS['hr'])
+        self.assertEqual(total,1)  # Demonstrated low performance remains measurable.
+        self.assertIsNone(next(c['score'] for c in items if c['key']=='teamwork'))
+        empty=verified_scores({},'???',['communication'],[{'turn_id':'q9','transcript':'???'}])
+        self.assertEqual(empty['communication']['status'],'unusable_transcript')
+
+    def test_assessor_comparison_rejects_unrated_cases_and_handles_undefined_kappa(self):
+        from validation.compare import compare,kappa
+        self.assertEqual(kappa([1,2,3,4,5],[1,2,3,4,5]),1)
+        self.assertIsNone(kappa([3,3],[3,3]))
+        cases=[{'id':str(i),'split':'test','competency':'leadership','transcript':'Saya mengukur hasil eksperimen.',
+                'language':'id','human_ratings':{'a':i,'b':i,'c':i},'consensus_score':i,
+                'ai_runs':[i]*5,'ai_quotes':['Saya mengukur hasil eksperimen.']} for i in (1,2,3)]
+        report=compare({'cases':cases})
+        self.assertEqual(report['ai_vs_consensus_kappa'],1)
+        self.assertEqual(report['stable_range_at_most_one_percent'],100)
+        self.assertFalse(report['validated'])
+        cases[0]['human_ratings']={}
+        with self.assertRaises(ValueError): compare({'cases':cases})

@@ -41,3 +41,6 @@ Buka http://localhost:8000 — login dengan `demo@interview.local` / `demo1234`,
 - [Cleansing dan chunking dokumen](document-processing.md)
 
 Panduan pertanyaan adaptif, fresh graduate dan panel: [question-guidebook.md](question-guidebook.md). Sumber runtime: [question-guidebook.json](question-guidebook.json).
+
+- [Status brief panel, memori dan interupsi](panel-implementation.md)
+- [Persiapan pembandingan asesor](assessor-validation.md)

@@ -47,3 +47,5 @@ Autostart Share sudah dipasang untuk akun Mac ini. Jalankan `python3 deploy/kiri
 The supplied Python backend runs locally or with Docker, PostgreSQL and an arq/Redis worker. It does not target Cloudflare Workers/Sites hosting. Set a random 32+ character secret and secure cookies in production, and terminate HTTPS at your ingress. Then run `docker compose up -d --build`. The web service binds to loopback port 8000. `deploy/nginx.conf` is an HTTP proxy reference; configure certificates at your ingress before production use. Set `DB_PASSWORD` for Compose. Provider settings are passed through `.env`; never commit it.
 
 See [implementation status](docs/implementation-status.md) for differences from the broader reference design and remaining validation work.
+
+Pemulihan pertanyaan dan context packet: [status brief panel](docs/panel-implementation.md). Persiapan pembandingan skor manusia: [validasi asesor](docs/assessor-validation.md).

@@ -1,5 +1,14 @@
 # Log perubahan
 
+## 2026-11-07 — Konteks panel, bukti dan pemulihan pertanyaan
+
+- Membaca brief panel tambahan dan menerapkan keputusan pengguna: tab tersembunyi/koneksi putus menghentikan pertanyaan aktif; Retry mengulang dengan waktu penuh, Next melewati tanpa skor. Jawaban yang sudah terkomit tidak digandakan; penutupan seluruh sesi tetap melalui Akhiri sesi.
+- Menambahkan context packet terbatas dengan giliran terbaru/retrieval, kutipan klaim berstatus unverified, validasi rujukan sumber, serta event/checkpoint persisten. Tabel event baru bersifat aditif; snapshot historis dipertahankan.
+- Memisahkan bukti cukup/kurang/belum dinilai/transkrip tak dapat digunakan. Skor tanpa bukti valid tetap maksimal 2 dan provisional, tetapi dikeluarkan dari agregat baru. Hasil menampilkan cakupan dan asal kutipan literal per giliran.
+- Menambahkan mode teks, fallback saat suara gagal, penghentian suara manual, serta penilaian ulang setelah evaluator gagal tanpa menghapus jawaban.
+- Menyiapkan `validation/compare.py` untuk data skor independen asesor dan AI; belum ada penilaian manusia. `validated` tetap false. Status bagian brief yang belum diterapkan dicatat di `panel-implementation.md`.
+- Verifikasi: 51 tes backend lulus; Chrome sintetis lulus untuk interupsi rekaman, offline, reload, Retry/Next, jawaban teks, cakupan dan hasil mobile. Probe model nyata pada tiga CV/JD sintetis juga lulus dengan rujukan giliran/kutipan terverifikasi. Uji ini tidak membuktikan validitas psikometrik atau akurasi semua transkrip nyata.
+
 ## 2026-11-07 — Pertanyaan adaptif, konteks kandidat, dan panel
 
 - Memisahkan panduan/panggilan generator dan konteks evaluator HR, User, Manager. HR menerima latar CV dan tanggung jawab pekerjaan, tanpa daftar skill/persyaratan teknis atau skor User. Kompetensi teknis ditolak untuk pertanyaan HR.

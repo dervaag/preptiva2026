@@ -145,11 +145,41 @@ def main():
                     if panel_size > 1:
                         assert page.locator('.panel-member.active').count() == 1
                         if turn == 1: page.screenshot(path=str(artifacts/f'panel-{panel_size}-room.png'),full_page=True)
+                    if panel_size == 3 and turn == 0:
+                        page.locator('#record').click(); page.wait_for_timeout(600)
+                        page.evaluate("Object.defineProperty(document,'hidden',{configurable:true,value:true}); document.dispatchEvent(new Event('visibilitychange')); Object.defineProperty(document,'hidden',{configurable:true,value:false});")
+                        page.wait_for_function("!document.querySelector('#retry-question').disabled")
+                        assert page.locator('#answer-timer').inner_text() == '00:00'
+                        page.locator('#retry-question').click()
+                        page.wait_for_function("!document.querySelector('#record-controls').hidden")
+                        assert page.locator('#answer-timer').inner_text() != '00:00'
+                    if panel_size == 3 and turn == 1:
+                        page.locator('#record').click(); page.wait_for_timeout(300)
+                        context.set_offline(True)
+                        page.wait_for_selector('#interruption')
+                        assert page.locator('#skip-question').is_disabled()
+                        context.set_offline(False)
+                        page.wait_for_function("!document.querySelector('#skip-question').disabled")
+                        page.locator('#skip-question').click()
+                        continue
+                    if panel_size == 3 and turn == 2:
+                        page.reload()
+                        page.wait_for_function("document.querySelector('#room-status').textContent === 'SIAP DIMULAI'")
+                        page.locator('#text-mode').check(); page.locator('#focus-check').check(); page.locator('#start').click()
+                        page.wait_for_function("!document.querySelector('#retry-question').disabled")
+                        page.locator('#retry-question').click()
+                        page.wait_for_selector('#text-answer-area')
+                        page.locator('#text-answer').fill('Saya mengukur hasil eksperimen dan meningkatkan hasil sebesar 35 persen.')
+                        page.locator('#send-text').click()
+                        continue
                     page.locator('#record').click(); page.wait_for_timeout(600); page.locator('#record').click()
                     page.locator('#send').click()
                 page.wait_for_url('**/hasil',timeout=30000)
                 page.wait_for_selector('.score-number'); assert page.locator('.score-number').inner_text().strip().startswith('80')
                 if panel_size > 1: assert page.locator('.panel-results article').count() == panel_size
+                if panel_size == 3:
+                    assert page.get_by_text('Pertanyaan dilewati — belum dinilai.').count() == 1
+                    assert page.locator('.coverage-summary').count() == 1
                 page.set_viewport_size({'width':390,'height':844})
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'Results overflow on mobile'
                 page.screenshot(path=str(artifacts/f'panel-{panel_size}-results.png'),full_page=True)
@@ -157,7 +187,7 @@ def main():
                 page.wait_for_function("document.querySelector('#stat-total').textContent === String(" + str(scenario) + ")")
             assert not failures, failures
             browser.close()
-            print('Chrome checks passed: single, 2-person and 3-person panels; fresh graduate setup, active speaker, adaptive turns, streaming, per-persona results and mobile layout. No AI calls.')
+            print('Chrome checks passed: single, 2-person and 3-person panels; fresh graduate setup, active speaker, adaptive turns, interruption retry/skip, offline/reload recovery, text fallback, evidence coverage and mobile layout. No AI calls.')
     finally:
         server.should_exit = True; thread.join(timeout=10)
 
