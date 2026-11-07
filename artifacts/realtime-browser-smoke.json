@@ -1,0 +1,14 @@
+{
+  "paid_api_calls": false,
+  "ok": true,
+  "realtime_pcm": true,
+  "live_transcript": true,
+  "correction": true,
+  "interruption_retry": true,
+  "auto_send_vad": true,
+  "barge_in": true,
+  "assessor_packet_download": true,
+  "connections": 4,
+  "pcm_bytes": 343680,
+  "streamed_responses": 9
+}

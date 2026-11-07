@@ -7,6 +7,9 @@
   let active = false, closed = false, ready = false, cameraReady = false, micReady = false, soundTested = false;
   let retries = 0, phase = 'preparing', audio = null, uploadController = null, pendingFlow = null;
   let stopAudio = null, interruptionPending = false, recoveryState = null;
+  let realtimeVoice=null, realtimeRecording=false, vadTimer=null, pendingBargeIn=false;
+  let endOfTurnAt=null, latencyAnswer=null;
+  const sentLatency=new Set();
   const setStatus = text => {$('#room-status').textContent = text;};
   const error = e => showError('#room-error', e);
   function setPhase(next) {phase = next;}
@@ -19,6 +22,7 @@
       ? state.panel.map(p => `<span class="panel-member ${p.name === persona.name ? 'active' : ''}" ${p.name === persona.name ? 'aria-current="true"' : ''}>${esc(p.name)} · ${esc(p.key.toUpperCase())}</span>`).join('') : '';
   }
   function stopDevices() {
+    realtimeVoice?.destroy(); realtimeVoice=null; clearTimeout(vadTimer);
     clearInterval(timer); cancelAnimationFrame(meterFrame);
     if (recorder?.state === 'recording') {recorder.onstop = null; recorder.stop();}
     stream?.getTracks().forEach(track => track.stop());
@@ -34,9 +38,10 @@
     location.replace('/riwayat');
   }
   function stopQuestion() {
+    realtimeRecording=false; realtimeVoice?.cancel(); clearTimeout(vadTimer); pendingBargeIn=false;
     setPhase('interrupted'); clearInterval(timer); stopAudio?.(); uploadController?.abort();
     if (recorder?.state === 'recording') {recorder.onstop = null; recorder.stop();}
-    recorded = null; $('#answer-preview').pause(); $('#answer-preview').hidden = true;
+    recorded = null; $('#answer-preview').pause(); $('#answer-preview').hidden = true; $('#live-review').hidden = true;
     $('#record-controls').hidden = true; $('#text-answer-area').hidden = true; $('#use-text').hidden = true;
     $('#send').hidden = true; $('#retry-upload').hidden = true; $('#replay').hidden = true; $('#resume-flow').hidden = true;
     $('#answer-timer').textContent = '00:00'; $('#interruption').hidden = false;
@@ -126,8 +131,36 @@
       }
       cancelAnimationFrame(meterFrame); meter(); $('#devices').textContent = '✓ Perangkat aktif';
       stream.getTracks().forEach(t => t.addEventListener('ended', () => {checkReady(); if (active) interruptQuestion('device_lost');}));
+      if (state?.script.settings?.streaming_voice) await setupRealtime();
     } catch(e) {error(e); $('#devices').disabled = false;}
   });
+  async function setupRealtime() {
+    realtimeVoice?.destroy();
+    try {
+      realtimeVoice = new RealtimeVoice(stream, {
+        onTranscript: text => {if(realtimeRecording){$('#transcript').textContent=text;$('#transcript').hidden=false;}},
+        onSpeech: type => {
+          if(!realtimeRecording || phase !== 'recording')return;
+          clearTimeout(vadTimer);
+          if(type==='speech_started')setStatus('MENDENGARKAN ANDA');
+          else {
+            setStatus($('#auto-send').checked ? 'JEDA BICARA · AKAN DIKIRIM' : 'JEDA TERDETEKSI · SILAKAN LANJUT');
+            if($('#auto-send').checked)vadTimer=setTimeout(()=>stopRealtime(false,true),1800);
+          }
+        },
+        onActivity: () => {if(active && phase==='speaking' && $('#barge-in').checked && $('#realtime-mode').checked){pendingBargeIn=true;stopAudio?.();}},
+        onError: error => {
+          if(!realtimeRecording)return;
+          realtimeRecording=false;clearInterval(timer);clearTimeout(vadTimer);
+          if(!navigator.onLine || error.transportLost){interruptQuestion('offline');return;}
+          $('#realtime-mode').checked=false; setPhase('answer-ready');setStatus('GUNAKAN REKAMAN BIASA / TEKS');
+          $('#record-controls').hidden=false;$('#record').hidden=false;$('#record').disabled=false;$('#record').textContent='● Rekam ulang jawaban';
+          $('#use-text').hidden=false;showError('#room-error',error);
+        }
+      });
+      await realtimeVoice.initialize();
+    } catch(e) {realtimeVoice?.destroy();realtimeVoice=null;$('#realtime-mode').checked=false;error('Audio realtime tidak didukung di browser ini; rekaman biasa dan teks tetap tersedia.');}
+  }
   $('#test-sound').addEventListener('click', async () => {
     try {
       context ||= new (window.AudioContext || window.webkitAudioContext)(); await context.resume();
@@ -146,10 +179,16 @@
     try {
       await new Promise((resolve,reject) => {
         stopAudio = () => {player.pause(); resolve();};
+        player.onplaying = () => {
+          if(latencyAnswer && endOfTurnAt !== null && !sentLatency.has(latencyAnswer)) {
+            sentLatency.add(latencyAnswer);
+            postJSON(`${base}/voice-latency`, {answer_id:latencyAnswer,elapsed_ms:Math.min(300000,Math.round(performance.now()-endOfTurnAt))}).catch(()=>{});
+          }
+        };
         player.onended = resolve; player.onerror = () => reject(new Error('Audio tidak dapat diputar. Coba putar ulang.'));
         player.play().catch(reject);
       });
-    } finally {if (audio === player) audio = null; stopAudio = null; $('#stop-audio').hidden = true; $('#sound-bars').classList.remove('playing');}
+    } finally {player.pause();player.removeAttribute('src');player.load();if (audio === player) audio = null; stopAudio = null; $('#stop-audio').hidden = true; $('#sound-bars').classList.remove('playing');}
   }
   $('#stop-audio').addEventListener('click', () => stopAudio?.());
   function recoverable(fn) {
@@ -163,7 +202,7 @@
     if (closed) return;
     current = question; retries = 0; recorded = null;
     localStorage.setItem(marker, JSON.stringify({question_id:current.id}));
-    $('#text-answer').value = ''; $('#text-answer-area').hidden = true; $('#interruption').hidden = true;
+    $('#text-answer').value = ''; $('#text-answer-area').hidden = true; $('#interruption').hidden = true; $('#live-review').hidden=true;
     $('#interviewer-response').hidden = true;
     showInterviewer(question.persona || state.persona);
     $('#transcript').hidden = true; $('#record-controls').hidden = true; $('#answer-preview').hidden = true;
@@ -180,6 +219,7 @@
       $('#replay').hidden = false;
       $('#use-text').hidden = false;
       if ($('#text-mode').checked) useText();
+      else if(pendingBargeIn){pendingBargeIn=false;await startRealtime();}
     };
     try {await finishPresentation();} catch(e) {error(e); recoverable(finishPresentation);}
   }
@@ -213,13 +253,16 @@
     } catch(e) {error(e); checkReady();}
   });
   function stopRecording(timedOut = false) {
+    if(realtimeRecording){stopRealtime(timedOut);return;}
     if (recorder?.state !== 'recording') return;
+    endOfTurnAt=performance.now();
     clearInterval(timer); recorder.timedOut = timedOut; recorder.stop();
     $('#record').hidden = true;
   }
   $('#record').addEventListener('click', () => {
     if (phase === 'recording') {stopRecording(); return;}
     if (phase !== 'answer-ready') return;
+    if($('#realtime-mode').checked && realtimeVoice){startRealtime();return;}
     try {
       mime = ['audio/webm;codecs=opus','audio/ogg;codecs=opus','audio/mp4'].find(t => MediaRecorder.isTypeSupported(t));
       recorder = new MediaRecorder(new MediaStream(stream.getAudioTracks()), {...(mime ? {mimeType:mime} : {}),audioBitsPerSecond:64000});
@@ -241,9 +284,40 @@
       },200);
     } catch(e) {error(e);}
   });
+  async function startRealtime() {
+    if(!realtimeVoice || closed || phase==='interrupted' || realtimeRecording)return;
+    realtimeRecording=true;recorded=null;recordingStart=performance.now();
+    $('#record-controls').hidden=false;$('#record').hidden=false;$('#record').disabled=true;
+    $('#send').hidden=true;$('#retry').hidden=true;$('#replay').hidden=true;$('#use-text').hidden=true;
+    setPhase('connecting');setStatus('MENGHUBUNGKAN MIKROFON');
+    try {
+      await realtimeVoice.start(`${location.protocol==='https:'?'wss:':'ws:'}//${location.host}${base}/voice/${current.id}`);
+      if(!realtimeRecording || phase==='interrupted')return;
+      setPhase('recording');setStatus('MENDENGARKAN ANDA');$('#record').disabled=false;$('#record').textContent='■ Selesai bicara';
+      timer=setInterval(()=>{
+        const remaining=Math.max(0,state.answer_seconds-Math.ceil((performance.now()-recordingStart)/1000));
+        $('#answer-timer').textContent=formatTime(remaining);
+        if(!remaining)stopRealtime(true);
+      },200);
+    } catch(e) {if(phase!=='interrupted' && e.name!=='AbortError')error(e);}
+  }
+  async function stopRealtime(timedOut=false,autoSend=false) {
+    if(!realtimeRecording || !['recording','connecting'].includes(phase))return;
+    clearInterval(timer);clearTimeout(vadTimer);endOfTurnAt=performance.now();
+    $('#record').hidden=true;setPhase('transcribing');setStatus('MENUNTASKAN TRANSKRIP');
+    try {
+      const result=await realtimeVoice.finish();
+      if(!realtimeRecording || closed || phase==='interrupted')return;
+      realtimeRecording=false;recorded={capture_token:result.capture_token,transcript:result.transcript,duration:result.duration_ms,timedOut};
+      $('#live-transcript').value=result.transcript;$('#live-review').hidden=false;
+      setPhase('recorded');setStatus('TINJAU TRANSKRIP');$('#send').hidden=false;$('#retry').hidden=retries>=state.retry_limit;
+      if(autoSend && !document.hidden)await upload();
+    } catch(e) {if(phase!=='interrupted' && e.name!=='AbortError')error(e);}
+  }
   $('#retry').addEventListener('click', () => {
     if (retries >= state.retry_limit || phase !== 'recorded') return;
     retries++; recorded = null; setPhase('answer-ready');
+    $('#live-review').hidden=true;realtimeVoice?.cancel();
     $('#record').hidden = false; $('#record').textContent = '● Mulai jawab';
     $('#send').hidden = true; $('#retry').hidden = true; $('#answer-preview').hidden = true; $('#answer-preview').pause();
     $('#answer-timer').textContent = formatTime(state.answer_seconds); $('#replay').hidden = false;
@@ -257,6 +331,7 @@
     location.replace(`/sesi/${sid}/hasil`);
   }
   async function handleResult(result) {
+    latencyAnswer=result.answer_id;
     $('#retry-upload').hidden = true;
     $('#transcript').textContent = result.transcript; $('#transcript').hidden = false;
     const advance = async () => {
@@ -276,12 +351,20 @@
     const form = new FormData();
     form.append('question_id', current.id);
     if (textAnswer !== null) {form.append('text_answer', textAnswer); form.append('duration_ms', 100);}
+    else if(recorded.capture_token) {
+      form.append('capture_token',recorded.capture_token);form.append('duration_ms',recorded.duration);
+      form.append('timed_out',recorded.timedOut);
+      const corrected=$('#live-transcript').value.trim();
+      if(corrected && corrected!==recorded.transcript)form.append('corrected_transcript',corrected);
+    }
     else {
       const extension = recorded.blob.type.includes('mp4') ? 'mp4' : recorded.blob.type.includes('ogg') ? 'ogg' : 'webm';
       form.append('audio', recorded.blob, `answer.${extension}`); form.append('duration_ms', recorded.duration);
       form.append('timed_out', recorded.timedOut);
     }
     form.append('retry_count', retries); $('#text-answer-area').hidden = true; $('#use-text').hidden = true;
+    $('#live-review').hidden=true;
+    if(textAnswer!==null)endOfTurnAt=performance.now();
     uploadController = new AbortController();
     try {
       const response = await fetch(`${base}/answers?stream=true`, {method:'POST', body:form, signal:uploadController.signal});
@@ -320,6 +403,7 @@
   async function poll() {
     try {
       state = await api(`${base}/state`);
+      if(!state.script.settings?.streaming_voice){$('#realtime-mode').checked=false;$('#realtime-mode').disabled=true;}
       if (state.status === 'failed') {setStatus('SESI DITUTUP'); $('#preflight').hidden = true; throw new Error(state.error);}
       if (['done', 'scoring', 'evaluation_failed'].includes(state.status)) {localStorage.removeItem(marker); location.replace(`/sesi/${sid}/hasil`);return;}
       $('#room-title').textContent = `Latihan ${state.job_role}`;

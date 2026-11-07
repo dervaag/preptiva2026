@@ -6,6 +6,7 @@ _temporary = tempfile.TemporaryDirectory()
 os.environ['DATABASE_URL'] = 'sqlite+aiosqlite:///' + str(Path(_temporary.name) / 'test.db')
 os.environ['APP_ENV'] = 'development'
 os.environ['AI_MOCK'] = 'false'
+os.environ['REALTIME_VOICE_ENABLED'] = 'false'
 os.environ['REDIS_URL'] = ''
 os.environ['MAX_SESSIONS_PER_HOUR'] = '5'
 os.environ['COOKIE_SECURE'] = 'false'
@@ -552,6 +553,62 @@ class SystemTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(all(i['skipped'] for i in result['items']))
 
 
+    async def test_realtime_receipt_correction_idempotency_and_retry_scope(self):
+        from app.services.voice_capture import seal
+        from app.models import InterviewEvent
+        with patch.object(settings, 'realtime_voice_enabled', True):
+            sid, internal, state = await self.ready_session()
+        self.assertFalse(self.prepared_voices)  # Speech is fetched on playback, not eagerly.
+        qid = state['current_turn']['id']
+        self.assertTrue(state['current_turn']['audio_url'].endswith(f'/speech/question/{qid}'))
+        await self.client.post(f'/api/sessions/{sid}/start')
+        async with SessionLocal() as db:
+            stored = await db.get(InterviewSession, internal)
+            token = seal(stored, qid, 'Saya mengukur hasil eksperimen.', 1200, ['segment-1'])
+            stored.script = {**stored.script, 'voice_lease': {'id':'old', 'until':'9999'}}
+            await db.commit()
+        stopped = (await self.client.post(f'/api/sessions/{sid}/interrupt', json={'question_id':qid,'reason':'tab_hidden'})).json()
+        async with SessionLocal() as db:
+            self.assertEqual((await db.get(InterviewSession, internal)).script['voice_lease'], {})
+        await self.client.post(f'/api/sessions/{sid}/recover', json={'question_id':qid,'action':'retry',
+            'interruption_id':stopped['state']['checkpoint']['interruption_id']})
+        data = {'question_id':qid, 'capture_token':token, 'duration_ms':100}
+        self.assertEqual((await self.client.post(f'/api/sessions/{sid}/answers', data=data)).status_code, 422)
+        async with SessionLocal() as db:
+            data['capture_token'] = seal(await db.get(InterviewSession, internal), qid, 'Saya mengukur hasil eksperimen.', 1200, ['segment-2'])
+        data['corrected_transcript'] = 'Saya mengukur hasil eksperimen sebesar 35 persen.'
+        with patch('app.api.sessions.orchestrator.respond', AsyncMock(return_value={'action':'next','response_text':'Terima kasih.'})), \
+                patch('app.api.sessions.speech.transcribe', AsyncMock()) as stt, \
+                patch('app.api.sessions.speech.optional_synthesize', AsyncMock()) as tts:
+            response = await self.client.post(f'/api/sessions/{sid}/answers', data=data)
+            self.assertEqual(response.status_code, 200, response.text)
+            result = response.json()
+            self.assertEqual(result['input_mode'], 'realtime')
+            self.assertEqual(result['original_transcript'], 'Saya mengukur hasil eksperimen.')
+            self.assertEqual(result['transcript'], data['corrected_transcript'])
+            self.assertTrue(result['transcript_corrected'])
+            self.assertIn('/speech/response/', result['response_audio_url'])
+            stt.assert_not_called(); tts.assert_not_called()
+            # A previously accepted answer is returned even when its receipt has expired.
+            data['capture_token'] = 'expired-token'
+            self.assertEqual((await self.client.post(f'/api/sessions/{sid}/answers', data=data)).json(), result)
+        async with SessionLocal() as db:
+            answer = await db.get(InterviewAnswer, result['answer_id'])
+            self.assertEqual(answer.duration_sec, 1.2)
+            questions = (await db.scalars(select(InterviewQuestion).where(InterviewQuestion.session_id==internal).order_by(InterviewQuestion.main_order))).all()
+            future = questions[-1].id
+        self.assertEqual((await self.client.get(f'/api/sessions/{sid}/speech/question/{future}')).status_code, 404)
+        await self.register(self.other, 'other-voice@example.com')
+        self.assertEqual((await self.other.get(f'/api/sessions/{sid}/speech/response/{result["answer_id"]}')).status_code, 404)
+        metric={'answer_id':result['answer_id'],'elapsed_ms':1234}
+        for _ in range(2):
+            self.assertEqual((await self.client.post(f'/api/sessions/{sid}/voice-latency',json=metric)).status_code, 200)
+        async with SessionLocal() as db:
+            events=(await db.scalars(select(InterviewEvent).where(InterviewEvent.session_id==internal,
+                InterviewEvent.kind=='voice_first_playing'))).all()
+            self.assertEqual(len(events), 1)
+
+
 class SpeechConfigTests(unittest.IsolatedAsyncioTestCase):
     async def test_format_cache_and_compatible_language_parameter(self):
         from app.ai import speech
@@ -719,3 +776,95 @@ class MemoryAndEvidenceTests(unittest.TestCase):
         self.assertFalse(report['validated'])
         cases[0]['human_ratings']={}
         with self.assertRaises(ValueError): compare({'cases':cases})
+
+
+class RealtimeAndPacketTests(unittest.IsolatedAsyncioTestCase):
+    def test_transcript_order_receipt_scope_and_origin(self):
+        from app.ai.realtime import Transcript
+        from app.services.voice_capture import seal, verify
+        from app.api.voice import same_origin
+        from types import SimpleNamespace
+        transcript=Transcript()
+        for item in ('a','b'):
+            transcript.feed({'type':'input_audio_buffer.committed','item_id':item})
+        transcript.feed({'type':'conversation.item.input_audio_transcription.completed','item_id':'b','transcript':'Second.'})
+        self.assertFalse(transcript.complete())
+        transcript.feed({'type':'conversation.item.input_audio_transcription.delta','item_id':'a','delta':'First'})
+        self.assertEqual(transcript.text(),'First\nSecond.')
+        transcript.feed({'type':'conversation.item.input_audio_transcription.completed','item_id':'a','transcript':'First.'})
+        self.assertTrue(transcript.complete());self.assertEqual(transcript.text(),'First.\nSecond.')
+        with self.assertRaises(ValueError):
+            transcript.feed({'type':'conversation.item.input_audio_transcription.delta','item_id':'c','delta':'x'*8001})
+        session=SimpleNamespace(uuid='s1',user_id=1,script={})
+        token=seal(session,2,'Hello there.',3000,['a'])
+        self.assertEqual(verify(token,session,2)['transcript'],'Hello there.')
+        for changed,qid in ((SimpleNamespace(uuid='s2',user_id=1,script={}),2),(SimpleNamespace(uuid='s1',user_id=2,script={}),2),(session,3)):
+            with self.assertRaises(HTTPException):verify(token,changed,qid)
+        with patch('itsdangerous.timed.TimestampSigner.get_timestamp', return_value=9999999999):
+            with self.assertRaises(HTTPException):verify(token,session,2)
+        with self.assertRaises(HTTPException):verify('tampered',session,2)
+        for origin,valid in [('http://localhost:8000',True),('https://evil.example',False),('',False),('http://localhost:8000/else',False)]:
+            self.assertEqual(same_origin(SimpleNamespace(headers={'origin':origin,'host':'localhost:8000'})),valid)
+        self.assertFalse(same_origin(SimpleNamespace(headers={'origin':'http://localhost:8000','host':'localhost:8000','sec-fetch-site':'cross-site'})))
+
+    async def test_speech_stream_yields_early_and_never_caches_cancelled_audio(self):
+        from app.ai import speech
+        class Chunks(httpx.AsyncByteStream):
+            async def __aiter__(self):
+                yield b'first'
+                yield b'second'
+        calls=[]
+        def handle(request):
+            calls.append(request)
+            return httpx.Response(200,stream=Chunks())
+        original=httpx.AsyncClient
+        with tempfile.TemporaryDirectory() as directory, patch.object(speech,'ROOT',Path(directory)), \
+                patch.object(settings,'tts_cache',True), \
+                patch('app.ai.speech.httpx.AsyncClient',side_effect=lambda **kw: original(transport=httpx.MockTransport(handle),**kw)):
+            cache=speech.stream_cache('Synthetic streaming fixture.','hr')
+            stream=speech.stream_audio('Synthetic streaming fixture.','hr')
+            self.assertEqual(await stream.__anext__(),b'first')
+            self.assertFalse(cache.exists())
+            await stream.aclose()
+            self.assertFalse(cache.exists());self.assertFalse(list(cache.parent.glob('*.tmp')))
+            self.assertEqual(b''.join([chunk async for chunk in speech.stream_audio('Synthetic streaming fixture.','hr')]),b'firstsecond')
+            self.assertTrue(cache.exists())
+            self.assertEqual(b''.join([chunk async for chunk in speech.stream_audio('Synthetic streaming fixture.','hr')]),b'firstsecond')
+            self.assertEqual(len(calls),2)
+
+    def test_blind_packets_merge_integrity_and_no_automatic_validation(self):
+        from validation.kit import starter,packet,merge,digest
+        data=starter()
+        self.assertFalse(data['validated']);self.assertTrue(all(not c['human_ratings'] and not c['ai_runs'] for c in data['cases']))
+        data['cases'][0]['ai_runs']=[5]*5;data['cases'][0]['human_ratings']={'secret-assessor':2}
+        data['cases'][0]['transcript']+=' </script><script>alert(1)</script>'
+        output=packet(data,'assessor-a')
+        self.assertNotIn('secret-assessor',output);self.assertNotIn('human_ratings',output);self.assertNotIn('ai_runs',output)
+        self.assertNotIn('</script><script>alert(1)',output)
+        rows=[{'case_id':c['id'],'status':'insufficient','score':None,'quote':'','rationale':'Synthetic test only, not actual human assessment.'} for c in data['cases']]
+        rating={'assessor_id':'assessor-a','dataset_hash':digest(data),'personally_rated_independently':True,'ratings':rows}
+        merged=merge(data,[rating])
+        self.assertFalse(merged['validated']);self.assertIsNone(merged['cases'][0]['human_ratings']['assessor-a'])
+        with self.assertRaises(ValueError):merge(merged,[rating])
+        for changes in ({'dataset_hash':'wrong'},{'personally_rated_independently':False},{'ratings':rows[:-1]}):
+            with self.assertRaises(ValueError):merge(data,[{**rating,**changes}])
+        badrows=json.loads(json.dumps(rows));badrows[0].update(status='measured',score=4,quote='Made up evidence')
+        with self.assertRaises(ValueError):merge(data,[{**rating,'ratings':badrows}])
+        data['level']='senior'
+        with self.assertRaises(ValueError):merge(data,[rating])
+        data['rubric']+='edited'
+        with self.assertRaises(ValueError):packet(data,'assessor-b')
+
+    async def test_assessor_ai_runs_use_no_human_scores_and_keep_integer_ratings(self):
+        from validation.kit import starter,run_ai
+        data=starter();data['cases']=data['cases'][:1]
+        data['cases'][0]['human_ratings']={'private-rater':1}
+        evidence=data['cases'][0]['transcript']
+        response={'competency_scores':{'communication':{'score':4.0,'evidence':[evidence],'evidence_sufficiency':'sufficient'}}}
+        with patch('app.ai.orchestrator.evaluate',AsyncMock(return_value=response)) as evaluate:
+            result=await run_ai(data)
+        self.assertEqual(evaluate.await_count,5)
+        self.assertEqual(result['cases'][0]['ai_runs'],[4]*5)
+        self.assertTrue(all(type(score) is int for score in result['cases'][0]['ai_runs']))
+        self.assertNotIn('private-rater',json.dumps([call.args for call in evaluate.call_args_list]))
+        self.assertFalse(result['validated'])

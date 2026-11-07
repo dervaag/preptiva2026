@@ -56,8 +56,12 @@ async def prepare_session(ctx, sid):
             utterances = [('intro.mp3', prepared['intro'], roles[0]), ('closing.mp3', prepared['closing'], closing_persona)]
             utterances += [(f'q{i}.mp3', q['question_text'], speakers[str(i)]) for i, q in enumerate(prepared['questions'], 1)
                            if not dynamic or i == 1]
-            urls = await asyncio.gather(*(speech.optional_synthesize(text, persona, session.uuid, name,
+            streaming = session.script['settings'].get('streaming_voice', False)
+            urls = [None]*len(utterances) if streaming else await asyncio.gather(*(speech.optional_synthesize(text, persona, session.uuid, name,
                 timeout=settings.tts_prepared_timeout_sec) for name, text, persona in utterances))
+            if streaming:
+                urls[0] = f'/api/sessions/{session.uuid}/speech/intro/0'
+                urls[1] = f'/api/sessions/{session.uuid}/speech/closing/0'
             await db.refresh(session)
             if session.status != 'preparing':
                 return

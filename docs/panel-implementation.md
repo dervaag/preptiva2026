@@ -9,7 +9,7 @@ Diperbarui 7 November 2026. Acuan tambahan: berkas pengguna `preptiva_panel_inte
 - Jawaban yang sudah berhasil disimpan tetap dipertahankan. Interupsi terlambat terhadap jawaban tersebut tidak menghentikan pertanyaan berikutnya. Pengiriman ulang Next/Retry memakai ID pertanyaan/interupsi untuk mencegah giliran ganda.
 - Ketika benar-benar offline, status lokal segera menghentikan rekaman; tombol pemulihan aktif setelah status server berhasil disinkronkan. Rekaman yang belum dikirim dibuang. Deteksi offline browser bersifat best-effort; koneksi putus saat pengiriman juga memicu pemulihan ketika terdeteksi.
 - Membuka ulang sesi meminta pemeriksaan perangkat atau mode teks, kemudian menawarkan Retry/Next pada pertanyaan yang belum selesai. Tombol Akhiri sesi tetap menutup keseluruhan sesi.
-- Kegagalan TTS menghasilkan pertanyaan/tanggapan teks. Mode teks tidak memerlukan kamera/mikrofon. Tombol Hentikan suara menghentikan pemutaran; ini kontrol manual, belum deteksi interupsi suara otomatis.
+- Kegagalan TTS menghasilkan pertanyaan/tanggapan teks. Mode teks tidak memerlukan kamera/mikrofon. Tombol Hentikan suara menghentikan pemutaran; tersedia pula opsi sela suara saat pembacaan pertanyaan. Lihat [audio realtime](realtime-voice.md).
 
 ## Konteks dan bukti
 
@@ -42,9 +42,9 @@ Transaksi/row lock PostgreSQL menyerialkan perubahan giliran; SQLite lokal memak
 | Riwayat event, checkpoint, Retry/Next, idempotensi | Diimplementasikan sesuai koreksi pengguna |
 | Bukti kutipan, cakupan, pemulihan evaluasi | Diimplementasikan; kualitas semantik belum dikalibrasi asesor |
 | Ringkasan naratif bergulir dan routing berdasarkan waktu sesi total | Belum; indeks/retrieval dan jumlah pertanyaan tetap digunakan |
-| Streaming STT/TTS, VAD, barge-in suara otomatis | Belum; audio masih per rekaman/utterance, tersedia penghentian manual dan mode teks |
-| Koreksi transkrip tersimpan dengan jejak revisi | Belum; jawaban teks tersedia sebagai alternatif, bukan edit transkrip historis |
-| Metrik end-of-turn hingga suara pertama, dashboard kualitas/biaya | Belum; log komponen yang sudah ada tetap tersedia |
-| Kalibrasi asesor, fairness, stabilitas pada gold set | Alat pembandingan disiapkan; data penilaian manusia belum tersedia |
+| Streaming STT/TTS, VAD, sela suara | Diimplementasikan; auto-send dan sela suara bersifat opt-in, rekaman biasa/teks tetap tersedia |
+| Koreksi transkrip tersimpan dengan jejak revisi | Tinjau/koreksi sebelum kirim; transkrip STT asli, koreksi, model dan event revisi disimpan |
+| Metrik end-of-turn hingga suara pertama, dashboard kualitas/biaya | Event browser `voice_first_playing` tersedia; dashboard/analisis distribusi belum |
+| Kalibrasi asesor, fairness, stabilitas pada gold set | Paket HTML tanpa skor AI, merge dan runner AI disiapkan; asesor/penilaian manusia belum tersedia |
 
 Lihat [persiapan validasi asesor](assessor-validation.md) dan [rencana rubrik](rubric-validation-plan.md). Tidak ada perubahan ke `validated: true`.

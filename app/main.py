@@ -11,7 +11,7 @@ from sqlalchemy import text, select
 from app.config import settings, ROOT
 from app.db import init_db, SessionLocal
 from app.models import User
-from app.api import auth, sessions, dashboard
+from app.api import auth, sessions, dashboard, voice
 from app.log import request_var
 
 
@@ -55,6 +55,7 @@ async def request_context(request: Request, call_next):
 app.include_router(auth.router)
 app.include_router(sessions.router)
 app.include_router(dashboard.router)
+app.include_router(voice.router)
 app.mount('/static', StaticFiles(directory=ROOT / 'app/static'), name='static')
 templates = Jinja2Templates(directory=ROOT / 'app/templates')
 

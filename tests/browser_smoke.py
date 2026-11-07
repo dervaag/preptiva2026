@@ -19,6 +19,7 @@ os.environ['DATABASE_URL'] = f'sqlite+aiosqlite:///{temporary.name}/browser.db'
 os.environ['APP_ENV'] = 'development'
 os.environ['REDIS_URL'] = ''
 os.environ['AI_MOCK'] = 'false'
+os.environ['REALTIME_VOICE_ENABLED'] = 'false'
 os.environ['COOKIE_SECURE'] = 'false'
 os.environ['SECRET_KEY'] = 'isolated-browser-test-secret'
 
@@ -140,7 +141,9 @@ def main():
                 for turn in range(3):
                     page.wait_for_function("!document.querySelector('#record').hidden && !document.querySelector('#record-controls').hidden")
                     assert page.locator('#interviewer-name').inner_text() == names[turn % len(names)]
-                    if turn:
+                    if panel_size == 3 and turn == 2:
+                        assert page.locator('#question-text').inner_text() == 'Apa yang Anda pelajari dari perubahan?'
+                    elif turn:
                         assert 'proyek kuliah' in page.locator('#question-text').inner_text()
                     if panel_size > 1:
                         assert page.locator('.panel-member.active').count() == 1

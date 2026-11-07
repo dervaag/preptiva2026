@@ -25,6 +25,7 @@ from app.log import emit
 from app.services.locks import local_lock
 from app.ai.errors import ProviderError
 from app.services.events import record, checkpoint
+from app.services.voice_capture import verify as verify_capture
 
 router = APIRouter()
 
@@ -67,6 +68,7 @@ async def create_session(candidate_name: str = Form(..., min_length=2, max_lengt
         max_followups=settings.followups_for(question_count),
         script={'settings': {'language': language, 'retry_limit': settings.retry_limit, 'panel': roles,
                             'career_stage': career_stage, 'dynamic_questions': True,
+                            'streaming_voice': settings.realtime_voice_enabled,
                             'interruption_policy': 'retry_or_skip', 'evidence_policy': memory.VERSION},
                 'guidebook': guidebook.snapshot(), 'assessment': assessment,
                 'runtime': {'orchestration_version': memory.VERSION, 'model_fast': settings.model_fast,
@@ -120,22 +122,25 @@ async def process_answer(sid, *args, **kwargs):
             raise HTTPException(502, str(exc)) from exc
 
 
-async def _process_answer(sid, owner_id, question_id, content, filename, duration_ms, retry_count, think_ms, timed_out, events=None, skip=False, interruption_id=None, text_answer=None):
+async def _process_answer(sid, owner_id, question_id, content, filename, duration_ms, retry_count, think_ms, timed_out, events=None, skip=False, interruption_id=None, text_answer=None, capture_token=None, corrected_transcript=None):
     # Row lock spans provider work: one turn at a time, also across web processes in PostgreSQL.
     async with SessionLocal() as db:
         session = await db.scalar(select(InterviewSession).where(InterviewSession.uuid == sid, InterviewSession.user_id == owner_id).with_for_update())
         if not session or session.status != 'running':
             raise HTTPException(409, 'Sesi tidak aktif.')
+        questions, answers = await turns(db, session)
+        existing = next((a for a in answers if a.question_id == question_id), None)
+        if existing:
+            return existing.result_payload
         retry_limit = session.script.get('settings', {}).get('retry_limit', 2)
+        capture = verify_capture(capture_token, session, question_id) if capture_token else None
+        if capture:
+            duration_ms = capture['duration_ms']
         if retry_count > retry_limit:
             raise HTTPException(422, f'Maksimal {retry_limit} kali rekam ulang untuk sesi ini.')
         # Allow a small browser scheduling/encoder delay at the time limit.
         if duration_ms > (session.answer_seconds + 2) * 1000:
             raise HTTPException(422, f'Durasi jawaban melebihi batas sesi ({session.answer_seconds} detik).')
-        questions, answers = await turns(db, session)
-        existing = next((a for a in answers if a.question_id == question_id), None)
-        if existing:
-            return existing.result_payload
         answered = {a.question_id for a in answers}
         current = next((q for q in questions if q.id not in answered), None)
         if not current or current.id != question_id:
@@ -146,7 +151,8 @@ async def _process_answer(sid, owner_id, question_id, content, filename, duratio
                 raise HTTPException(409, 'Pertanyaan terhenti. Pilih Retry atau Next.')
         elif skip:
             raise HTTPException(409, 'Pertanyaan tidak sedang terhenti.')
-        transcript = '' if skip else text_answer if text_answer is not None else await speech.transcribe(content, filename, session.script['settings']['language'])
+        transcript = ('' if skip else (corrected_transcript if corrected_transcript is not None else capture['transcript']) if capture
+                      else text_answer if text_answer is not None else await speech.transcribe(content, filename, session.script['settings']['language']))
         if not transcript and not skip:
             raise HTTPException(422, 'Ucapan tidak terdeteksi. Rekam ulang jawaban.')
         if events:
@@ -173,7 +179,8 @@ async def _process_answer(sid, owner_id, question_id, content, filename, duratio
             sentences = [s for s in sentences if '?' not in s and not re.search(r'(pertanyaan (berikut|selanjut)|next question|let.s move|mari (lanjut|beralih))', s, re.I)]
             text = ' '.join(sentences).strip() or ('Terima kasih.' if session.script['settings']['language'] == 'id' else 'Thank you.')
         audio_name = f'r_{uuid4().hex}.mp3'
-        audio_url = None if skip else await speech.optional_synthesize(text, persona, sid, audio_name, live=True,
+        streaming_voice = session.script.get('settings', {}).get('streaming_voice', False)
+        audio_url = None if skip or streaming_voice else await speech.optional_synthesize(text, persona, sid, audio_name, live=True,
             timeout=min(settings.tts_live_timeout_sec, max(0, deadline - asyncio.get_running_loop().time())))
         # A close request must win if the user leaves during STT/LLM/TTS.
         await db.refresh(session)
@@ -200,7 +207,7 @@ async def _process_answer(sid, owner_id, question_id, content, filename, duratio
                 revised = planned if skip else await asyncio.wait_for(orchestrator.adapt_question(dynamic_context),
                     timeout=max(0, deadline - asyncio.get_running_loop().time()))
                 revised_audio = f'q{next_q.main_order}_{uuid4().hex}.mp3'
-                revised_url = await speech.optional_synthesize(revised['question_text'], next_persona, sid, revised_audio, live=True,
+                revised_url = None if streaming_voice else await speech.optional_synthesize(revised['question_text'], next_persona, sid, revised_audio, live=True,
                     timeout=min(settings.tts_live_timeout_sec, max(0, deadline - asyncio.get_running_loop().time())))
                 # Do not commit an adaptation if the candidate has closed the room meanwhile.
                 await db.refresh(session)
@@ -221,13 +228,20 @@ async def _process_answer(sid, owner_id, question_id, content, filename, duratio
             retry_count=retry_count, timed_out=timed_out, think_sec=think_ms / 1000, response_action=action, response_text=text)
         db.add(answer)
         await db.flush()
+        if streaming_voice and not skip:
+            audio_url = f'/api/sessions/{sid}/speech/response/{answer.id}'
         result = {'answer_id': answer.id, 'transcript': transcript, 'action': action, 'response_text': text,
-            'turn_id': f'q{current.id}', 'skipped': skip, 'input_mode': 'text' if text_answer is not None else 'skipped' if skip else 'audio',
+            'turn_id': f'q{current.id}', 'skipped': skip, 'input_mode': 'realtime' if capture else 'text' if text_answer is not None else 'skipped' if skip else 'audio',
             'source_refs': response.get('source_refs', []),
             'response_interviewer': persona,
             'response_audio_url': audio_url, 'follow_up_question': public_question(follow, session),
             'next_question': public_question(next_q, session), 'is_last': last, 'closing': session.script['closing'] if last else None}
         answer.result_payload = result
+        if capture:
+            answer.result_payload = {**result, 'original_transcript':capture['transcript'], 'transcript_corrected':transcript != capture['transcript'],
+                'capture_model':capture['model'], 'capture_item_ids':capture['item_ids']}
+            if transcript != capture['transcript']:
+                await record(db, session, f'corrected:{current.id}', 'transcript_corrected', {'question_id':current.id,'answer_id':answer.id})
         target = follow or next_q
         checkpoint(session, 'closing' if last else 'question_ready', target,
                    active_panelist=guidebook.speaker(session, target.main_order) if target else persona,
@@ -239,31 +253,34 @@ async def _process_answer(sid, owner_id, question_id, content, filename, duratio
             await record(db, session, f'handoff:{current.id}', 'panelist_handoff',
                          {'from': persona, 'to': guidebook.speaker(session, target.main_order), 'question_id': target.id})
         await db.commit()
-        return result
+        return answer.result_payload
 
 
 @router.post('/api/sessions/{sid}/answers')
 async def answer(sid: str, request: Request, question_id: int = Form(...), audio: Optional[UploadFile] = File(None),
     text_answer: Optional[str] = Form(None, min_length=1, max_length=8000),
+    capture_token: Optional[str] = Form(None, max_length=50000), corrected_transcript: Optional[str] = Form(None, min_length=1, max_length=8000),
     duration_ms: int = Form(..., ge=100, le=302000), retry_count: int = Form(0, ge=0, le=10),
     think_ms: int = Form(0, ge=0, le=3600000), timed_out: bool = Form(False), stream: bool = False,
     session=Depends(owned_session)):
     if session.status != 'running':
         raise HTTPException(409, 'Sesi tidak aktif.')
-    if text_answer is not None and (audio is not None or not text_answer.strip()):
+    if sum(x is not None for x in (text_answer, audio, capture_token)) != 1 or (text_answer is not None and not text_answer.strip()):
         raise HTTPException(422, 'Kirim salah satu: audio atau jawaban teks yang terisi.')
+    if corrected_transcript is not None and (not capture_token or not corrected_transcript.strip()):
+        raise HTTPException(422, 'Koreksi memerlukan transkrip realtime yang valid.')
     content = await audio.read(25 * 1024 * 1024 + 1) if audio else b''
-    if text_answer is None and (not content or len(content) > 25 * 1024 * 1024):
+    if text_answer is None and capture_token is None and (not content or len(content) > 25 * 1024 * 1024):
         raise HTTPException(413, 'Audio wajib diisi dan maksimal 25 MB.')
     extension = ((audio.filename or '') if audio else '').rsplit('.', 1)[-1].lower()
-    if text_answer is None and extension not in ('webm', 'ogg', 'mp4', 'm4a', 'mp3', 'wav'):
+    if text_answer is None and capture_token is None and extension not in ('webm', 'ogg', 'mp4', 'm4a', 'mp3', 'wav'):
         raise HTTPException(422, 'Format audio tidak didukung.')
     args = (sid, session.user_id, question_id, content, f'answer.{extension}', duration_ms, retry_count, think_ms, timed_out)
     if not stream:
-        return await process_answer(*args, text_answer=text_answer)
+        return await process_answer(*args, text_answer=text_answer, capture_token=capture_token, corrected_transcript=corrected_transcript)
     async def generate():
         queue = asyncio.Queue()
-        task = asyncio.create_task(process_answer(*args, events=queue, text_answer=text_answer))
+        task = asyncio.create_task(process_answer(*args, events=queue, text_answer=text_answer, capture_token=capture_token, corrected_transcript=corrected_transcript))
         try:
             while not task.done():
                 try:
@@ -303,6 +320,7 @@ async def interrupt(sid: str, data: Interruption, session=Depends(owned_session)
         prior = session.script.get('checkpoint', {})
         if prior.get('phase') != 'interrupted' or prior.get('question_id') != current.id:
             event_id = uuid4().hex
+            session.script = {**session.script, 'voice_lease': {}}
             checkpoint(session, 'interrupted', current, remaining_seconds=0,
                        active_panelist=guidebook.speaker(session, current.main_order), interruption_id=event_id)
             await record(db, session, f'interrupt:{event_id}', 'question_interrupted',

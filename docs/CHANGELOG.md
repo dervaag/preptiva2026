@@ -1,5 +1,13 @@
 # Log perubahan
 
+## 2026-11-07 — Audio realtime dan paket asesor
+
+- Menambahkan transkripsi WebSocket dengan PCM AudioWorklet, VAD, delta transkrip dan receipt bertanda tangan. Sesi baru memakai TTS streaming saat diputar; kunci API tetap di server. Model/provider yang sudah dikonfigurasi dipertahankan.
+- Menambahkan tinjau/koreksi transkrip sebelum pengiriman dengan arsip teks STT asli, pilihan kirim otomatis setelah jeda, dan pilihan sela pembacaan pertanyaan. Tab/offline/putus transport tetap menghentikan pertanyaan dan membuka Retry/Next; lease rekaman lama dibersihkan.
+- Mencatat event waktu akhir rekaman hingga audio respons mulai diputar. Waktu review manual ikut terhitung; belum tersedia dashboard distribusi latensi/biaya.
+- Menyiapkan paket HTML offline tanpa skor AI untuk tiga calon asesor, tujuh contoh sintetis dengan skor kosong, validasi hasil JSON dan runner AI lima kali per kasus yang harus dipilih secara eksplisit. Asesor belum tersedia, penilaian manusia belum dilakukan, `validated` tetap false. Lihat [panduan asesor](assessor-validation.md).
+- Verifikasi: tes otomatis receipt, koreksi, pembatasan akses, idempotensi, cache streaming dan integritas paket; Chrome sintetis untuk realtime/VAD/Retry/sela suara/form asesor serta regresi panel. Probe STT/TTS asli lulus tanpa LLM atau data kandidat nyata; satu sampel TTS chunk pertama 449 ms bukan jaminan latensi produksi. Lihat [audio realtime](realtime-voice.md) dan artefak smoke terkait.
+
 ## 2026-11-07 — Konteks panel, bukti dan pemulihan pertanyaan
 
 - Membaca brief panel tambahan dan menerapkan keputusan pengguna: tab tersembunyi/koneksi putus menghentikan pertanyaan aktif; Retry mengulang dengan waktu penuh, Next melewati tanpa skor. Jawaban yang sudah terkomit tidak digandakan; penutupan seluruh sesi tetap melalui Akhiri sesi.

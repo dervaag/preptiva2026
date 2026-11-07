@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     stt_provider: Literal['openai'] = 'openai'
     stt_fallback_provider: Literal[''] = ''
     stt_model: str = 'gpt-4o-transcribe'
+    realtime_voice_enabled: bool = True
+    vad_silence_ms: int = Field(default=1200, ge=500, le=3000)
+    vad_threshold: float = Field(default=.5, ge=.1, le=.95)
     tts_provider: Literal['elevenlabs'] = 'elevenlabs'
     elevenlabs_api_key: str = ''
     elevenlabs_voice_hr: str = ''
