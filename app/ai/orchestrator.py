@@ -57,7 +57,7 @@ async def parse_documents(cv, jd):
 
 async def build_questions(context, history):
     roles = context.get('panel', [context['interviewer']])
-    slots = blueprint(context['question_count'], context['uuid'], roles, context['guidebook'])
+    slots = blueprint(context['question_count'], context['uuid'], roles, context['guidebook'], context.get('assessment'))
     output, intro, closing = {}, '', ''
     for persona in roles:
         assigned = [s for s in slots if s['interviewer'] == persona]
@@ -154,17 +154,81 @@ async def respond(context):
 
 
 async def evaluate(context):
-    return await complete('Evaluate the main question and all its follow-up answers as one unit. ' + FOCUS.get(context.get('interviewer'), '') +
+    indicator_instruction = ('' if not context.get('competency_definitions') else
+        'FIRST decide whether the answer describes an actual relevant action or a concrete hypothetical decision. '
+        'A wish, inability to recall an example, or lack of opportunity is NOT an action and cannot support any score, including 1. '
+        'For example: "I have not had the opportunity to mentor someone" is missing evidence, NOT refusal to support someone. '
+        'In that case return score:null, evidence_sufficiency:"none", indicators_met:[], indicator_evidence:[] and explain the missing evidence. '
+        'By contrast, an explicit description of rejecting a requested mentoring opportunity for a personal label could support a low anchor if its actual conditions match. '
+        'Never substitute "no example supplied" for the harmful behavior described in a level 1 or 2 anchor. '
+        'The supplied competency_definitions are the exact job-specific anchors. For each scored competency return '
+        'indicators_met:["exact ID at the scored level"], indicator_evidence:[{"indicator_id":"same ID","turn_id":"source turn ID","quote":"verbatim source quote"}], '
+        'and next_level_gap describing which higher-anchor behaviors are not yet demonstrated in this answer. '
+        'At score 5 next_level_gap is empty. Score must be an integer 1–5. Anchors are ALTERNATIVE levels, not cumulative requirements: '
+        'never require low-performance behaviors from levels 1 or 2 to award a higher score. '
+        'Use score 1 or 2 only for explicit evidence of that anchor, never for missing detail. '
+        'Missing/ambiguous evidence means partial or none; do not invent indicator matches. '
+        'Write rationale and next_level_gap in session language. '
+        'Do not output URLs or source citations; the application resolves these from the immutable rubric. ')
+    shape = ('Return {"competency_scores":{"communication":{"score":1,"evidence":["exact transcript quote"]}},' if not context.get('competency_definitions') else
+        'Return {"competency_scores":{"<requested competency key>":{"score":3,"evidence":["verbatim quote"],'
+        '"evidence_sufficiency":"sufficient","rationale":"why this anchor fits the quoted behavior",'
+        '"indicators_met":["exact ID for this key at level 3"],'
+        '"indicator_evidence":[{"indicator_id":"same ID","turn_id":"source turn ID","quote":"verbatim quote"}],'
+        '"next_level_gap":"specific higher-anchor behavior not demonstrated yet"}},')
+    instruction = (indicator_instruction + 'Evaluate the main question and all its follow-up answers as one unit. ' + FOCUS.get(context.get('interviewer'), '') +
         ' Follow the session rubric exactly. Accept coursework, student organizations, projects and internships as evidence; do not penalize lack of employment by itself. '
-        'Use only transcript evidence. Do not score age, gender, accent or code-switching. Do not assume transcription mistakes reflect ability. '
-        'Return {"competency_scores":{"communication":{"score":1,"evidence":["exact transcript quote"]}},'
+        'Use only transcript evidence. Do not score age, gender, accent or code-switching. Do not assume transcription mistakes reflect ability. ' +
+        shape +
         '"star":{"situation":false,"task":false,"action":false,"result":false},'
         '"feedback":{"strengths":[],"improvements":[],"better_answer_tip":"..."}}. Only score listed question competencies. '
         'For each competency also return evidence_sufficiency (sufficient|partial|none) and rationale. '
         'Insufficient evidence is not demonstrated low ability. Use sufficient with a low score only when a quote demonstrates the low performance. '
         'Quotes must be literal original-language excerpts from ONE supplied source turn, never joined across turns. '
         'Transcription confidence is unknown; never infer accent, speech quality or transcription accuracy from text. '
-        'Use numbers 1 to 5. Leave unmeasured competencies out. Feedback in session language.', context, deep=True, tokens=1800)
+        'Use numbers 1 to 5 for measured competencies. Leave unmeasured competencies out or mark evidence_sufficiency none with score null. Feedback in session language.')
+    data = dict(context)
+    for attempt in range(2 if context.get('competency_definitions') else 1):
+        result = await complete(instruction, data, deep=True, tokens=2200 if context.get('competency_definitions') else 1800)
+        if not context.get('competency_definitions'):
+            return result
+        try:
+            validate_indicator_output(result, context)
+            return result
+        except (ValueError,KeyError,TypeError) as exc:
+            if attempt:
+                raise ValueError('Struktur bukti rubrik khusus belum valid; evaluasi dapat dicoba ulang.') from exc
+            data['repair_required'] = str(exc)
+            data['previous_output'] = result
+
+
+def validate_indicator_output(result, context):
+    scores = result['competency_scores']
+    if not isinstance(scores,dict) or set(scores) - set(context['competencies']):
+        raise ValueError('Only return the requested competency keys.')
+    for key,value in scores.items():
+        if not isinstance(value,dict) or value.get('evidence_sufficiency') not in ('sufficient','partial','none'):
+            raise ValueError('Every competency needs an explicit evidence_sufficiency.')
+        if not isinstance(value.get('rationale'),str):
+            raise ValueError('Every competency needs a rationale.')
+        if value['evidence_sufficiency'] != 'sufficient':
+            continue
+        score = value.get('score')
+        if type(score) is not int or score not in range(1,6):
+            raise ValueError('A sufficient score must be an integer 1–5.')
+        anchor = context['competency_definitions'][key]['levels'][str(score)]
+        if value.get('indicators_met') != [anchor['id']]:
+            raise ValueError('indicators_met must contain exactly the supplied ID at the scored level.')
+        evidence = value.get('indicator_evidence')
+        if not isinstance(evidence,list) or not evidence:
+            raise ValueError('A sufficient score requires indicator_evidence with a literal source-turn quotation.')
+        for entry in evidence:
+            quote = entry.get('quote') if isinstance(entry,dict) else None
+            if (not isinstance(quote,str) or len(quote.strip()) < 8 or entry.get('indicator_id') != anchor['id']
+                    or not any(quote in turn['transcript'] and entry.get('turn_id') == turn['turn_id'] for turn in context['source_turns'])):
+                raise ValueError('indicator_evidence must match the anchor ID and an exact quotation in its source turn.')
+        if score < 5 and (not isinstance(value.get('next_level_gap'),str) or not value['next_level_gap'].strip()):
+            raise ValueError('Explain the missing higher-anchor evidence in next_level_gap.')
 
 
 async def summarize(context):

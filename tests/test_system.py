@@ -609,6 +609,61 @@ class SystemTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(events), 1)
 
 
+    async def test_job_rubric_is_opt_in_and_full_evaluation_keeps_snapshot_sources(self):
+        from app.ai.blueprint import blueprint
+        from app.ai.job_rubric import snapshot_profile
+        for changes in ({'interviewer':'hr','job_role':'Engineering Manager'},
+                        {'interviewer':'manager','job_role':'Product Manager'},
+                        {'interviewer':'manager','job_role':'Engineering Manager','panel':['manager','user']}):
+            self.assertEqual((await self.create(use_job_rubric='true',**changes)).status_code,422)
+        created=await self.create(use_job_rubric='true',job_role='Engineering Manager',interviewer='manager',question_count='5')
+        self.assertEqual(created.status_code,200,created.text);sid=created.json()['session_id']
+        async def prepare(context,history):
+            plan=blueprint(5,context['uuid'],['manager'],context['guidebook'],context['assessment'])
+            return {'intro':'Selamat datang.','closing':'Terima kasih.','plan':plan,'questions':[
+                {'slot':p['slot'],'category':p['competencies'][0],'question_text':f'Ceritakan pengalaman pada konteks kerja nomor {i}?',
+                 'competencies':p['competencies'],'expected_points':['Kontribusi dan hasil']} for i,p in enumerate(plan,1)]}
+        async with SessionLocal() as db:
+            stored=await db.scalar(select(InterviewSession).where(InterviewSession.uuid==sid));internal=stored.id
+            frozen=json.loads(json.dumps(stored.script['assessment']))
+        with patch('app.worker.tasks.orchestrator.parse_documents',AsyncMock(return_value={'cv_summary':{},'jd_summary':{}})), \
+                patch('app.worker.tasks.orchestrator.build_questions',side_effect=prepare), \
+                patch('app.worker.tasks.speech.optional_synthesize',AsyncMock(return_value=None)):
+            await prepare_session({},internal)
+        await self.client.post(f'/api/sessions/{sid}/start')
+        for _ in range(5):
+            current=(await self.client.get(f'/api/sessions/{sid}/state')).json()['current_turn']
+            self.assertEqual((await self.send_answer(sid,current['id'])).status_code,200)
+        with patch('app.api.sessions.enqueue',AsyncMock()):await self.client.post(f'/api/sessions/{sid}/finish')
+        seen=[]
+        async def evaluate(context):
+            seen.append(context)
+            self.assertEqual(set(context['competency_definitions']),set(context['competencies']))
+            quote=context['source_turns'][0]['transcript'];key=context['competencies'][0]
+            anchor=context['competency_definitions'][key]['levels']['4']['id']
+            return {'competency_scores':{key:{'score':4,'evidence':[quote],'evidence_sufficiency':'sufficient',
+                'indicators_met':[anchor],'indicator_evidence':[{'indicator_id':anchor,'quote':quote}],
+                'next_level_gap':'Perlu menjelaskan hasil peninjauan.'}},'star':{},'feedback':{}}
+        summary={'summary':'Synthetic integration fixture.','strengths':[],'improvements':[],'study_recommendations':[]}
+        with patch('app.worker.tasks.orchestrator.evaluate',side_effect=evaluate), \
+                patch('app.worker.tasks.orchestrator.summarize',AsyncMock(return_value=summary)), \
+                patch('app.ai.job_rubric.load_profile',side_effect=AssertionError('Must use frozen snapshot')):
+            await finalize_session({},internal)
+            response=await self.client.get(f'/api/sessions/{sid}/result')
+        self.assertEqual(response.status_code,200,response.text);result=response.json()
+        self.assertEqual(len(seen),5);self.assertEqual(result['total_score'],4)
+        self.assertEqual(result['coverage']['total'],5);self.assertEqual(result['coverage']['weighted_percent'],100)
+        self.assertEqual(result['assessment']['sha256'],frozen['sha256']);self.assertFalse(result['assessment']['validated'])
+        self.assertEqual({c['name'] for c in result['competencies']},{c['name'] for c in frozen['competency_definitions'].values()})
+        dashboard=(await self.client.get('/api/dashboard')).json()
+        self.assertEqual(dashboard['competency_trend'],{})
+        self.assertEqual(dashboard['competency_trend_by_rubric'][frozen['sha256']]['profile_id'],frozen['profile_id'])
+        for item in result['items']:
+            for score in item['competency_scores'].values():
+                self.assertEqual(score['indicator_validation'],'verified')
+                self.assertTrue(score['sources']);self.assertEqual(score['next_level_indicators'][0]['level'],5)
+
+
 class SpeechConfigTests(unittest.IsolatedAsyncioTestCase):
     async def test_format_cache_and_compatible_language_parameter(self):
         from app.ai import speech

@@ -37,7 +37,7 @@ async def create_session(candidate_name: str = Form(..., min_length=2, max_lengt
     industry: str = Form(..., min_length=2, max_length=80), company: str = Form('', max_length=150),
     question_count: int = Form(7), interviewer: Literal['hr', 'user', 'manager'] = Form(...),
     panel: list[str] = Form([]), career_stage: Literal['auto', 'student', 'fresh_graduate', 'experienced', 'career_switcher'] = Form('auto'),
-    language: Literal['id', 'en'] = Form('id'), consent: bool = Form(...), use_last_cv: bool = Form(False),
+    language: Literal['id', 'en'] = Form('id'), consent: bool = Form(...), use_last_cv: bool = Form(False), use_job_rubric: bool = Form(False),
     cv_text: str = Form(''), cv_pdf: Optional[UploadFile] = File(None), user=Depends(current_user), db=Depends(get_db)):
     if not consent or question_count not in (3, 5, 7):
         raise HTTPException(422, 'Persetujuan wajib; jumlah pertanyaan harus 3, 5, atau 7.')
@@ -45,6 +45,10 @@ async def create_session(candidate_name: str = Form(..., min_length=2, max_lengt
     if (panel and len(panel) < 2) or len(roles) > 3 or len(set(roles)) != len(roles) or any(p not in ('hr', 'user', 'manager') for p in roles):
         raise HTTPException(422, 'Panel harus berisi maksimal tiga persona berbeda: HR, User, Manager.')
     interviewer = roles[0]
+    try:
+        assessment = snapshot(interviewer, roles, job_role=job_role, use_job_rubric=use_job_rubric)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
     cv = user.last_cv_text if use_last_cv else cv_text
     if cv_pdf and cv_pdf.filename:
         cv = await asyncio.to_thread(extract_pdf, await cv_pdf.read(5 * 1024 * 1024 + 1))
@@ -61,7 +65,6 @@ async def create_session(candidate_name: str = Form(..., min_length=2, max_lengt
     count = await db.scalar(select(func.count()).select_from(InterviewSession).where(InterviewSession.user_id == user.id, InterviewSession.created_at >= now() - timedelta(hours=1)))
     if count >= settings.max_sessions_per_hour:
         raise HTTPException(429, f'Maksimal {settings.max_sessions_per_hour} sesi per jam. Coba lagi nanti.')
-    assessment = snapshot(interviewer, roles)
     session = InterviewSession(user_id=user.id, candidate_name=candidate_name, gender=gender, age=age,
         job_role=job_role, level=level, industry=industry, company=company, job_description=jd, cv_text=cv,
         interviewer=interviewer, question_count=question_count, answer_seconds=settings.answer_seconds_for(level),
@@ -397,7 +400,7 @@ async def result(session=Depends(owned_session), db=Depends(get_db)):
     if session.status != 'done':
         raise HTTPException(409, 'Hasil belum tersedia.')
     questions, answers = await turns(db, session)
-    _, competencies = aggregate([a.competency_scores for a in answers], session.script['assessment']['weights'])
+    _, competencies = aggregate([a.competency_scores for a in answers], session.script['assessment']['weights'], session.script['assessment'])
     candidates = (await db.scalars(select(InterviewSession).where(InterviewSession.user_id == session.user_id,
         InterviewSession.job_role == session.job_role, InterviewSession.status == 'done',
         InterviewSession.finished_at < session.finished_at).order_by(InterviewSession.finished_at.desc()).limit(20))).all()
@@ -414,7 +417,7 @@ async def result(session=Depends(owned_session), db=Depends(get_db)):
         weights = session.script['assessment'].get('persona_weights', {}).get(persona, WEIGHTS[persona])
         scores = [by_id[q.id].competency_scores for q in questions if q.kind == 'main' and q.id in by_id
                   and guidebook.speaker(session, q.main_order) == persona]
-        score, measured = aggregate(scores, weights)
+        score, measured = aggregate(scores, weights, session.script['assessment'])
         panel_results.append({'interviewer': persona, 'total_score': score, 'competencies': measured})
     return {'session_id': session.uuid, 'status': 'done', 'job_role': session.job_role, 'level': session.level,
         'panel_results': panel_results,
@@ -423,7 +426,7 @@ async def result(session=Depends(owned_session), db=Depends(get_db)):
         'delta': round(session.total_score - previous_score, 2) if previous_score is not None and session.total_score is not None else None,
         'competencies': competencies, 'unmeasured': [c['key'] for c in competencies if c['score'] is None],
         'review': session.review, 'star_summary': session.star_summary,
-        'assessment': {k: session.script['assessment'][k] for k in ('version','sha256','validated')},
+        'assessment': {k: session.script['assessment'][k] for k in ('version','sha256','validated','profile_id','title','scope','status','job_reviewed_by_human') if k in session.script['assessment']},
         'items': [{**public_question(q, session), 'transcript': by_id[q.id].transcript,
                    'feedback': by_id[q.id].feedback, 'competency_scores': by_id[q.id].competency_scores,
                    'skipped': by_id[q.id].result_payload.get('skipped', False),

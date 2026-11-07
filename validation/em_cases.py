@@ -1,0 +1,47 @@
+"""Authored synthetic practice cases, without expected scores or human ratings.
+
+Four contexts per competency support workflow review, not a validity study.
+"""
+
+SAMPLES = [
+    ('problem_solving', 'id', 'calibration', 'Bagaimana Anda memilih langkah ketika layanan gagal setelah rilis?',
+     'Saya memutuskan menambah server karena menduga kapasitas kurang. Saya menolak usulan memeriksa log agar tim segera bertindak. Setelah biaya bertambah dan kegagalan berlanjut, saya belum meninjau kembali dugaan saya.'),
+    ('problem_solving', 'en', 'test', 'Describe a delivery decision where different options had meaningful risks.',
+     'We could delay the launch or remove a dependency from scope. I compared customer impact, rollback effort and the team estimate, then asked support to challenge the assumptions. We launched the smaller scope with a rollback condition. A week later we reviewed incidents and customer feedback, and changed our release checklist.'),
+    ('problem_solving', 'mixed', 'test', 'Apa yang Anda lakukan ketika bukti untuk keputusan masih terbatas?',
+     'Data dari pilot hanya mencakup satu pelanggan. I listed two explanations and their risks, lalu memilih percobaan kecil yang bisa dibatalkan. Saya memberi owner untuk mengumpulkan data tambahan sebelum keputusan ekspansi. Hasil percobaan belum tersedia saat ini.'),
+    ('problem_solving', 'id', 'test', 'Ceritakan keputusan sulit yang Anda ambil bersama tim.',
+     'Kami akhirnya memilih cara yang paling baik. Saya mendukung tim dan proyeknya selesai. Saya tidak ingat pilihan yang dibahas atau siapa yang menentukan keputusannya.'),
+    ('teamwork', 'id', 'calibration', 'Bagaimana Anda mengatasi dua tim yang saling bergantung tetapi berbeda prioritas?',
+     'Saya mengumpulkan kedua lead untuk memetakan dependensi dan batas kapasitas. Kami menyepakati owner untuk setiap serah terima serta jalur eskalasi. Saya mengecek hambatan dua kali seminggu. Setelah satu iterasi, dependensi yang tertunda berkurang, tetapi saya belum memeriksa apakah pembagian beban sudah adil.'),
+    ('teamwork', 'en', 'test', 'How did you handle a disagreement between engineering and product?',
+     'I assigned all blame to product and told engineers to stop attending joint planning. I did not ask either side for its constraints. The teams made separate schedules and the integration was delayed; I kept the same approach for the following release.'),
+    ('teamwork', 'mixed', 'test', 'Bagaimana Anda menjaga koordinasi ketika anggota tim memiliki pengalaman berbeda?',
+     'Saya membagi tanggung jawab berdasarkan kemampuan yang sudah terlihat dan menyediakan pasangan review. We agreed decision boundaries and an escalation channel. Dalam retrospektif, anggota junior mengatakan review menjadi hambatan; kami mengubah jadwal reviewer dan mengecek ulang apakah mereka dapat bekerja lebih mandiri.'),
+    ('teamwork', 'id', 'test', 'Apa kontribusi Anda dalam menjaga kerja sama tim?',
+     'Tim kami kompak dan semua orang hebat. Saya senang bekerja di sana. Saya belum bisa menjelaskan contoh koordinasi tertentu atau keputusan yang saya ambil.'),
+    ('leadership', 'id', 'calibration', 'Bagaimana Anda membantu engineer mengembangkan kemampuan baru?',
+     'Dalam percakapan satu lawan satu, kami memilih kemampuan memfasilitasi desain sebagai tujuan. Saya memberi tugas kecil dengan batas keputusan dan reviewer pendamping. Setelah dua pertemuan kami membahas contoh fasilitasi yang berhasil dan satu masalah yang masih perlu dilatih.'),
+    ('leadership', 'en', 'test', 'Tell us about a time you responded to a team member struggling with a new responsibility.',
+     'I called the engineer incapable in a team meeting and removed the assignment without asking what support was missing. I gave no specific feedback or alternative learning opportunity. The engineer stopped volunteering, but I did not follow up.'),
+    ('leadership', 'mixed', 'test', 'Bagaimana Anda menilai apakah pengembangan orang benar-benar membantu?',
+     'Kami menyepakati tujuan mengoordinasikan satu proyek dan contoh perilaku yang ingin dilihat. I paired the engineer with a mentor and protected practice time. Setelah beberapa iterasi, kami meninjau feedback rekan dan contoh keputusan yang dapat diambil sendiri. Kami menyesuaikan rencana ketika dukungan awal terlalu banyak dan membahas peluang selanjutnya.'),
+    ('leadership', 'id', 'test', 'Ceritakan pendekatan Anda dalam pengembangan anggota tim.',
+     'Saya selalu mendukung pengembangan orang. Banyak anggota tim kemudian mendapatkan promosi. Saya tidak memiliki contoh rencana, umpan balik, atau tindakan pribadi yang dapat saya jelaskan sekarang.'),
+    ('communication', 'id', 'calibration', 'Bagaimana Anda menjelaskan risiko jadwal kepada stakeholder?',
+     'Saya menjelaskan dua dependensi yang belum selesai dengan bahasa dampak pelanggan. Saya menyajikan pilihan mengurangi lingkup atau menunda jadwal, lalu meminta stakeholder mengulang keputusan yang disepakati. Saya mencatat owner dan mengirim pembaruan pada waktu yang kami tentukan.'),
+    ('communication', 'en', 'test', 'Describe how you communicated an incident to a nontechnical stakeholder.',
+     'I sent a long log dump with no explanation of customer impact or the next update time. When the stakeholder asked what action was needed, I said they should understand the logs. They escalated because they could not make a decision, and I did not change the message.'),
+    ('communication', 'mixed', 'test', 'Bagaimana Anda menyesuaikan komunikasi ketika kebutuhan audiens berbeda?',
+     'Untuk tim teknis saya menyampaikan failure mode dan opsi mitigasi; untuk tim bisnis saya menjelaskan dampak dan keputusan yang dibutuhkan. We checked understanding, recorded uncertainty and agreed update times. Setelah support menunjukkan istilah yang membingungkan, saya memperbaiki format dan memeriksa apakah mereka dapat menjelaskan tindakan berikutnya kepada pelanggan.'),
+    ('communication', 'id', 'test', 'Apa pengalaman Anda berkomunikasi dengan stakeholder?',
+     'Saya sering mengikuti rapat stakeholder. Komunikasi itu penting dan saya berusaha selalu jelas. Saya tidak bisa mengingat pesan tertentu atau respons audiens saat ini.'),
+    ('technical', 'id', 'calibration', 'Bagaimana Anda menilai usulan migrasi database?',
+     'Saya meminta tim menjelaskan batas sistem lama dan risiko migrasi. Kami membandingkan migrasi sekaligus dengan bertahap, lalu mencoba ukuran data yang menyerupai penggunaan nyata. Kami mencatat batas waktu lock dan kondisi rollback sebelum memilih batch kecil.'),
+    ('technical', 'en', 'test', 'Tell us how you evaluated a proposal to change a critical system.',
+     'I approved a full rewrite because the new framework was popular. I declined the team proposal to rehearse rollback or check compatibility. The integration failed in production, and I still said validation was unnecessary for the next release.'),
+    ('technical', 'mixed', 'test', 'Bagaimana Anda memastikan pilihan teknis tetap sesuai kebutuhan setelah diterapkan?',
+     'Saya meminta engineer membandingkan batas kapasitas, biaya operasi, dan risiko data dari dua pendekatan. We tested failure recovery and documented what the experiment could not prove. Setelah rollout kecil, tim meninjau error serta feedback on-call; kami mengubah batas batch dan mendokumentasikan kapan keputusan itu perlu ditinjau lagi.'),
+    ('technical', 'id', 'test', 'Apa peran Anda dalam keputusan teknis tim?',
+     'Kami memakai teknologi yang bagus dan produk kami modern. Saya mempercayai tim. Saya belum dapat menyebutkan pilihan, risiko, atau pemeriksaan yang pernah saya lakukan.')
+]

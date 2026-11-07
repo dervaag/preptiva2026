@@ -1,0 +1,56 @@
+{
+  "synthetic": true,
+  "paid_llm_calls": true,
+  "human_ratings": false,
+  "validated": false,
+  "rubric_version": "2026-11-07.em.1",
+  "rubric_sha256": "4b8a84d60b513e4642b8adfd3f0a8d98bd824af53dd187ae14f0384d66de03f8",
+  "ok": true,
+  "prepared_competencies": [
+    [
+      "communication"
+    ],
+    [
+      "leadership"
+    ],
+    [
+      "technical"
+    ],
+    [
+      "teamwork"
+    ],
+    [
+      "problem_solving"
+    ]
+  ],
+  "cases": [
+    {
+      "competency": "technical",
+      "status": "measured",
+      "score": 4.0,
+      "indicators_met": [
+        "em.technical.l4"
+      ],
+      "indicator_evidence": [
+        {
+          "indicator_id": "em.technical.l4",
+          "quote": "Saya meminta engineer membandingkan migrasi bertahap dan sekaligus. Kami memeriksa risiko lock serta kegagalan dependensi lewat uji beban pada salinan data sintetis. Saya menyepakati batas error untuk rollback dan rollout bertahap dengan product owner. Dalam pilot ada lock panjang, sehingga urutan migrasi kami ubah. Setelah perubahan, pemeriksaan checksum cocok dan layanan tetap stabil dalam masa observasi.",
+          "turn_id": "synthetic-1",
+          "start": 0,
+          "end": 410,
+          "behavior": "Membandingkan konsekuensi pilihan terhadap kualitas, operasional atau pengguna, mengakui batas pengetahuan, dan menetapkan pengujian atau mitigasi yang sesuai dengan risiko.",
+          "level": 4
+        }
+      ],
+      "next_level_gap": "The candidate has not shown reviewing actual test evidence availability and explaining how it informs or reinforces decisions and constraints of application for level 5."
+    },
+    {
+      "competency": "leadership",
+      "status": "insufficient",
+      "score": 2,
+      "indicators_met": [],
+      "indicator_evidence": [],
+      "next_level_gap": ""
+    }
+  ]
+}

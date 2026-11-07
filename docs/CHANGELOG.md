@@ -1,5 +1,14 @@
 # Log perubahan
 
+## 2026-11-07 — Draf rubrik Engineering Manager dan alur validasi asesor
+
+- Menambahkan profil latihan EM/Manager opt-in dengan lima kompetensi, 25 jangkar, bobot usulan dan pemetaan sumber/tugas. Seluruh indikator disusun internal, ahli belum meninjau, dan validated tetap false.
+- Menambahkan snapshot lengkap dan pemisahan tren kompetensi menurut hash rubrik. Form/API menolak penerapan profil di HR/User/panel atau pekerjaan lain; snapshot dan hasil lama dipertahankan.
+- Menampilkan skor, kutipan asli, indikator, alasan belum naik tingkat dan rujukan sumber. ID/level/kutipan diverifikasi kode dan sumber hanya diambil dari snapshot. Keluaran evaluator tidak lengkap mendapat satu kesempatan perbaikan.
+- Menambahkan paket offline 20 kasus tanpa skor AI, rating independen, konsensus koordinator setelah minimal tiga asesor, provenance lima run AI, serta laporan yang menjelaskan kasus bukti kurang dan denominator metrik. Tidak ada penilaian manusia atau konsensus yang dibuat otomatis.
+- Verifikasi: 71 tes Python dan pemeriksaan keamanan/gating UI lulus; Chrome end-to-end EM lima pertanyaan pada lebar 390/768/1440px lulus. Probe model asli berhasil menyiapkan lima kompetensi serta membedakan contoh bukti cukup dan jawaban tanpa contoh setelah perbaikan.
+- Probe sintetis model asli menemukan kelemahan penggolongan jawaban tanpa contoh dan kelengkapan struktur; aturan prompt dan pemeriksaan struktur diperketat. Pengujian ini adalah regresi perangkat lunak, bukan kalibrasi atau validasi psikometrik.
+
 ## 2026-11-07 — Audio realtime dan paket asesor
 
 - Menambahkan transkripsi WebSocket dengan PCM AudioWorklet, VAD, delta transkrip dan receipt bertanda tangan. Sesi baru memakai TTS streaming saat diputar; kunci API tetap di server. Model/provider yang sudah dikonfigurasi dipertahankan.

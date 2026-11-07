@@ -1,10 +1,10 @@
 # Rencana rubrik berbasis referensi dan pengujiannya
 
-Status: rencana kerja, belum dilaksanakan. Rubrik aktif tetap `2026-11-05.2` di [assessment-reference.md](assessment-reference.md) dengan `validated: false`.
+Status 7 November 2026: **draf rubrik khusus dan implementasi teknis tersedia; tinjauan ahli serta penilaian manusia belum dilakukan**. Rubrik umum tetap `2026-11-05.2`; draf Engineering Manager/persona Manager menggunakan `2026-11-07.em.1` melalui pilihan eksplisit pada form. Keduanya `validated: false`.
 
 Pembaruan 7 November 2026: pemisahan persona, guidebook pertanyaan, adaptasi berdasarkan CV/percakapan, dan panel telah diimplementasikan secara terpisah; lihat [guidebook](question-guidebook.md). Hal itu tidak menyelesaikan validasi rubrik oleh asesor yang direncanakan di dokumen ini.
 
-Alat pembandingan dan format masukan asesor kini tersedia di [assessor-validation.md](assessor-validation.md). Implementasi bukti/cakupan/retry sesi ada di [panel-implementation.md](panel-implementation.md). Keduanya tidak menggantikan penilaian manusia; indikator EM dan gold set masih memerlukan tinjauan ahli.
+Alat pembandingan dan format masukan asesor kini tersedia di [assessor-validation.md](assessor-validation.md). Implementasi bukti/cakupan/retry sesi ada di [panel-implementation.md](panel-implementation.md). Keduanya tidak menggantikan penilaian manusia. [Rubrik EM](engineering-manager-rubric.md) sudah memiliki lima kompetensi, 25 jangkar perilaku, pemetaan tugas/sumber dan bobot usulan. Ahli masih perlu meninjau semuanya; gold set bernilai manusia belum ada.
 
 ## Tujuan
 
@@ -16,11 +16,11 @@ Ruang lingkup tahap pertama: **satu pekerjaan dan satu persona — Engineering M
 
 | Aspek | Sekarang | Target |
 | --- | --- | --- |
-| Sumber | Empat tautan metodologi (OPM, SIOP/APA, SIOP AI, ISO 10667) untuk seluruh rubrik | Setiap indikator memiliki sumber, bagian/halaman, kutipan, dan status (diambil/diadaptasi/internal) |
-| Kompetensi | Tujuh kompetensi umum untuk semua pekerjaan; bobot per persona | Kompetensi dipilih dari tanggung jawab JD dan ditinjau ahli pekerjaan |
-| Deskripsi skor | Satu kalimat umum per tingkat | Indikator perilaku konkret yang dapat dicek per tingkat |
-| Keluaran evaluasi | `score` dan satu `evidence` per kompetensi | Skor → kutipan → indikator terpenuhi → alasan belum naik tingkat → sumber indikator |
-| Pengujian | Belum ada | Set jawaban acuan bernilai asesor, metrik kesepakatan, konsistensi, ketepatan kutipan, dan jawaban campuran |
+| Sumber | Tiap indikator EM memiliki ID sumber, lokasi, kutipan pendek, penerapan, dan asal internal | Ahli meninjau ketepatan dan relevansinya untuk JD target |
+| Kompetensi | Rubrik umum tetap tujuh; profil EM draf memiliki lima kompetensi khusus dari analisis pekerjaan publik | Kompetensi/bobot ditinjau ahli terhadap konteks pekerjaan target |
+| Deskripsi skor | 25 jangkar perilaku konkret tersedia pada profil EM; tingkat rendah memerlukan bukti perilaku rendah eksplisit | Periksa kejelasan, keterpisahan tingkat dan konsistensi penggunaan oleh asesor |
+| Keluaran evaluasi | Rantai skor → kutipan → indikator → gap → sumber tersedia untuk profil EM; kode memeriksa ID/level/quote | Tinjau relevansi semantik kutipan dan alasan bersama asesor |
+| Pengujian | Tes perangkat lunak dan paket 20 kasus sintetis tanpa skor tersedia; lima kalibrasi, 15 uji | Sampel memadai yang dinilai minimal tiga asesor, konsensus, lima run AI dan audit fairness/STT |
 
 ## Langkah 1 — Tentukan kompetensi dari pekerjaan
 
@@ -129,3 +129,14 @@ Rubrik EM boleh disebut "rubrik berbasis referensi yang telah diuji untuk kontek
 - [ ] Aplikasi menampilkan rantai keluaran lengkap dan menandai `validated` hanya untuk konteks yang diuji.
 
 Klaim tersebut tidak berlaku untuk pekerjaan atau persona lain, dan tetap bukan validasi sebagai alat seleksi kerja nyata tanpa studi validitas terhadap kinerja kerja.
+
+## Implementasi teknis yang tersedia
+
+- Form hanya menawarkan **Rubrik khusus Engineering Manager (draf)** untuk judul Engineering Manager dan interviewer tunggal Manager. Pilihan dimatikan secara default; konteks lain/panel tetap memakai rubrik umum. Server juga menolak scope yang tidak cocok.
+- Lima fokus: pengambilan keputusan, kepemimpinan tim, pengembangan orang, komunikasi stakeholder, penilaian teknis. Nama khusus terikat pada snapshot; key penyimpanan lama tidak mengubah arti hasil historis.
+- Snapshot mencakup indikator, sumber, ruang lingkup, aturan, bobot dan status draf. Hash mencakup keseluruhan snapshot, sehingga perubahan indikator/bobot/sumber tidak tercampur pada perbandingan hasil. Blueprint 5/7 pertanyaan mencakup lima kompetensi; sesi tiga pertanyaan hanya mencakup sebagian.
+- Evaluator meminta indikator pada tingkat skor yang sama, kutipan per giliran, kecukupan bukti dan alasan belum naik tingkat. Keluaran struktural tidak lengkap diberi satu kesempatan perbaikan; kegagalan berikutnya mempertahankan jawaban dan menyediakan penilaian ulang.
+- Sumber di halaman hasil diambil oleh kode dari snapshot, bukan URL yang dikarang model. Pemeriksaan literal/ID/level bukan pemeriksaan relevansi semantik oleh ahli. Tidak adanya contoh bukan bukti perilaku rendah.
+- Perangkat asesor menyediakan paket offline tanpa skor AI, penggabungan rating, template konsensus kosong setelah tiga asesor, impor keputusan koordinator, runner AI lima kali, dan laporan dengan pengecualian/denominator untuk bukti kurang. Tidak ada konsensus atau rating manusia yang diisi otomatis.
+
+Seluruh kriteria tinjauan manusia di atas tetap terbuka. Dua puluh contoh sintetis hanya menyiapkan proses, tidak menggantikan usulan sampel lebih besar yang harus disetujui ahli. Mengaktifkan opsi draf tidak mengaktifkan status validated.

@@ -79,9 +79,18 @@ def main(url=URL):
             page.wait_for_function("document.querySelector('#stat-total').textContent === '0'")
             page.goto(url+'/simulasi/baru')
             assert page.locator('#session-form').is_visible()
+            page.locator('[name=job_role]').fill('Engineering Manager')
+            page.locator('[name=interviewer][value=manager]').check()
+            assert page.locator('#job-rubric-option').is_visible()
+            assert not page.locator('[name=use_job_rubric]').is_checked()
+            page.locator('[name=use_job_rubric]').check()
             page.locator('#interview-mode').select_option('panel')
             assert page.locator('#panel-personas').is_visible()
             assert page.locator('[name=panel]:checked').count() == 2
+            assert page.locator('#job-rubric-option').is_hidden()
+            assert not page.locator('[name=use_job_rubric]').is_checked()
+            assert page.locator('[name=use_job_rubric]').is_disabled()
+            report['draft_em_rubric_opt_in_form'] = True
             page.locator('[name=career_stage]').select_option('fresh_graduate')
             report['panel_and_candidate_background_form'] = True
             page.locator('#logout').click()

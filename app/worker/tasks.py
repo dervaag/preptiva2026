@@ -6,6 +6,7 @@ from app.ai import orchestrator, speech
 from app.ai import guidebook
 from app.ai.blueprint import blueprint, PERSONAS
 from app.ai.scoring import verified_scores, aggregate, coverage
+from app.ai.job_rubric import evaluation_fields
 from app.services.events import record, checkpoint
 from app.services.locks import local_lock
 from app.log import emit, session_var
@@ -46,10 +47,10 @@ async def prepare_session(ctx, sid):
                        'industry': session.industry, 'company': session.company, 'interviewer': session.interviewer,
                        'panel': roles, 'panel_members': [PERSONAS[p] for p in roles],
                        'candidate_profile': candidate_profile, 'guidebook': session.script.get('guidebook') or guidebook.snapshot(),
-                       'question_count': session.question_count,
+                       'question_count': session.question_count, 'assessment':session.script['assessment'],
                        'language': session.script['settings']['language']}
             prepared = await orchestrator.build_questions(context, history)
-            plan = prepared.get('plan') or blueprint(session.question_count, session.uuid, roles, context['guidebook'])
+            plan = prepared.get('plan') or blueprint(session.question_count, session.uuid, roles, context['guidebook'], session.script['assessment'])
             speakers = {str(s['main_order']): s['interviewer'] for s in plan}
             closing_persona = speakers[str(session.question_count)]
             dynamic = session.script.get('settings', {}).get('dynamic_questions', False)
@@ -126,10 +127,11 @@ async def _finalize_session(ctx, sid):
                 rubric = '\n'.join(line for line in session.script['assessment']['rubric'].splitlines()
                     if not line.startswith('| ') or line.split('|')[1].strip() in set(main.competencies) | {'Kompetensi', '---'})
                 evaluation = await orchestrator.evaluate({**guidebook.context_for(session, persona),
+                    **evaluation_fields(session.script['assessment'], main.competencies),
                     'question': main.question_text, 'transcript': transcript, 'source_turns': source_turns,
                     'competencies': main.competencies, 'rubric': rubric,
                     'job_role': session.job_role, 'level': session.level, 'language': session.script['settings']['language']})
-                scores = verified_scores(evaluation['competency_scores'], transcript, main.competencies, source_turns)
+                scores = verified_scores(evaluation['competency_scores'], transcript, main.competencies, source_turns, assessment=session.script['assessment'])
                 evaluations.append(scores)
                 for a in group_answers:
                     a.eval_status = 'done'
@@ -141,7 +143,7 @@ async def _finalize_session(ctx, sid):
                         stars[key] |= a.star[key]
                 await record(db, session, f'evidence:{main.id}', 'evidence_extracted', {'question_id': main.id,
                              'answer_turn_ids': [t['turn_id'] for t in source_turns], 'competencies': list(scores)})
-            total, competencies = aggregate(evaluations, session.script['assessment']['weights'])
+            total, competencies = aggregate(evaluations, session.script['assessment']['weights'], session.script['assessment'])
             review = await orchestrator.summarize({'evaluations': [{'scores': a.competency_scores, 'feedback': a.feedback} for a in answers],
                 'total_score': total, 'coverage': coverage(competencies), 'job_role': session.job_role, 'language': session.script['settings']['language']})
             for c in competencies:

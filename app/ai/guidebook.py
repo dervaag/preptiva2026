@@ -48,6 +48,10 @@ def role_context(context, persona):
     data['guidance'] = {'scope': guide['roles'][persona]['scope'], 'rules': guide['rules']}
     data['job_context'] = (context.get('jd_summary', {}).get('responsibilities', []) if persona == 'hr'
                            else context.get('jd_summary', {}))
+    assessment = context.get('assessment', {})
+    if assessment.get('profile_id') and persona == 'manager':
+        data['job_competencies'] = {key:{'name':item['name'],'definition':item['definition']}
+                                    for key,item in assessment['competency_definitions'].items()}
     if persona != 'hr':
         data['cv_summary'] = context.get('cv_summary', {})
     return data
@@ -67,5 +71,5 @@ def context_for(session, persona):
                'company': session.company, 'language': session.script['settings']['language'],
                'cv_summary': session.cv_summary, 'jd_summary': session.jd_summary,
                'candidate_profile': session.script.get('candidate_profile', {}),
-               'guidebook': session.script.get('guidebook') or snapshot()}
+               'guidebook': session.script.get('guidebook') or snapshot(), 'assessment':session.script.get('assessment', {})}
     return role_context(context, persona)

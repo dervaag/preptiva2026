@@ -6,7 +6,7 @@ WEIGHTS = dict(zip(['hr', 'user', 'manager'], [dict(zip(KEYS, row)) for row in [
     [25, 10, 0, 10, 25, 25, 5], [10, 25, 35, 15, 10, 5, 0], [15, 15, 10, 15, 10, 10, 25]]]))
 
 
-def verified_scores(scores, transcript, allowed, source_turns=None):
+def verified_scores(scores, transcript, allowed, source_turns=None, assessment=None):
     result = {}
     for key in allowed:
         if key not in KEYS:
@@ -25,6 +25,9 @@ def verified_scores(scores, transcript, allowed, source_turns=None):
         evidence = value.get('evidence', [])
         if isinstance(evidence, str):
             evidence = [evidence]
+        if assessment and assessment.get('profile_id'):
+            evidence = list(evidence) if isinstance(evidence,list) else []
+            evidence += [entry.get('quote') for entry in value.get('indicator_evidence', []) if isinstance(entry,dict)] if isinstance(value.get('indicator_evidence'),list) else []
         sources = source_turns if source_turns is not None else [{'turn_id': None, 'transcript': transcript}]
         refs = []
         for quote in evidence if isinstance(evidence, list) else []:
@@ -36,7 +39,8 @@ def verified_scores(scores, transcript, allowed, source_turns=None):
                     ref = {'turn_id': turn['turn_id'], 'quote': quote, 'start': start, 'end': start + len(quote)}
                     if ref not in refs:
                         refs.append(ref)
-        sufficiency = value.get('evidence_sufficiency', 'sufficient' if refs else 'none')
+        strict = bool(assessment and assessment.get('profile_id'))
+        sufficiency = value.get('evidence_sufficiency', 'partial' if strict and refs else 'sufficient' if refs else 'none')
         if sufficiency not in ('sufficient', 'partial', 'none'):
             sufficiency = 'partial'
         if not refs:
@@ -49,10 +53,17 @@ def verified_scores(scores, transcript, allowed, source_turns=None):
             'source_refs': refs, 'status': status, 'score_status': 'supported' if status == 'measured' else 'provisional',
             'evidence_sufficiency': sufficiency, 'transcript_quality': quality,
             'rationale': str(value.get('rationale', ''))[:1500]}
+        if assessment and assessment.get('profile_id'):
+            from app.ai.job_rubric import verify_indicators
+            details, valid = verify_indicators(value, key, score, assessment, sources)
+            result[key].update(details)
+            if not valid or invalid_score:
+                result[key].update(status='unusable_transcript' if quality == 'unusable' else 'insufficient',
+                                   score_status='provisional', evidence_sufficiency='partial' if refs else 'none')
     return result
 
 
-def aggregate(items, weights):
+def aggregate(items, weights, assessment=None):
     competencies = []
     for key, weight in weights.items():
         entries = [item[key] for item in items if key in item]
@@ -60,7 +71,8 @@ def aggregate(items, weights):
         score = round(sum(v['score'] for v in measured) / len(measured), 2) if measured else None
         status = ('measured' if measured else 'insufficient' if any(v.get('status') == 'insufficient' for v in entries)
                   else 'unusable_transcript' if any(v.get('status') == 'unusable_transcript' for v in entries) else 'not_assessed')
-        competencies.append({'key': key, 'name': key.replace('_', ' ').title(), 'weight': weight, 'score': score,
+        name = (assessment or {}).get('competency_definitions', {}).get(key, {}).get('name', key.replace('_', ' ').title())
+        competencies.append({'key': key, 'name': name, 'weight': weight, 'score': score,
             'status': status, 'measured_units': len(measured), 'assessed_units': len(entries),
             'evidence': list(dict.fromkeys(e for v in measured for e in v.get('evidence', []))),
             'source_refs': [ref for v in measured for ref in v.get('source_refs', [])]})
