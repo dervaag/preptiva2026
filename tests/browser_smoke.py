@@ -101,7 +101,7 @@ def main():
             page.goto(f'http://127.0.0.1:{port}/login')
             page.locator('[name=email]').fill('demo@interview.local'); page.locator('[name=password]').fill('demo1234')
             page.get_by_role('button',name='Masuk ke workspace').click(); page.wait_for_url('**/dashboard')
-            page.wait_for_function("document.querySelector('#stat-total').textContent === '0'")
+            page.wait_for_function("document.querySelector('#stat-completed').textContent === '0'")
             artifacts = ROOT / 'artifacts'; artifacts.mkdir(exist_ok=True)
             page.screenshot(path=str(artifacts/'dashboard-desktop.png'),full_page=True)
             for width in (390,768,1440):
@@ -109,10 +109,11 @@ def main():
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), f'Dashboard overflows at {width}'
             page.set_viewport_size({'width':1440,'height':1100})
             page.goto(f'http://127.0.0.1:{port}/simulasi/baru')
+            page.locator('#setup-context > summary').click()
             page.locator('[name=cv_text]').fill('Pengalaman melakukan riset produk dan mengukur hasil bersama tim. ' * 8)
             page.locator('[name=job_role]').fill('Product Designer'); page.locator('[name=industry]').fill('Technology')
             page.locator('[name=job_description]').fill('Design accessible user experiences with research and product experiments.')
-            page.locator('[name=question_count]').select_option('3'); page.locator('[name=consent]').check()
+            page.locator('.setup-question-choice:has(input[value="3"])').click(); page.locator('[name=consent]').check()
             page.get_by_role('button',name='Siapkan wawancara').click(); page.wait_for_url('**/ruang')
             page.wait_for_function("document.querySelector('#room-status').textContent === 'SIAP DIMULAI'")
             page.locator('#devices').click(); page.locator('#test-sound').click()
@@ -130,7 +131,7 @@ def main():
             page.set_viewport_size({'width':390,'height':844})
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'Results overflow on mobile'
             page.screenshot(path=str(artifacts/'results-mobile.png'),full_page=True)
-            page.goto(f'http://127.0.0.1:{port}/dashboard'); page.wait_for_function("document.querySelector('#stat-total').textContent === '1'")
+            page.goto(f'http://127.0.0.1:{port}/dashboard'); page.wait_for_function("document.querySelector('#stat-completed').textContent === '1'")
             page.screenshot(path=str(artifacts/'dashboard-mobile.png'),full_page=True)
             assert not failures, failures
             browser.close()

@@ -1,0 +1,310 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+
+const sourcePath = process.argv[2];
+const source = fs.readFileSync(sourcePath, 'utf8');
+const flush = async () => { for (let i = 0; i < 40; i++) await Promise.resolve(); };
+
+function fixture(options = {}) {
+  let now = 0, nextTimer = 1;
+  const timers = new Map(), calls = [], plays = [], navigations = [], nodes = new Map();
+  class Element extends EventTarget {
+    constructor(id = '') {
+      super(); this.id = id; this.hidden = false; this.disabled = false; this.checked = false;
+      this.dataset = {}; this.style = {}; this.children = []; this.attributes = new Map(); this.textContent = '';
+      this.videoWidth = 640; this.videoHeight = 480; this.readyState = 4; this.paused = true; this.ended = false;
+      this.scrollTop = 0; this.scrollHeight = 500; this.clientHeight = 500; this.open = false; this.src = '';
+      const classes = new Set();
+      this.classList = {add: (...items) => items.forEach(item => classes.add(item)), remove: (...items) => items.forEach(item => classes.delete(item)),
+        toggle: (item, enabled = !classes.has(item)) => enabled ? (classes.add(item), true) : (classes.delete(item), false), contains: item => classes.has(item)};
+    }
+    set className(value) {this._className = value;}
+    get className() {return this._className || '';}
+    setAttribute(name, value) {this.attributes.set(name, String(value));}
+    getAttribute(name) {return this.attributes.get(name) ?? null;}
+    removeAttribute(name) {this.attributes.delete(name);}
+    append(...children) {this.children.push(...children);}
+    appendChild(child) {this.children.push(child); return child;}
+    remove() {this.hidden = true;}
+    showModal() {this.open = true; this.hidden = false;}
+    close() {this.open = false; this.dispatchEvent(new Event('close'));}
+    focus() {}
+    scrollTo({top}) {this.scrollTop = top;}
+    load() {}
+    pause() {this.paused = true; this.dispatchEvent(new Event('pause'));}
+    async play() {
+      this.paused = false; this.ended = false;
+      if (this.id.includes('camera')) {this.dispatchEvent(new Event('loadeddata')); return;}
+      plays.push(this.src);
+      this.dispatchEvent(new Event('play')); this.dispatchEvent(new Event('playing'));
+      if (options.failAudio?.(this.src, plays)) throw new Error('audio unavailable');
+      queueMicrotask(() => {this.paused = true; this.ended = true; this.dispatchEvent(new Event('ended')); this.onended?.();});
+    }
+    click() {if (!this.disabled) this.dispatchEvent(new Event('click'));}
+  }
+  const ids = ['meeting-room','room-stage','interviewer-avatar','interviewer-name','interviewer-title','room-title','room-subtitle','room-status','chat-progress','elapsed-time',
+    'stage-caption','camera','preflight-camera','camera-off-placeholder','candidate-mic-status','interviewer-audio','preflight','open-preflight','close-preflight','devices','camera-check',
+    'test-sound','speaker-check','mic-meter','mic-status','focus-check','fullscreen-check','start','connection-status','connection-retry','preflight-error','room-error','room-countdown',
+    'countdown-number','chat-log','chat-empty','chat-new-messages','chat-panel','record-controls','answer-timer','record','send','retry','replay','answer-preview','retry-upload','resume-flow',
+    'question-progress','question-text','transcript','camera-toggle','mic-toggle','mirror-toggle','captions-toggle','chat-toggle','avatar-motion-toggle','fullscreen','leave-room','leave-dialog',
+    'cancel-leave','confirm-leave','mirror','sound-bars','interviewer-initial','device-status','device-requirement','preflight-description','preflight-title','verification-status','preflight-body','chat-activity','chat-activity-label'];
+  ids.forEach(id => nodes.set(id, new Element(id)));
+  ['preflight','room-countdown','record-controls','send','retry','retry-upload','resume-flow','answer-preview','stage-caption','preflight-error','room-error'].forEach(id => nodes.get(id).hidden = true);
+  nodes.get('start').disabled = true; nodes.get('speaker-check').disabled = true;
+  const document = new EventTarget(); document.body = {dataset:{sid:'fixture-session'}};
+  document.hidden = false; document.visibilityState = 'visible'; document.fullscreenEnabled = false;
+  document.querySelector = selector => nodes.get(selector.slice(1)); document.getElementById = id => nodes.get(id);
+  document.createElement = () => new Element(); document.documentElement = new Element();
+  document.exitFullscreen = async () => {document.fullscreenElement = null;};
+  const window = new EventTarget();
+  const setTimeoutFake = (fn, delay = 0) => {const id = nextTimer++; timers.set(id, {fn, due:now + delay}); return id;};
+  const setIntervalFake = (fn, delay) => {const id = nextTimer++; timers.set(id, {fn, due:now + delay, delay}); return id;};
+  async function advance(ms) {
+    const until = now + ms;
+    for (;;) {
+      let candidate;
+      for (const [id, timer] of timers) if (timer.due <= until && (!candidate || timer.due < candidate[1].due)) candidate = [id, timer];
+      if (!candidate) break;
+      const [id, timer] = candidate; now = timer.due;
+      if (timer.delay) timer.due += timer.delay; else timers.delete(id);
+      timer.fn(now); await flush();
+    }
+    now = until; await flush();
+  }
+  class Track extends EventTarget {constructor(kind) {super(); this.kind = kind; this.enabled = true; this.readyState = 'live';} stop() {this.readyState = 'ended';}}
+  const tracks = [new Track('video'), new Track('audio')];
+  class MediaStreamFake {constructor(items = tracks) {this.tracks = items;} getTracks() {return this.tracks;} getAudioTracks() {return this.tracks.filter(t => t.kind === 'audio');} getVideoTracks() {return this.tracks.filter(t => t.kind === 'video');}}
+  class AudioContextFake {
+    constructor() {this.state = 'running'; this.currentTime = 0; this.destination = {};}
+    resume() {this.state = 'running'; return options.resume ? options.resume() : Promise.resolve();}
+    close() {this.state = 'closed'; return Promise.resolve();}
+    createAnalyser() {return {fftSize:256, connect(){}, disconnect(){}, getByteTimeDomainData(values) {values.fill(148);}};}
+    createMediaStreamSource() {return {connect(){}, disconnect(){}};}
+    createMediaElementSource() {return {connect(){}, disconnect(){}};}
+    createGain() {return {gain:{value:0}, connect(){return this;}, disconnect(){}};}
+    createOscillator() {return {frequency:{value:0}, connect(){return this;}, disconnect(){}, start(){}, stop(){setTimeoutFake(() => this.onended?.(),450);}};}
+  }
+  class MediaRecorderFake extends EventTarget {
+    static isTypeSupported() {return true;}
+    constructor() {super(); this.state = 'inactive'; this.mimeType = 'audio/webm;codecs=opus';}
+    start() {this.state = 'recording';}
+    stop() {this.state = 'inactive'; this.ondataavailable?.({data:new Blob(['audio'],{type:this.mimeType})}); queueMicrotask(() => this.onstop?.());}
+  }
+  const state = {session_id:'fixture-session',status:'ready',interviewer:'hr',persona:{name:'Rina',title:'HR Interviewer'},job_role:'Engineer',level:'junior',question_count:3,answer_seconds:60,retry_limit:2,max_followups:2,
+    script:{intro:{text:'Selamat datang.',audio_url:'/intro.mp3'},closing:{text:'Selesai.',audio_url:'/closing.mp3'},fillers:[],settings:{language:'id'}},
+    questions:[],answered_mains:0,current_turn:{id:1,kind:'main',main_order:1,slot:'opening',category:'opening',question_text:'Ceritakan pengalaman Anda.',audio_url:'/question.mp3'}};
+  Object.assign(state, options.state);
+  const result = {type:'result',answer_id:11,transcript:'Pengalaman saya.',action:'follow_up',response_text:'Apa kontribusi Anda?',response_audio_url:'/follow.mp3',follow_up_question:{id:2,kind:'follow_up',main_order:1,slot:'opening',category:'opening',question_text:'Apa kontribusi Anda?',audio_url:'/follow.mp3'},next_question:null,is_last:false,closing:null,...options.result};
+  let uploads = 0;
+  async function fetchFake(url, init = {}) {
+    calls.push([url, init]);
+    if (url.endsWith('/state')) return options.fetchState ? options.fetchState(init.signal, state) : new Response(JSON.stringify(state));
+    if (url === '/health') return new Response(JSON.stringify(options.health || {ok:true,db:true,redis:true}));
+    if (url.includes('/answers')) {
+      uploads++;
+      if (options.answerResponse) return options.answerResponse(uploads, result, init.signal);
+      const events = options.answerEvents ? options.answerEvents(uploads, result) : [{type:'transcript',transcript:'Pengalaman saya.'},result];
+      return new Response(events.map(event => JSON.stringify(event)).join('\n')+'\n', {headers:{'Content-Type':'application/x-ndjson'}});
+    }
+    return new Response(JSON.stringify({status:url.endsWith('/start')?'running':'ok'}));
+  }
+  const local = new Map(Object.entries(options.storage || {})), session = new Map();
+  const storage = map => ({getItem:key=>map.get(key)??null,setItem:(key,value)=>map.set(key,String(value)),removeItem:key=>map.delete(key)});
+  const location = {replace:url=>navigations.push(url),assign:url=>navigations.push(url)};
+  const navigator = {userAgent:'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',platform:'Win32',maxTouchPoints:0,...options.device,mediaDevices:{getUserMedia:() => options.getUserMedia ? options.getUserMedia(new MediaStreamFake()) : Promise.resolve(new MediaStreamFake())},sendBeacon:(url,body)=>{calls.push([url,{method:'BEACON',body}]); return true;}};
+  const context = {console,document,window,navigator,location,localStorage:storage(local),sessionStorage:storage(session),performance:{now:()=>now},
+    setTimeout:setTimeoutFake,clearTimeout:id=>timers.delete(id),setInterval:setIntervalFake,clearInterval:id=>timers.delete(id),
+    requestAnimationFrame:fn=>setTimeoutFake(fn,16),cancelAnimationFrame:id=>timers.delete(id),
+    MediaStream:MediaStreamFake,MediaRecorder:MediaRecorderFake,AudioContext:AudioContextFake,Audio:class extends Element {constructor(url){super();this.src=url;}},
+    matchMedia:()=>({matches:!!options.reducedMotion,addEventListener(){}}),fetch:fetchFake,AbortController,DOMException,Blob,FormData,Response,TextDecoder,Uint8Array,URL:Object.assign(URL,{createObjectURL:()=>`blob:fixture-${now}`,revokeObjectURL(){}}),
+    $:selector=>document.querySelector(selector),api:async url=>(await fetchFake(url)).json(),postJSON:async url=>(await fetchFake(url,{method:'POST'})).json(),
+    showError:(selector,error)=>{const node=document.querySelector(selector);node.textContent=error.message||error;node.hidden=false;},toast(){}};
+  Object.assign(window,{AudioContext:AudioContextFake,MediaRecorder:MediaRecorderFake,matchMedia:context.matchMedia});
+  vm.runInNewContext(source, context, {filename:sourcePath});
+  return {nodes,calls,plays,document,window,tracks,navigations,advance,flush,local,get uploads(){return uploads;}};
+}
+
+async function verify(f) {
+  f.nodes.get('devices').click(); await flush(); await f.advance(32);
+  f.nodes.get('test-sound').click(); await flush(); await f.advance(500);
+  for (const id of ['camera-check','speaker-check','focus-check']) {f.nodes.get(id).checked = true;f.nodes.get(id).dispatchEvent(new Event('change'));}
+  await flush(); assert.equal(f.nodes.get('start').disabled, false, 'verified devices must enable start');
+}
+async function start(f) {await verify(f);f.nodes.get('start').click();await flush();await f.advance(3100);}
+async function answer(f) {f.nodes.get('record').click();await f.advance(1000);f.nodes.get('record').click();await flush();f.nodes.get('send').click();await flush();}
+
+(async () => {
+  const ready = fixture(); await flush();
+  assert.equal(ready.nodes.get('preflight').open,true,'ready state must open native preflight automatically');
+  assert.equal(ready.calls.some(([url]) => url.endsWith('/start')),false,'ready state must never auto-start');
+  ready.document.hidden=true;ready.document.dispatchEvent(new Event('visibilitychange'));await flush();
+  assert.equal(ready.calls.some(([url]) => url.endsWith('/close')),false,'hidden ready session must remain ready');
+  console.log('PASS ready state opens preflight without starting or closing');
+
+  for (const device of [
+    {userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)',platform:'iPhone'},
+    {userAgent:'Mozilla/5.0 (Linux; Android 15; Tablet)',platform:'Linux armv8l'},
+    {userAgent:'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15)',platform:'MacIntel',maxTouchPoints:5},
+    {userAgent:'Desktop mode',userAgentData:{mobile:true}},
+  ]) {
+    let requested = 0;
+    const mobile = fixture({device,getUserMedia:stream => {requested++;return Promise.resolve(stream);}}); await flush();
+    assert.equal(mobile.nodes.get('devices').disabled, true, 'mobile devices must not request camera or microphone');
+    assert.equal(mobile.nodes.get('start').disabled, true, 'mobile devices cannot start a session');
+    assert.equal(mobile.nodes.get('device-requirement').hidden, false);
+    mobile.nodes.get('devices').click();mobile.nodes.get('start').click();await flush();
+    assert.equal(requested, 0);
+    assert.equal(mobile.calls.some(([url]) => url.endsWith('/start')), false);
+  }
+  const touchLaptop = fixture({device:{maxTouchPoints:10}}); await flush();await verify(touchLaptop);
+  console.log('PASS phones and tablets are blocked while touch Windows laptops remain supported');
+
+  const late = fixture({getUserMedia:stream=>new Promise(resolve=>{late.resolveMedia=()=>resolve(stream);})});await flush();
+  late.nodes.get('devices').click();await flush();late.window.dispatchEvent(new Event('pagehide'));late.resolveMedia();await flush();
+  assert(late.tracks.every(track=>track.readyState==='ended'),'late permission result must stop all tracks');
+  assert.equal(late.nodes.get('camera').srcObject,null,'late stream must not attach to video');
+  console.log('PASS late permissions cannot resurrect devices');
+
+  const running = fixture();await flush();await verify(running);
+  running.nodes.get('start').click();running.nodes.get('start').click();await flush();
+  assert.equal(running.calls.filter(([url])=>url.endsWith('/start')).length,1,'double click must send one start');
+  assert.equal(running.nodes.get('countdown-number').textContent,'3');assert.equal(running.plays.length,0,'intro must wait for countdown');
+  await running.advance(3100);assert.equal(running.nodes.get('record-controls').hidden,false);
+  await answer(running);
+  assert.equal(running.plays.filter(url=>url==='/follow.mp3').length,1,'follow-up response and question share one playback');
+  const bodies=running.nodes.get('chat-log').children.flatMap(child=>child.children.filter(item=>item.className==='chat-message-body').map(item=>item.textContent));
+  assert.equal(bodies.filter(text=>text==='Apa kontribusi Anda?').length,1,'follow-up must have one chat bubble');
+  assert.equal(bodies.filter(text=>text==='Pengalaman saya.').length,1,'transcript and final result must have one candidate bubble');
+  running.document.hidden=true;running.document.dispatchEvent(new Event('visibilitychange'));await flush();
+  assert.equal(running.calls.filter(([url])=>url.endsWith('/close')).length,1,'active hidden session must close once');
+  assert(running.tracks.every(track=>track.readyState==='ended'));
+  console.log('PASS countdown, single start, follow-up deduplication, and active cleanup');
+
+  const interrupted = fixture({answerEvents:(attempt,result)=>attempt===1?[{type:'transcript',transcript:'Pengalaman saya.'},{type:'error',message:'Pemrosesan gagal.'}]:[{type:'transcript',transcript:'Pengalaman saya.'},result]});
+  await flush();await start(interrupted);await answer(interrupted);
+  assert.equal(interrupted.nodes.get('retry-upload').hidden,false,'stream error must expose resubmission');
+  interrupted.nodes.get('retry-upload').click();await flush();
+  const candidate=interrupted.nodes.get('chat-log').children.filter(child=>child.className==='chat-message chat-message--candidate');
+  assert.equal(candidate.length,1,'resubmitting same question must update one transcript');
+  assert.equal(interrupted.uploads,2);
+  console.log('PASS NDJSON error preserves idempotent resubmission');
+
+  let activityStream, activityResult;
+  const activity=fixture({answerResponse:(attempt,result)=>{
+    activityResult=result;
+    return new Response(new ReadableStream({start(controller){activityStream=controller;}}));
+  }});
+  const emitActivity = event => activityStream.enqueue(new TextEncoder().encode(JSON.stringify(event)+'\n'));
+  await flush();await start(activity);
+  assert.equal(activity.nodes.get('chat-activity').hidden,true,'chat activity must stay hidden before a submission');
+  const opening=activity.nodes.get('chat-log').children;
+  assert.equal(opening[0].dataset.continuation,'false','first interviewer message starts a group');
+  assert.equal(opening[1].dataset.continuation,'true','consecutive interviewer messages continue the group');
+  assert.equal(opening[1].children[0].textContent,'Rina','grouped messages retain their accessible author');
+  await answer(activity);
+  assert.equal(activity.nodes.get('chat-activity').hidden,false,'actual pending upload shows activity');
+  assert.equal(activity.nodes.get('chat-activity-label').textContent,'Memproses jawaban…');
+  const pendingCandidate=activity.nodes.get('chat-log').children.find(child=>child.className==='chat-message chat-message--candidate');
+  assert(pendingCandidate,'a real audio submission immediately adds its candidate bubble');
+  assert.equal(pendingCandidate.children[1].textContent,'Jawaban suara');
+  assert.equal(pendingCandidate.children[2].textContent,'Memproses transkrip…');
+  emitActivity({type:'transcript',transcript:'Pengalaman saya.'});await flush();
+  assert.equal(activity.nodes.get('chat-activity-label').textContent,'Rina merespons…','received transcript advances real response activity');
+  const streamedCandidate=activity.nodes.get('chat-log').children.find(child=>child.className==='chat-message chat-message--candidate');
+  assert.equal(streamedCandidate,pendingCandidate,'transcript updates the voice bubble without replaying its entry');
+  assert.equal(streamedCandidate.children[1].textContent,'Pengalaman saya.');
+  assert.equal(streamedCandidate.children[2].hidden,true,'actual response activity avoids repeated transcript status copy');
+  assert.equal(streamedCandidate.dataset.continuation,'false','a candidate reply starts a new role group');
+  emitActivity({type:'transcript',transcript:'Pengalaman saya.'});await flush();
+  assert.equal(activity.nodes.get('chat-log').children.filter(child=>child.className==='chat-message chat-message--candidate').length,1,'stream updates reuse one candidate element');
+  assert.equal(activity.nodes.get('chat-log').children.includes(streamedCandidate),true,'stream updates retain the original message node');
+  emitActivity(activityResult);await flush();
+  assert.equal(activity.nodes.get('chat-activity').hidden,true,'result arrival clears activity before stream EOF');
+  activityStream.close();await flush();
+  assert.equal(activity.nodes.get('chat-log').children.filter(child=>child.className==='chat-message chat-message--candidate').length,1,'final result reuses the transcript node');
+  assert.equal(streamedCandidate.dataset.continuation,'false','result updates do not reapply grouping or entry state');
+  console.log('PASS real chat activity and grouped transcript updates remain idempotent');
+
+  let retryStream, retryResult;
+  const retryActivity=fixture({answerResponse:(attempt,result)=>{
+    retryResult=result;
+    return new Response(new ReadableStream({start(controller){retryStream=controller;}}));
+  }});
+  await flush();await start(retryActivity);await answer(retryActivity);
+  retryStream.enqueue(new TextEncoder().encode(JSON.stringify({type:'transcript',transcript:'Jawaban tetap tersimpan.'})+'\n'));await flush();
+  retryStream.enqueue(new TextEncoder().encode(JSON.stringify({type:'error',message:'Pemrosesan gagal.'})+'\n'));await flush();
+  assert.equal(retryActivity.nodes.get('chat-activity').hidden,true,'stream errors clear activity');
+  const retryCandidate=retryActivity.nodes.get('chat-log').children.find(child=>child.className==='chat-message chat-message--candidate');
+  assert.match(retryCandidate.children[2].textContent,/belum terkonfirmasi/i,'failed processing must not claim successful delivery');
+  retryActivity.nodes.get('retry-upload').click();await flush();
+  assert.equal(retryActivity.nodes.get('chat-activity').hidden,false,'resubmission shows only its current processing state');
+  assert.equal(retryActivity.nodes.get('chat-activity-label').textContent,'Memproses jawaban…','retry clears the previous response stage');
+  assert.equal(retryCandidate.children[1].textContent,'Jawaban tetap tersimpan.','retry preserves the real transcript instead of replacing it with voice placeholder text');
+  assert.equal(retryActivity.nodes.get('chat-log').children.filter(child=>child.className==='chat-message chat-message--candidate').length,1,'retry preserves the same candidate bubble');
+  retryActivity.document.hidden=true;retryActivity.document.dispatchEvent(new Event('visibilitychange'));await flush();
+  assert.equal(retryActivity.nodes.get('chat-activity').hidden,true,'closing an active session clears pending activity');
+  retryStream.enqueue(new TextEncoder().encode(JSON.stringify(retryResult)+'\n'));await flush();
+  assert.equal(retryActivity.nodes.get('chat-activity').hidden,true,'late stream data cannot resurrect activity');
+  console.log('PASS chat activity clears on error, retry, close, and late stream completion');
+
+  const muted=fixture();await flush();await start(muted);muted.nodes.get('record').click();await muted.advance(1000);muted.nodes.get('mic-toggle').click();await flush();
+  assert.equal(muted.nodes.get('answer-preview').hidden,false,'muting during recording must allow review');
+  assert.equal(muted.uploads,0,'muting never submits audio');
+  muted.nodes.get('retry').click();await flush();assert.equal(muted.nodes.get('record').disabled,true,'muted microphone must block recording');
+  muted.nodes.get('mic-toggle').click();assert.equal(muted.nodes.get('record').disabled,false);
+  console.log('PASS microphone mute stops recording and blocks new capture');
+
+  const recovery=fixture({result:{action:'next',response_text:'Terima kasih.',response_audio_url:'/ack.mp3',follow_up_question:null,next_question:{id:3,kind:'main',main_order:2,question_text:'Bagaimana Anda bekerja?',audio_url:'/next.mp3'}},
+    failAudio:(url,plays)=>url==='/next.mp3'&&plays.filter(item=>item===url).length===1});
+  await flush();await start(recovery);await answer(recovery);
+  assert.equal(recovery.nodes.get('resume-flow').hidden,false,'failed next audio must expose continuation');
+  recovery.nodes.get('resume-flow').click();await flush();
+  assert.equal(recovery.plays.filter(url=>url==='/ack.mp3').length,1,'recovery must not replay completed acknowledgement');
+  assert.equal(recovery.plays.filter(url=>url==='/next.mp3').length,2);
+  assert.equal(recovery.nodes.get('record-controls').hidden,false);
+  console.log('PASS audio continuation preserves completed utterances');
+
+  const duringCountdown=fixture();await flush();await verify(duringCountdown);duringCountdown.nodes.get('start').click();await flush();
+  duringCountdown.document.hidden=true;duringCountdown.document.dispatchEvent(new Event('visibilitychange'));await duringCountdown.advance(4000);
+  assert.equal(duringCountdown.plays.length,0,'hidden countdown must never start intro audio');
+  assert.equal(duringCountdown.calls.filter(([url])=>url.endsWith('/close')).length,1);
+  console.log('PASS hidden countdown stops flow before intro');
+
+  const final=fixture({result:{action:'next',response_text:'Terima kasih.',response_audio_url:'/ack.mp3',follow_up_question:null,is_last:true,closing:{text:'Sampai jumpa.',audio_url:'/closing.mp3'}}});
+  await flush();await start(final);await answer(final);
+  assert.equal(final.calls.filter(([url])=>url.endsWith('/finish')).length,1);
+  assert.equal(final.nodes.get('chat-activity').hidden,true,'finishing clears transient response activity');
+  assert.equal(final.local.has('preptiva-active-fixture-session'),false);
+  assert(final.tracks.every(track=>track.readyState==='ended'));
+  assert.deepEqual(final.navigations,['/sesi/fixture-session/hasil']);
+  console.log('PASS finish releases resources and redirects to results');
+
+  const cached=fixture();await flush();cached.nodes.get('devices').click();await flush();cached.nodes.get('test-sound').click();await flush();
+  cached.window.dispatchEvent(new Event('pagehide'));await flush();
+  const restored=new Event('pageshow');Object.defineProperty(restored,'persisted',{value:true});cached.window.dispatchEvent(restored);await flush();
+  assert.equal(cached.nodes.get('test-sound').disabled,false,'back-cache restoration must allow a fresh sound test');
+  assert.equal(cached.nodes.get('devices').disabled,false,'back-cache restoration must allow device retry');
+  console.log('PASS ready back-cache restoration can verify devices again');
+
+  let initialStateRequests = 0;
+  const loading = fixture({fetchState:(signal, state) => {
+    initialStateRequests++;
+    if (initialStateRequests > 1) return new Response(JSON.stringify(state));
+    return new Promise((resolve, reject) => signal.addEventListener('abort', () => reject(new DOMException('Navigated away', 'AbortError')), {once:true}));
+  }});
+  await flush();
+  loading.window.dispatchEvent(new Event('pagehide')); await flush();
+  const loadingRestored = new Event('pageshow'); Object.defineProperty(loadingRestored, 'persisted', {value:true});
+  loading.window.dispatchEvent(loadingRestored); await flush();
+  assert.equal(initialStateRequests, 2, 'back-cache restore must restart an aborted initial state request');
+  assert.equal(loading.nodes.get('preflight').open, true, 'restored initial load must reach verification');
+  console.log('PASS interrupted initial load resumes after back-cache restoration');
+
+  let resumeCalls=0, releaseResume;
+  const changed=fixture({resume:()=>++resumeCalls===3?new Promise(resolve=>{releaseResume=resolve;}):Promise.resolve()});
+  await flush();await verify(changed);changed.nodes.get('start').click();await flush();
+  changed.tracks.find(track=>track.kind==='audio').enabled=false;releaseResume();await flush();
+  assert.equal(changed.calls.some(([url])=>url.endsWith('/start')),false,'device changes while preparing start must revalidate before POST');
+  console.log('PASS start revalidates devices after gesture awaits');
+})().catch(error=>{console.error(error);process.exitCode=1;});

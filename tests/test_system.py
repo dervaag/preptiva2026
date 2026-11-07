@@ -128,6 +128,25 @@ class SystemTests(unittest.IsolatedAsyncioTestCase):
             response = await self.client.post('/api/sessions', data=data)
         return response
 
+    async def test_mobile_device_cannot_start_session(self):
+        sid, _, _ = await self.ready_session()
+        mobile_headers = [
+            {'User-Agent':'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile'},
+            {'User-Agent':'Mozilla/5.0 (Linux; Android 15; Tablet) AppleWebKit'},
+            {'User-Agent':'Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X)'},
+            {'Sec-CH-UA-Mobile':'?1'},
+            {'Sec-CH-UA-Platform':'"Android"'},
+            {'User-Agent':'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15)', 'X-Preptiva-Device':'mobile'},
+        ]
+        for headers in mobile_headers:
+            with self.subTest(headers=headers):
+                response = await self.client.post(f'/api/sessions/{sid}/start',headers=headers)
+                self.assertEqual(response.status_code,403,response.text)
+                self.assertIn('PC atau laptop',response.json()['detail'])
+        state = (await self.client.get(f'/api/sessions/{sid}/state')).json()
+        self.assertEqual(state['status'],'ready')
+        self.assertEqual((await self.client.post(f'/api/sessions/{sid}/start',headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})).status_code,200)
+
     async def ready_session(self):
         created = await self.create()
         self.assertEqual(created.status_code, 200, created.text)

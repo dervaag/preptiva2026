@@ -1,0 +1,32 @@
+<div class="workspace-heading">
+  <div><h1>Halo, {{ user.name.split()[0] }}</h1><p>Sejauh ini, latihan Anda.</p></div>
+  <a class="ws-button" href="/simulasi/baru"><span>Simulasi baru</span>{{ icon('arrow') }}</a>
+</div>
+{% include 'partials/workspace-state.html' %}
+<div id="workspace-data" hidden>
+  <section class="ws-stats" aria-label="Ringkasan latihan">
+    <article class="ws-stat"><h2>Sesi selesai</h2><div class="ws-stat-value" id="stat-completed">-</div><p>Seluruh latihan Anda</p></article>
+    <article class="ws-stat ws-stat--average"><h2>Rata-rata skor</h2><div class="ws-stat-value"><span id="stat-average">-</span><small>/100</small></div><p>Dari sesi yang dinilai</p></article>
+    <article class="ws-stat"><h2>Skor terbaik</h2><div class="ws-stat-value"><span id="stat-best">-</span><small>/100</small></div><p>Pencapaian tertinggi</p></article>
+    <article class="ws-stat"><h2>Perubahan skor</h2><div class="ws-stat-value"><span id="stat-change">-</span><small>poin</small></div><p id="stat-change-note">Skor terakhir vs pertama</p></article>
+  </section>
+
+  <div class="ws-insights">
+    <section class="ws-panel ws-trend" aria-labelledby="trend-title">
+      <div class="ws-panel-heading"><div><h2 id="trend-title">Perkembangan skor</h2><p id="trend-range">Sesi selesai terakhir</p></div><span class="ws-chart-key"><i aria-hidden="true"></i>Skor total</span></div>
+      <div id="trend-chart" class="ws-chart"></div>
+      <p id="trend-summary" class="ws-chart-summary"></p>
+      <p class="ws-chart-note">Bobot penilaian mengikuti pewawancara.</p>
+    </section>
+    <section class="ws-panel ws-focus" aria-labelledby="focus-title">
+      <div class="ws-panel-heading"><div><h2 id="focus-title">Fokus latihan</h2><p id="focus-caption">Dari sesi terakhir yang dinilai</p></div></div>
+      <div id="focus-content"></div>
+    </section>
+  </div>
+
+  <section class="ws-panel ws-sessions" aria-labelledby="recent-title">
+    <div class="ws-panel-heading"><h2 id="recent-title">Sesi terakhir</h2><a class="ws-text-link" href="/riwayat">Lihat semua {{ icon('arrow') }}</a></div>
+    {% include 'partials/session-columns.html' %}
+    <div id="recent-sessions" class="ws-session-list"></div>
+  </section>
+</div>

@@ -1,0 +1,64 @@
+{% from 'partials/meeting-icons.html' import room_icon %}
+<div class="meeting-room" id="meeting-room">
+  <div class="meeting-workspace">
+    <section class="meeting-stage-column" aria-label="Ruang wawancara">
+      <div id="room-error" class="meeting-alert" role="alert" hidden></div>
+      <div class="meeting-stage" id="room-stage" data-motion="on" data-speaking="false">
+        <div class="meeting-stage-top"><span class="meeting-state" id="room-status" role="status">Menyiapkan sesi</span></div>
+        <div class="meeting-avatar-position"><div class="meeting-avatar" id="interviewer-avatar" role="img" aria-label="Karakter pewawancara AI" data-frame="idle"><span class="meeting-avatar-loading">Menyiapkan pewawancara…</span></div></div>
+        <div class="meeting-interviewer-label"><span class="meeting-speaking-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span><div><h1 id="interviewer-name">Partner latihan Anda</h1><span id="interviewer-title">Pewawancara AI</span></div></div>
+        <div id="stage-caption" class="meeting-caption" hidden></div>
+        <div class="meeting-camera-pip"><video id="camera" autoplay muted playsinline aria-label="Pratinjau kamera Anda"></video><div class="meeting-camera-off" id="camera-off-placeholder">{{ room_icon('camera') }}<span>Kamera Anda</span></div><span class="meeting-camera-label"><span id="candidate-mic-status">{{ room_icon('mic') }}</span>Anda</span></div>
+        <div class="room-countdown" id="room-countdown" role="status" aria-live="polite" hidden><span>Wawancara dimulai dalam</span><strong id="countdown-number">3</strong></div>
+      </div>
+      <div class="meeting-answer-dock" id="record-controls" hidden>
+        <div class="meeting-answer-clock"><span>Waktu jawab</span><time id="answer-timer">02:00</time></div>
+        <div class="meeting-answer-actions"><button id="record" class="meeting-primary" type="button">Mulai jawab</button><button id="send" class="meeting-primary" type="button" hidden>Kirim jawaban</button><button id="retry" class="meeting-quiet" type="button" hidden>Rekam ulang</button><button id="replay" class="meeting-quiet" type="button" hidden>Putar pertanyaan</button></div>
+      </div>
+      <div class="meeting-answer-review"><audio id="answer-preview" controls hidden></audio><button id="retry-upload" class="meeting-primary" type="button" hidden>Coba kirim ulang</button><button id="resume-flow" class="meeting-primary" type="button" hidden>Lanjutkan percakapan</button></div>
+      <h2 id="question-text" class="sr-only">Pertanyaan wawancara</h2><p id="transcript" class="sr-only" hidden></p>
+    </section>
+
+    <aside id="chat-panel" class="meeting-chat" aria-labelledby="chat-title">
+      <div class="meeting-chat-header"><span class="meeting-chat-icon">{{ room_icon('chat') }}</span><div><h2 id="chat-title">Percakapan</h2><p id="chat-progress">Ruang latihan Anda</p></div></div>
+      <div class="sr-only" id="question-progress">Menyiapkan pertanyaan</div>
+      <div id="chat-log" class="meeting-chat-log" role="log" aria-live="polite" aria-relevant="additions text" aria-label="Percakapan wawancara"><div class="meeting-chat-empty" id="chat-empty"><h3>Belum ada percakapan</h3><p>Pertanyaan dan transkrip muncul setelah sesi dimulai.</p></div></div>
+      <div id="chat-activity" class="chat-activity" role="status" hidden><span class="chat-activity-dots" aria-hidden="true"><i></i><i></i><i></i></span><span id="chat-activity-label">Memproses jawaban…</span></div>
+      <button id="chat-new-messages" class="meeting-new-messages" type="button" hidden>Pesan baru ↓</button>
+    </aside>
+  </div>
+
+  <footer class="meeting-toolbar">
+    <div class="meeting-session-meta">{{ brand('/dashboard') }}<time id="elapsed-time">00:00</time><div class="meeting-session-role"><h2 id="room-title">Latihan wawancara</h2><span id="room-subtitle">Menyiapkan ruang Anda…</span></div></div>
+    <div class="meeting-controls" role="group" aria-label="Kontrol ruang wawancara">
+      <button id="mic-toggle" class="meeting-control" type="button" aria-label="Aktifkan mikrofon" title="Mikrofon" aria-pressed="false">{{ room_icon('mic') }}<span>Mikrofon</span></button>
+      <button id="camera-toggle" class="meeting-control" type="button" aria-label="Aktifkan kamera" title="Kamera" aria-pressed="false">{{ room_icon('camera') }}<span>Kamera</span></button>
+      <button id="captions-toggle" class="meeting-control" type="button" aria-label="Tampilkan subtitle" title="Subtitle" aria-pressed="false">{{ room_icon('captions') }}<span>Subtitle</span></button>
+      <button id="chat-toggle" class="meeting-control" type="button" aria-label="Tampilkan atau sembunyikan percakapan" title="Percakapan" aria-expanded="true" aria-controls="chat-panel">{{ room_icon('chat') }}<span>Chat</span></button>
+      <details class="meeting-tools" id="room-tools"><summary class="meeting-control" aria-label="Pengaturan tampilan" title="Pengaturan tampilan">{{ room_icon('settings') }}<span>Tampilan</span></summary><div class="meeting-tools-menu"><button id="mirror-toggle" type="button" aria-pressed="false">{{ room_icon('mirror') }}<span>Mirror kamera</span><span class="meeting-menu-check">{{ room_icon('check') }}</span></button><button id="avatar-motion-toggle" type="button" aria-pressed="true">{{ room_icon('motion') }}<span>Animasi karakter</span><span class="meeting-menu-check">{{ room_icon('check') }}</span></button><button id="fullscreen" type="button" aria-pressed="false">{{ room_icon('fullscreen') }}<span>Fullscreen</span><span class="meeting-menu-check">{{ room_icon('check') }}</span></button></div></details>
+      <button id="leave-room" class="meeting-control meeting-leave" type="button" aria-label="Keluar dari sesi" title="Keluar dari sesi">{{ room_icon('phone') }}<span>Keluar</span></button>
+    </div>
+    <div class="meeting-session-actions"><button id="open-preflight" class="meeting-primary" type="button" disabled>Cek perangkat</button></div>
+  </footer>
+</div>
+
+<audio id="interviewer-audio" preload="auto" hidden></audio>
+
+<dialog id="preflight" class="meeting-dialog" aria-labelledby="preflight-title" aria-describedby="preflight-description">
+  <div class="meeting-dialog-header"><div><h2 id="preflight-title">Cek perangkat</h2><p id="preflight-description" class="sr-only">Periksa perangkat, kamera, mikrofon, dan speaker sebelum mulai.</p></div><button id="close-preflight" class="meeting-icon-button" type="button" aria-label="Tutup pemeriksaan perangkat">{{ room_icon('close') }}</button></div>
+  <div class="meeting-preflight-body" id="preflight-body">
+    <div id="device-requirement" class="meeting-alert meeting-device-requirement" role="alert" hidden><strong>HP dan tablet tidak didukung.</strong><p>Buka sesi ini melalui PC atau laptop.</p></div>
+    <div class="meeting-preflight-preview"><div class="meeting-preflight-video"><video id="preflight-camera" autoplay muted playsinline aria-label="Pratinjau kamera untuk verifikasi"></video></div><button id="devices" class="meeting-secondary" type="button" autofocus>{{ room_icon('camera') }}Aktifkan perangkat</button><label class="meeting-check"><input id="camera-check" type="checkbox">Kamera terlihat jelas</label></div>
+    <div class="meeting-preflight-checklist">
+      <div class="meeting-verification-row meeting-device-verification"><span class="meeting-verification-icon">{{ room_icon('computer') }}</span><div><h3>Perangkat</h3><p id="device-status" role="status">Memeriksa…</p></div></div>
+      <div class="meeting-verification-row"><span class="meeting-verification-icon">{{ room_icon('mic') }}</span><div><h3>Mikrofon</h3><p id="mic-status">Ucapkan beberapa kata</p><meter id="mic-meter" min="0" max="100" value="0" aria-label="Level sinyal mikrofon"></meter></div></div>
+      <div class="meeting-verification-row meeting-speaker-row"><span class="meeting-verification-icon">{{ room_icon('speaker') }}</span><div><div class="meeting-check-heading"><h3>Speaker</h3><button id="test-sound" class="meeting-text-button" type="button">Tes suara</button></div><label class="meeting-check"><input id="speaker-check" type="checkbox" disabled>Suara terdengar jelas</label></div></div>
+      <div class="meeting-verification-row"><span class="meeting-verification-icon">{{ room_icon('connection') }}</span><div><h3>Koneksi</h3><p id="connection-status">Memeriksa…</p><button id="connection-retry" class="meeting-text-button" type="button" hidden>Coba lagi</button></div></div>
+    </div>
+    <div class="meeting-preflight-options"><label class="meeting-check"><input id="focus-check" type="checkbox">Saya setuju: berpindah tab, meminimalkan browser, atau keluar setelah mulai akan menutup sesi tanpa bisa dilanjutkan.</label><label class="meeting-check meeting-fullscreen-option"><input id="fullscreen-check" type="checkbox">Gunakan fullscreen <span class="meeting-optional">(opsional)</span></label></div>
+    <div id="preflight-error" class="meeting-alert" role="alert" hidden></div>
+  </div>
+  <div class="meeting-dialog-footer"><p id="verification-status">Video tetap lokal. Audio dikirim saat Anda mengirim jawaban.</p><button id="start" class="meeting-primary" type="button" disabled>Mulai wawancara</button></div>
+</dialog>
+
+<dialog id="leave-dialog" class="meeting-dialog meeting-leave-dialog" aria-labelledby="leave-title"><div class="meeting-dialog-header"><div><h2 id="leave-title">Keluar dari sesi?</h2><p>Sesi yang ditutup tidak dapat dilanjutkan. Jawaban yang sudah dikirim tetap tersimpan.</p></div></div><div class="meeting-dialog-footer"><button id="cancel-leave" class="meeting-secondary" type="button" autofocus>Tetap di sini</button><button id="confirm-leave" class="meeting-danger" type="button">Keluar dari sesi</button></div></dialog>

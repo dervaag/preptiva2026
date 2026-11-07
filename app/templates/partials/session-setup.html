@@ -1,0 +1,89 @@
+{% from 'partials/setup-icons.html' import icon %}
+{% from 'partials/custom-select.html' import select_field %}
+<div class="setup-shell">
+  <section class="setup-preview" id="setup-preview-panel" aria-labelledby="setup-title">
+    <div class="setup-preview-heading">
+      <h1 id="setup-title">Siapkan Ruang Wawancara</h1>
+      <p>Cek kamera dan mikrofon, lalu lengkapi<br class="setup-desktop-break"> detail wawancara di sebelah kanan.</p>
+    </div>
+    <div class="setup-camera-frame">
+      <video id="setup-camera" autoplay muted playsinline aria-label="Pratinjau kamera Anda"></video>
+      <div class="setup-camera-placeholder" id="setup-camera-placeholder">
+        <span>Kamera belum aktif</span>
+        <svg class="setup-silhouette" viewBox="0 0 240 230" fill="currentColor" aria-hidden="true"><ellipse cx="120" cy="70" rx="43" ry="49"/><path d="M22 230v-20c0-48 43-76 98-76s98 28 98 76v20Z"/></svg>
+      </div>
+      <span class="setup-preview-name" id="setup-preview-name">{{ user.name }}</span>
+      <span class="setup-preview-local">Pratinjau lokal</span>
+    </div>
+    <div class="setup-device-controls" role="group" aria-label="Perangkat pratinjau">
+      <button class="setup-device-button" id="setup-camera-toggle" type="button" aria-label="Aktifkan kamera" title="Aktifkan kamera" aria-pressed="false">{{ icon('camera') }}</button>
+      <button class="setup-device-button" id="setup-mic-toggle" type="button" aria-label="Aktifkan mikrofon" title="Aktifkan mikrofon" aria-pressed="false">{{ icon('mic') }}</button>
+      <button class="setup-device-button" id="setup-mirror-toggle" type="button" aria-label="Mirror kamera" title="Mirror kamera" aria-pressed="false">{{ icon('mirror') }}</button>
+      <button class="setup-device-button" id="setup-fullscreen-toggle" type="button" aria-label="Buka fullscreen" title="Buka fullscreen" aria-pressed="false">{{ icon('fullscreen') }}</button>
+    </div>
+    <div class="setup-device-status"><span id="setup-device-status" role="status">Kamera dan mikrofon nonaktif</span><meter id="setup-mic-meter" min="0" max="100" value="0" aria-label="Level mikrofon" hidden></meter></div>
+    <p class="setup-device-error" id="setup-device-error" role="alert" hidden></p>
+    <p class="setup-privacy">{{ icon('lock') }} Pratinjau ini tidak direkam</p>
+  </section>
+
+  <form id="session-form" class="setup-options">
+    <div class="setup-options-scroll">
+      {% if not configured %}<div class="setup-notice" role="status">Wawancara belum tersedia. Hubungi pengelola untuk mengaktifkan layanan AI.</div>{% endif %}
+      <details class="setup-section setup-persona-section" open>
+        <summary><h2>{{ icon('users') }} Pilih pewawancara</h2><span class="setup-collapse-icon">{{ icon('chevron') }}</span></summary>
+        <div class="setup-section-content">
+          <fieldset class="setup-personas"><legend class="sr-only">Persona pewawancara</legend>
+            {% for value, name, role, description in [
+              ('hr', 'Rina', 'HR', 'Rina · HR. Menggali motivasi, kolaborasi, dan potensi belajar Anda.'),
+              ('user', 'Andi', 'User', 'Andi · Calon atasan langsung. Menggali praktik teknis/fungsional, pemecahan masalah, dan cara belajar sesuai posisi.'),
+              ('manager', 'Pak Hendra', 'Manager', 'Pak Hendra · Manager. Menggali kepemimpinan, pengambilan keputusan, dan dampak bisnis.')
+            ] %}
+            <label class="setup-persona setup-persona--{{ value }}">
+              <input type="radio" name="interviewer" value="{{ value }}" data-description="{{ description }}" {{ 'checked' if value == 'hr' }}>
+              <span class="setup-persona-check" aria-hidden="true">✓</span>
+              <span class="setup-persona-avatar" aria-hidden="true"><svg viewBox="0 0 64 64"><path d="M12 64V53a20 20 0 0 1 40 0v11Z" fill="currentColor"/><ellipse cx="32" cy="26" rx="12" ry="15" fill="#dca77e"/><path d="M20 25v-5a12 12 0 0 1 24 0v5l-4-7-16 2Z" fill="#554436"/></svg></span>
+              <strong>{{ name }}</strong><span class="setup-persona-role">{{ role }}</span>
+            </label>
+            {% endfor %}
+          </fieldset>
+          <p class="setup-helper setup-persona-description" id="setup-persona-description">Rina · HR. Menggali motivasi, kolaborasi, dan potensi belajar Anda.</p>
+          {{ select_field('language', 'Bahasa wawancara', [('id', 'Bahasa Indonesia'), ('en', 'English')], 'id', '/ Interview language') }}
+          <p class="setup-helper">Pewawancara mengikuti bahasa sesi. Jawaban campuran Indonesia–English tetap diterima.</p>
+          <fieldset class="setup-question-count"><legend>Jumlah pertanyaan</legend>
+            <div class="setup-question-options">{% for count, name in [(3, 'Pemanasan'), (5, 'Singkat'), (7, 'Standar')] %}
+              <label class="setup-question-choice"><input type="radio" name="question_count" value="{{ count }}" {{ 'checked' if count == 7 }}><strong>{{ count }}</strong><span>{{ name }}</span></label>
+            {% endfor %}</div>
+          </fieldset>
+        </div>
+      </details>
+
+      <details class="setup-section setup-context" id="setup-context">
+        <summary><div><h2>{{ icon('file') }} Detail kandidat &amp; posisi</h2><p>Lengkapi CV dan konteks latihan Anda.</p></div><span class="setup-collapse-icon">{{ icon('chevron') }}</span></summary>
+        <div class="setup-section-content setup-context-fields">
+          <label class="setup-field">Nama kandidat<input name="candidate_name" value="{{ user.name }}" required minlength="2" maxlength="120" autocomplete="name"></label>
+          <div class="setup-field-row">
+            {{ select_field('gender', 'Gender', [('male', 'Laki-laki'), ('female', 'Perempuan')], user.gender or 'male') }}
+            <label class="setup-field">Usia<input type="number" name="age" min="15" max="80" value="{{ user.age or '' }}" required></label>
+          </div>
+          <div class="setup-cv-box">
+            <label class="setup-field">CV dalam PDF<input type="file" name="cv_pdf" accept="application/pdf,.pdf"></label>
+            <p class="setup-helper">PDF berteks, maksimal 5 MB dan 30 halaman.</p>
+            <label class="setup-field" for="setup-cv-text">Atau tempel teks CV<textarea id="setup-cv-text" name="cv_text" rows="5" maxlength="60000" placeholder="Ceritakan pengalaman, pendidikan, dan keahlian Anda. Minimal 200 karakter."></textarea></label>
+            <label class="setup-check"><input type="checkbox" name="use_last_cv" value="true" {{ 'disabled' if not user.last_cv_text }}>Gunakan CV terakhir yang tersimpan</label>
+            {% if not user.last_cv_text %}<p class="setup-helper">Belum ada CV yang tersimpan di akun ini.</p>{% endif %}
+          </div>
+          <label class="setup-field">Posisi pekerjaan<input name="job_role" placeholder="Contoh: Product Designer" required minlength="2" maxlength="150"></label>
+          <div class="setup-field-row">
+            {{ select_field('level', 'Level', [('junior', 'Junior'), ('middle', 'Middle'), ('senior', 'Senior'), ('manager', 'Manager')], 'middle') }}
+            <label class="setup-field">Industri<input name="industry" placeholder="Contoh: Teknologi" required minlength="2" maxlength="80"></label>
+          </div>
+          <label class="setup-field">Perusahaan <span class="setup-field-translation">(opsional)</span><input name="company" placeholder="Nama perusahaan" maxlength="150"></label>
+          <label class="setup-field">Deskripsi pekerjaan<textarea name="job_description" rows="5" required minlength="30" maxlength="40000" placeholder="Tempel tanggung jawab dan kualifikasi posisi yang ingin Anda latih."></textarea></label>
+        </div>
+      </details>
+      <label class="setup-check setup-consent"><input type="checkbox" name="consent" value="true" required>Saya setuju CV dan audio jawaban diproses provider AI untuk latihan. Transkrip tetap tersimpan.</label>
+      <div class="setup-form-error" id="form-error" role="alert" hidden></div>
+    </div>
+    <div class="setup-actions"><a class="setup-cancel" href="/dashboard">Batal</a><button class="setup-submit" type="submit"><span>Siapkan wawancara</span>{{ icon('arrow') }}</button></div>
+  </form>
+</div>

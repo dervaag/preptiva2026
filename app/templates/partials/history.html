@@ -1,0 +1,25 @@
+{% from 'partials/custom-select.html' import select_field %}
+<div class="workspace-heading">
+  <div><h1>Riwayat latihan</h1><p>Semua sesi, jawaban, dan hasil Anda.</p></div>
+  <a class="ws-button" href="/simulasi/baru"><span>Simulasi baru</span>{{ icon('arrow') }}</a>
+</div>
+{% include 'partials/workspace-state.html' %}
+<div id="workspace-data" hidden>
+  <section class="ws-panel ws-history" aria-label="Daftar latihan">
+    <div class="ws-history-tabs" id="history-tabs" role="group" aria-label="Status sesi">
+      <button type="button" data-history-status="all" aria-pressed="true">Semua <span data-count>0</span></button>
+      <button type="button" data-history-status="done" aria-pressed="false">Selesai <span data-count>0</span></button>
+      <button type="button" data-history-status="active" aria-pressed="false">Aktif <span data-count>0</span></button>
+      <button type="button" data-history-status="failed" aria-pressed="false">Ditutup <span data-count>0</span></button>
+    </div>
+    <div class="ws-history-tools">
+      <label class="ws-search" for="history-search"><span>Cari sesi</span><span class="ws-search-field"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input id="history-search" type="search" placeholder="Posisi, perusahaan, atau pewawancara" autocomplete="off"></span></label>
+      {{ select_field('history_interviewer', 'Pewawancara', [('all', 'Semua pewawancara'), ('hr', 'Rina · HR'), ('user', 'Andi · User'), ('manager', 'Pak Hendra · Manager')], 'all') }}
+      {{ select_field('history_sort', 'Urutkan', [('newest', 'Terbaru'), ('oldest', 'Terlama'), ('score', 'Skor tertinggi')], 'newest') }}
+    </div>
+    <div class="ws-history-meta"><p id="history-count" role="status" aria-live="polite"></p><button id="history-reset" class="ws-text-link" type="button" hidden>Reset filter</button></div>
+    {% include 'partials/session-columns.html' %}
+    <div id="history-list" class="ws-session-list"></div>
+    <div class="ws-pagination" aria-label="Halaman riwayat"><span id="history-page"></span><div><button id="history-prev" class="ws-page-button" type="button" aria-label="Halaman sebelumnya" disabled><span aria-hidden="true">‹</span><span>Sebelumnya</span></button><button id="history-next" class="ws-page-button" type="button" aria-label="Halaman berikutnya" disabled><span>Berikutnya</span><span aria-hidden="true">›</span></button></div></div>
+  </section>
+</div>

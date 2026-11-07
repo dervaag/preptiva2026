@@ -65,3 +65,46 @@
 - Menambahkan snapshot rubrik, validasi dokumen, chunking, follow-up terbatas, skor berbobot, Docker, serta pengujian otomatis dengan provider terinjeksi.
 - Perbedaan terhadap rancangan historis dan batas verifikasi dicatat di [status implementasi](implementation-status.md).
 
+
+## 2026-11-07 — Logo dan ikon Preptiva
+
+- Menggunakan wordmark WebP dari pemilik proyek pada sidebar, halaman login/daftar, dan footer melalui macro template yang sama.
+- Menggunakan ikon PNG dari pemilik proyek untuk favicon dan Apple touch icon. Kedua aset disalin utuh, tanpa modifikasi gambar.
+- Menetapkan ukuran responsif, teks alternatif, dan tautan logo ke beranda/dashboard. CSS hanya membingkai ruang transparan wordmark; bidang putih di halaman autentikasi menjaga tulisan hitam terbaca.
+- Lingkup desain: penggantian identitas pada UI yang sudah ada, ENERGY 1 / RHYTHM 1 / MOTION 1, tanpa animasi logo baru.
+- Verifikasi lingkup logo: aset WebP/PNG mengembalikan HTTP 200; login/daftar dan dashboard diperiksa pada 320, 390, 768, dan 1440 px, ditambah dashboard 1024 px, tanpa overflow horizontal. Tautan logo autentikasi diuji lewat Tab/Enter; logo sidebar dan footer diuji lewat klik menuju dashboard. Gambar memiliki alt dan dimensi; fokus keyboard disesuaikan untuk latar terang/gelap. Tidak ada error/warning console pada pemeriksaan dashboard.
+
+## 2026-11-07: Simbol sementara dan teks Preptiva
+
+- Mengganti wordmark pada macro logo dengan simbol oranye terbaru dari pemilik proyek dan teks HTML Preptiva di sebelah kanan, mengikuti susunan referensi penggunaan.
+- Memakai DM Sans 400 yang sudah dimuat aplikasi, dengan jarak huruf rapat untuk mendekati contoh sans-serif tipis. Nama font persis pada gambar referensi tidak diketahui.
+- Membingkai PNG asli dalam SVG mandiri agar margin putih tidak mengecilkan simbol. Data PNG tetap utuh; bingkai yang sama dipakai logo halaman dan favicon. Apple touch icon memakai PNG yang sama.
+- Ukuran simbol dan teks disesuaikan untuk sidebar, autentikasi, footer, dan layar kecil. Teks nama menjadi nama aksesibel tautan; simbol di sampingnya dekoratif. Arah ENERGY 1 / RHYTHM 1 / MOTION 1 tetap, gradien berasal dari aset pengguna.
+- Verifikasi: login pada 320/1440 px, daftar pada 390 px, dashboard pada 320/390/768/1024/1440 px tanpa overflow horizontal; simbol termuat di semua penempatan. DM Sans 400 terkonfirmasi dimuat, favicon SVG HTTP 200, navigasi logo login lewat Tab/Enter serta klik sidebar/footer berfungsi. Tidak ada error/warning console pada pemeriksaan dashboard.
+
+## 2026-11-07: Redesign form simulasi baru
+
+- Mengikuti referensi pemilik proyek: top bar horizontal, layout dua panel, preview kamera lokal, pilihan persona, bahasa dan jumlah soal. DM Sans dan aksen oranye mengikuti logo terbaru.
+- Mempertahankan seluruh input wajib/API multipart; detail kandidat/CV/JD dapat dibuka dan otomatis terbuka saat validasi. Loading/error submit memulihkan isi tombol.
+- Menambahkan kontrol kamera/mikrofon terpisah, meter mikrofon, mirror, fullscreen, penanganan izin dan cleanup perangkat termasuk hasil izin yang terlambat setelah navigasi. Preview tidak merekam/mengunggah audio/video.
+- Gaya hanya dimuat untuk halaman form. Perilaku dan batas implementasi ada di [session-setup.md](session-setup.md).
+- Verifikasi: 21 tes backend, setup smoke responsif/keyboard/permission lifecycle/payload/error, dan alur Chrome login sampai hasil tiga pertanyaan dengan provider tiruan lulus. Review independen menemukan clipping pada desktop pendek; reproducer gagal sebelum perbaikan dan lolos sesudahnya. Preview desktop/mobile diperiksa. Perangkat fisik dan browser non-Chromium belum diuji.
+
+## 2026-11-07: Dropdown custom dan chevron seragam
+
+- Mengganti select browser Bahasa, Gender, dan Level dengan satu macro/komponen custom. Trigger dan menu mengikuti DM Sans, panel putih, aksen oranye, dan pilihan bertanda centang.
+- Menyamakan bentuk/ukuran/posisi chevron dropdown dan accordion. Menu berada di atas panel scroll dan dapat membuka ke atas ketika ruang viewport terbatas.
+- Menjaga nama/nilai API melalui hidden input, event input/change dan reset. Mendukung pointer, sentuhan, panah/Home/End, ketik huruf, Enter/Space, Escape, Tab, klik di luar, serta hanya satu menu aktif.
+- Verifikasi: tes dropdown dan setup smoke lulus; alur Chrome login sampai hasil tiga pertanyaan dengan provider tiruan lulus di salinan sementara. Review independen memeriksa semua dropdown pada 320x480 sampai 1440x768 tanpa temuan baru. Tidak ada panggilan provider berbayar.
+
+## 2026-11-07: Ruang sesi dengan tampilan meeting
+
+- Menambahkan stage pewawancara, preview kandidat, percakapan terstruktur, toolbar compact, dan modal pemeriksaan kamera/mikrofon/speaker/koneksi sebelum mulai. Countdown 3-2-1 mendahului intro.
+- Menggunakan karakter 3D orisinal Rina, Andi, dan Pak Hendra dari image_gen bawaan. Ekspresi sprite mengikuti audio, dengan kedip/idle serta kontrol animasi dan reduced motion.
+- Menjaga rekaman, retry, transkrip streaming, dan hasil; memperbaiki duplikasi playback follow-up serta pemulihan audio/upload. Menambahkan cleanup media dan konfirmasi keluar.
+- Memperbaiki dua temuan review: toolbar layar pendek dapat dicapai dengan scroll, dan state awal dimuat kembali setelah pemulihan back-forward cache. Keduanya memiliki regresi yang gagal sebelum perbaikan.
+- Menambahkan verifikasi wajib PC/laptop sesuai instruksi tambahan: HP/tablet/iPad mode desktop diblokir pada UI, akses media, serta API start. Penolakan tidak mengubah status sesi; laptop layar sentuh tetap didukung.
+- Memadatkan modal menjadi `Cek perangkat`, preview kiri dan pemeriksaan ringkas kanan, tanpa eyebrow/badge dekoratif. Menghapus teks motivasi serta progres dan catatan privasi yang berulang dari ruang sesuai masukan pemilik proyek.
+- Mengubah chat mengikuti referensi DM: bubble pewawancara putih di kiri, kandidat biru di kanan, pesan berurutan dikelompokkan, animasi masuk singkat, dan indikator pemrosesan sesuai aktivitas sebenarnya. Teks putih di biru memiliki kontras 5.17:1.
+- Verifikasi chat: 14 skenario controller dan smoke Chrome empat jawaban sampai hasil lulus. Review terisolasi mengonfirmasi scrollback, tombol pesan baru, penggantian transkrip tanpa duplikasi, cleanup indikator, reduced motion, dan overflow teks pada 320–1440 px. Sesi nyata tidak disentuh.
+- Verifikasi: 22 tes backend, 12 skenario controller, dan smoke Chrome yang memeriksa blokir tiga jenis mobile lalu desktop empat turn termasuk follow-up sampai hasil lulus memakai database/provider/perangkat sintetis. Pengujian tidak mengirim start/close ke sesi asli. Perangkat fisik dan browser non-Chromium belum diuji. Perilaku dan prompt aset dicatat di [interview-room.md](interview-room.md).
