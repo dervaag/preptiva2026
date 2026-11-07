@@ -1,5 +1,11 @@
 # Log perubahan
 
+## 2026-11-07 — Penyelarasan tes generator panel dengan penutup bilingual
+
+- Memperbarui ekspektasi tes panel yang masih mengharapkan penutup mentah dari provider setelah penutup standar diterapkan. Tes kini memeriksa bahasa Indonesia/Inggris, pemisahan prompt HR/User/Manager dan urutan panel dalam satu alur generasi.
+- Mempertahankan kebijakan penutup standar tanpa ajakan Q&A; kegagalan CI berasal dari ekspektasi tes lama.
+- Verifikasi lokal: 211 tes Python dijalankan, 210 lulus dan 1 khusus PostgreSQL dilewati pada SQLite; sintaks JavaScript, helper UI dan 29 skenario controller lulus tanpa panggilan AI berbayar.
+
 ## 2026-11-07 — Penutup tidak mengundang kandidat bertanya lalu menutup sesi
 
 - Mengganti slot baru `candidate_questions` menjadi `reflection` dan menolak ajakan Q&A di validasi pertanyaan/adaptasi. Tidak menambahkan fase kandidat bertanya kepada panel.

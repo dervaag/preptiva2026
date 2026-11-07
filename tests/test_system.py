@@ -867,19 +867,24 @@ class GuidebookTests(unittest.IsolatedAsyncioTestCase):
             validate_questions([q],[{'slot':'opening'}],'hr',[])
 
     async def test_generation_uses_separate_prompts_and_voices_by_plan(self):
+        from app.ai.closing import closing_text
         context = self.context(['hr','user','manager'])
         async def complete(system, data, **kwargs):
             return {'intro':'Selamat datang.', 'closing':'Penutup ' + data['interviewer'], 'questions':[
                 {'slot':s['slot'],'category':'Latihan','question_text':s['angle']+'?', 'anchor_id':'cv1',
                  'expected_points':['Concrete example'], 'competencies':s['competencies']} for s in data['blueprint']]}
-        with patch('app.ai.orchestrator.complete', side_effect=complete) as calls:
-            result = await orchestrator.build_questions(context, {'hr':[], 'user':[], 'manager':[]})
-        self.assertEqual(calls.call_count,3)
-        self.assertEqual([c.args[1]['interviewer'] for c in calls.call_args_list], ['hr','user','manager'])
-        self.assertNotIn('requirements', str(calls.call_args_list[0].args[1]))
-        self.assertEqual([s['interviewer'] for s in result['plan']], ['hr','user','manager'])
-        self.assertEqual(len(result['questions']),3)
-        self.assertEqual(result['closing'], 'Penutup manager')
+        for language in ('id', 'en'):
+            with self.subTest(language=language):
+                context['language'] = language
+                with patch('app.ai.orchestrator.complete', side_effect=complete) as calls:
+                    result = await orchestrator.build_questions(context, {'hr':[], 'user':[], 'manager':[]})
+                self.assertEqual(calls.call_count,3)
+                self.assertEqual([c.args[1]['interviewer'] for c in calls.call_args_list], ['hr','user','manager'])
+                self.assertEqual([c.args[1]['language'] for c in calls.call_args_list], [language] * 3)
+                self.assertNotIn('requirements', str(calls.call_args_list[0].args[1]))
+                self.assertEqual([s['interviewer'] for s in result['plan']], ['hr','user','manager'])
+                self.assertEqual(len(result['questions']),3)
+                self.assertEqual(result['closing'], closing_text(language))
 
     async def test_adaptation_repairs_repetition_and_retains_grounding(self):
         from app.ai.guidebook import role_context
