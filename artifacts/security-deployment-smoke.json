@@ -1,0 +1,370 @@
+{
+  "executed": true,
+  "ok": true,
+  "status": "passed",
+  "synthetic_account_created": true,
+  "synthetic_account_deleted": true,
+  "cleanup_attempted": false,
+  "cleanup_complete": true,
+  "provider_calls": 0,
+  "interview_sessions_created": 0,
+  "requests_sent": 32,
+  "checks": [
+    {
+      "name": "unauthenticated_rejected",
+      "passed": true,
+      "status_code": 401,
+      "expected_status": 401
+    },
+    {
+      "name": "synthetic_registration",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200
+    },
+    {
+      "name": "session_cookie_protected",
+      "passed": true
+    },
+    {
+      "name": "first_login_active",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200
+    },
+    {
+      "name": "first_login_active_owns_synthetic_account",
+      "passed": true
+    },
+    {
+      "name": "private_api_no_store",
+      "passed": true
+    },
+    {
+      "name": "private_api_nosniff",
+      "passed": true
+    },
+    {
+      "name": "private_api_frame_protection",
+      "passed": true
+    },
+    {
+      "name": "second_login_rejected",
+      "passed": true,
+      "status_code": 409,
+      "expected_status": 409
+    },
+    {
+      "name": "first_login_survives_rejection",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200
+    },
+    {
+      "name": "first_login_survives_rejection_owns_synthetic_account",
+      "passed": true
+    },
+    {
+      "name": "session_policy_available",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200
+    },
+    {
+      "name": "one_session_policy",
+      "passed": true
+    },
+    {
+      "name": "first_logout",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200
+    },
+    {
+      "name": "second_login_after_logout",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200
+    },
+    {
+      "name": "old_cookie_revoked",
+      "passed": true,
+      "status_code": 401,
+      "expected_status": 401
+    },
+    {
+      "name": "second_login_active",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200
+    },
+    {
+      "name": "second_login_active_owns_synthetic_account",
+      "passed": true
+    },
+    {
+      "name": "retention_policy_available",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200
+    },
+    {
+      "name": "retention_policy_7_90",
+      "passed": true
+    },
+    {
+      "name": "private_page_available",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200
+    },
+    {
+      "name": "private_page_no_store",
+      "passed": true
+    },
+    {
+      "name": "private_page_nosniff",
+      "passed": true
+    },
+    {
+      "name": "private_page_frame_protection",
+      "passed": true
+    },
+    {
+      "name": "cross_origin_mutation_rejected",
+      "passed": true,
+      "status_code": 403,
+      "expected_status": 403
+    },
+    {
+      "name": "cross_origin_did_not_logout",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200
+    },
+    {
+      "name": "cross_origin_did_not_logout_owns_synthetic_account",
+      "passed": true
+    },
+    {
+      "name": "synthetic_cv_saved",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200
+    },
+    {
+      "name": "synthetic_cv_roundtrip",
+      "passed": true
+    },
+    {
+      "name": "wrong_reauthentication_rejected",
+      "passed": true,
+      "status_code": 403,
+      "expected_status": 403
+    },
+    {
+      "name": "cv_after_rejected_delete_available",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200
+    },
+    {
+      "name": "wrong_password_preserves_cv",
+      "passed": true
+    },
+    {
+      "name": "wrong_confirmation_rejected",
+      "passed": true,
+      "status_code": 422,
+      "expected_status": 422
+    },
+    {
+      "name": "saved_cv_deleted",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200
+    },
+    {
+      "name": "saved_cv_receipt_object",
+      "passed": true
+    },
+    {
+      "name": "saved_cv_receipt_contains_only_receipt_fields",
+      "passed": true
+    },
+    {
+      "name": "saved_cv_receipt_scope",
+      "passed": true
+    },
+    {
+      "name": "saved_cv_receipt_complete",
+      "passed": true
+    },
+    {
+      "name": "saved_cv_receipt_counts",
+      "passed": true,
+      "saved_cvs": 1,
+      "sessions": 0
+    },
+    {
+      "name": "saved_cv_receipt_json_downloadable",
+      "passed": true
+    },
+    {
+      "name": "saved_cv_gone",
+      "passed": true
+    },
+    {
+      "name": "synthetic_history_available",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200
+    },
+    {
+      "name": "synthetic_history_empty",
+      "passed": true
+    },
+    {
+      "name": "empty_history_deleted",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200
+    },
+    {
+      "name": "history_receipt_object",
+      "passed": true
+    },
+    {
+      "name": "history_receipt_contains_only_receipt_fields",
+      "passed": true
+    },
+    {
+      "name": "history_receipt_scope",
+      "passed": true
+    },
+    {
+      "name": "history_receipt_complete",
+      "passed": true
+    },
+    {
+      "name": "history_receipt_counts",
+      "passed": true,
+      "sessions": 0,
+      "questions": 0,
+      "answers": 0
+    },
+    {
+      "name": "history_receipt_json_downloadable",
+      "passed": true
+    },
+    {
+      "name": "owned_receipts_available",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200
+    },
+    {
+      "name": "owned_receipts_include_actions",
+      "passed": true
+    },
+    {
+      "name": "login_attempt_1",
+      "passed": true,
+      "status_code": 401,
+      "expected_status": 401
+    },
+    {
+      "name": "login_attempt_2",
+      "passed": true,
+      "status_code": 401,
+      "expected_status": 401
+    },
+    {
+      "name": "login_attempt_3",
+      "passed": true,
+      "status_code": 401,
+      "expected_status": 401
+    },
+    {
+      "name": "login_attempt_4",
+      "passed": true,
+      "status_code": 401,
+      "expected_status": 401
+    },
+    {
+      "name": "login_attempt_5",
+      "passed": true,
+      "status_code": 401,
+      "expected_status": 401
+    },
+    {
+      "name": "login_attempt_6",
+      "passed": true,
+      "status_code": 429,
+      "expected_status": 429
+    },
+    {
+      "name": "login_limit_retry_after",
+      "passed": true
+    },
+    {
+      "name": "active_login_survives_attempt_limit",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200
+    },
+    {
+      "name": "active_login_survives_attempt_limit_owns_synthetic_account",
+      "passed": true
+    },
+    {
+      "name": "synthetic_account_deleted",
+      "passed": true,
+      "status_code": 200,
+      "expected_status": 200
+    },
+    {
+      "name": "account_receipt_object",
+      "passed": true
+    },
+    {
+      "name": "account_receipt_contains_only_receipt_fields",
+      "passed": true
+    },
+    {
+      "name": "account_receipt_scope",
+      "passed": true
+    },
+    {
+      "name": "account_receipt_complete",
+      "passed": true
+    },
+    {
+      "name": "account_receipt_counts",
+      "passed": true,
+      "accounts": 1,
+      "sessions": 0
+    },
+    {
+      "name": "account_receipt_json_downloadable",
+      "passed": true
+    },
+    {
+      "name": "deleted_account_cookie_revoked",
+      "passed": true,
+      "status_code": 401,
+      "expected_status": 401
+    },
+    {
+      "name": "deleted_account_receipts_private",
+      "passed": true,
+      "status_code": 401,
+      "expected_status": 401
+    }
+  ],
+  "tls": true,
+  "tested_revision": "57e325eb08035f5ddbe866b95d8c714e7719a836",
+  "public_url": "https://buoy-s5yqbu.runkiri.cloud",
+  "workflow_url": "https://github.com/dervaag/preptiva2026/actions/runs/42353872885",
+  "evidence_recorded_at": "2026-11-07T08:12:14.035125+00:00"
+}

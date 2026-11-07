@@ -82,6 +82,25 @@ Setelah mengubah kode atau `.env`, jalankan `up` lagi agar image/container diper
 
 ## Operasional
 
+### Menyiapkan akun melalui seeder
+
+Jalankan manual dari terminal interaktif; password diminta dua kali dengan input tersembunyi:
+
+```sh
+docker --context kiri exec -it preptiva-web-1 \
+  python -m app.scripts.seed_account --email pengguna@example.com --name "Nama Pengguna"
+```
+
+Seeder memakai database yang dikonfigurasi pada container. Status `created` berarti akun baru dibuat; `existing` berarti akun sudah tersedia dengan password yang sama. Pemanggilan ulang mempertahankan profil/CV. Jika password berbeda, status `existing_password_differs` dan exit code 2 menandakan tidak ada perubahan. Tambahkan `--reset-password` hanya untuk reset yang disengaja; reset mengganti password dan mencabut login akun tersebut.
+
+Untuk otomasi, sediakan secret sementara `PREPTIVA_SEED_PASSWORD` dalam environment proses atau gunakan `--password-stdin` melalui pipe privat. Hindari password pada argumen command, kode, Git, atau file dokumentasi. Nama dapat diberikan lewat `--name`; gender/usia dibiarkan kosong sampai pengguna mengisinya.
+
+Untuk database lokal sesuai `.env`, gunakan perintah yang sama tanpa pembungkus Docker:
+
+```sh
+python -m app.scripts.seed_account --email pengguna@example.com --name "Nama Pengguna"
+```
+
 Pembaruan keamanan menolak login browser kedua dan meminta semua pengguna login kembali sekali. Worker menjalankan retensi audio 7 hari serta riwayat 90 hari saat startup dan setiap jam; CV profil tidak kedaluwarsa otomatis. Pratinjau hitungan tanpa menghapus data:
 
 ```sh

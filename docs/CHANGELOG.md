@@ -1,5 +1,11 @@
 # Log perubahan
 
+## 2026-11-07 — Seeder akun manual
+
+- Menambahkan `python -m app.scripts.seed_account --email ... --name ...` dengan password melalui prompt tersembunyi, secret environment sementara atau stdin; password tidak dimasukkan ke argumen command/kode.
+- Pemanggilan ulang atomik tidak menggandakan akun atau menimpa profil/CV. Password yang berbeda dilaporkan tanpa perubahan; `--reset-password` menyediakan reset eksplisit dengan pencabutan login akun terkait.
+- Menambahkan regresi akun baru, pemanggilan ulang/bersamaan, preservasi profil/login, reset terarah, serta redaksi input tidak valid. Petunjuk: [deployment Kiri](deployment-kiri.md#menyiapkan-akun-melalui-seeder).
+
 ## 2026-11-07 — Keamanan akun, penghapusan dan retensi
 
 - Membatasi percobaan login per akun dan peer IP dengan penghitung database atomik, respons 429 dan `Retry-After`. Satu akun memiliki satu token aktif; browser kedua ditolak 409. Logout/password baru mencabut token, dengan kedaluwarsa idle 30 menit dan mutlak 12 jam.
