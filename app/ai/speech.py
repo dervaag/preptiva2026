@@ -69,3 +69,51 @@ async def transcribe(content, filename, language):
             files={'file': (filename, content)})
         check_response(response, 'OpenAI STT')
         return response.json()['text'].strip()
+
+
+def stream_cache(text, persona):
+    voice = getattr(settings, f'elevenlabs_voice_{persona}')
+    key = hashlib.sha256(json.dumps({'v':1, 'voice':voice, 'model':settings.elevenlabs_model_live,
+        'format':settings.elevenlabs_output_format,'language':settings.elevenlabs_language_code,'text':text},sort_keys=True).encode()).hexdigest()
+    return ROOT / 'data/tts_stream_cache' / (key+'.mp3')
+
+
+async def stream_audio(text, persona):
+    from app.services.locks import local_lock
+    target = stream_cache(text, persona)
+    temporary = target.with_suffix('.'+uuid4().hex+'.tmp')
+    voice = getattr(settings, f'elevenlabs_voice_{persona}')
+    payload = {'text':text, 'model_id':settings.elevenlabs_model_live}
+    if settings.elevenlabs_language_code and settings.elevenlabs_model_live.endswith('_v2_5'):
+        payload['language_code'] = settings.elevenlabs_language_code
+    try:
+        async with local_lock(('stream-tts', str(target))):
+            if settings.tts_cache and target.exists():
+                with target.open('rb') as file:
+                    while chunk := file.read(16384):
+                        yield chunk
+                return
+            target.parent.mkdir(parents=True, exist_ok=True)
+            async with tts_semaphore, httpx.AsyncClient(timeout=settings.tts_live_timeout_sec) as client:
+                async with client.stream('POST',f'https://api.elevenlabs.io/v1/text-to-speech/{voice}/stream',
+                        headers={'xi-api-key':settings.elevenlabs_api_key},params={'output_format':settings.elevenlabs_output_format},json=payload) as response:
+                    if response.status_code != 200:
+                        # Do not log provider bodies or headers.
+                        emit('tts_stream_failed', status=response.status_code)
+                        return
+                    size = 0
+                    with temporary.open('wb') as file:
+                        temporary.chmod(0o600)
+                        async for chunk in response.aiter_bytes():
+                            size += len(chunk)
+                            if size > 16*1024*1024:
+                                raise RuntimeError('Voice response too large.')
+                            file.write(chunk)
+                            yield chunk
+                    if size and settings.tts_cache:
+                        temporary.replace(target)
+                    emit('tts_stream_completed', chars=len(text), bytes=size)
+    except (httpx.HTTPError, RuntimeError) as exc:
+        emit('tts_stream_failed', error_type=type(exc).__name__)
+    finally:
+        temporary.unlink(missing_ok=True)

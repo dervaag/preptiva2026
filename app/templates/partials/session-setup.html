@@ -90,6 +90,10 @@
             {% if not user.last_cv_text %}<p class="setup-helper">Belum ada CV yang tersimpan di akun ini.</p>{% endif %}
           </div>
           <label class="setup-field">Posisi pekerjaan<input name="job_role" placeholder="Contoh: Product Designer" required minlength="2" maxlength="150"></label>
+          <section id="job-rubric-option" hidden>
+            <label class="setup-check"><input type="checkbox" name="use_job_rubric" value="true" disabled aria-describedby="job-rubric-description">Rubrik khusus Engineering Manager (draf)</label>
+            <p class="setup-helper" id="job-rubric-description">Draf untuk satu pewawancara Manager. Indikator dan bobot belum ditinjau ahli atau divalidasi.</p>
+          </section>
           <div class="setup-field-row">
             {{ select_field('level', 'Level', [('junior', 'Junior'), ('middle', 'Middle'), ('senior', 'Senior'), ('manager', 'Manager')], 'middle') }}
             <label class="setup-field">Industri<input name="industry" placeholder="Contoh: Teknologi" required minlength="2" maxlength="80"></label>

@@ -83,6 +83,12 @@ def main(url=URL):
             page.wait_for_function("document.querySelector('#stat-completed').textContent === '0'")
             page.goto(url+'/simulasi/baru')
             assert page.locator('#session-form').is_visible()
+            page.locator('#setup-context > summary').click()
+            page.locator('[name=job_role]').fill('Engineering Manager')
+            page.locator('#single-personas label:has(input[value=manager])').click()
+            assert page.locator('#job-rubric-option').is_visible()
+            assert not page.locator('[name=use_job_rubric]').is_checked()
+            page.locator('[name=use_job_rubric]').check()
             choose('interview_mode', 'panel')
             assert page.locator('#panel-personas').is_visible()
             assert not page.locator('#single-personas').is_visible()
@@ -91,8 +97,11 @@ def main(url=URL):
             assert page.locator('[name=panel]:checked').count() == 3
             page.locator('.setup-question-choice:has(input[value="3"])').click()
             assert page.locator('[name=question_count]:checked').input_value() == '3'
-            page.locator('#setup-context > summary').click()
             choose('career_stage', 'fresh_graduate')
+            assert page.locator('#job-rubric-option').is_hidden()
+            assert not page.locator('[name=use_job_rubric]').is_checked()
+            assert page.locator('[name=use_job_rubric]').is_disabled()
+            report['draft_em_rubric_opt_in_form'] = True
             report['panel_and_candidate_background_form'] = True
             page.locator('#logout').click()
             page.wait_for_url('**/login')

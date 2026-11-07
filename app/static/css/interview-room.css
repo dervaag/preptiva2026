@@ -65,6 +65,15 @@
 .meeting-answer-review {display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px;}
 .meeting-answer-review:has(> :not([hidden])) {padding: 8px 12px; border-radius: 12px; background: #fff; border: 1px solid var(--meeting-line);}
 .meeting-answer-review audio {height: 36px; max-width: 340px; margin: 0; flex: 1;}
+.meeting-live-review {display: grid; gap: 6px; flex-shrink: 0; padding: 12px 16px; border: 1px solid var(--meeting-line); border-radius: 12px; background: #fff;}
+.meeting-live-review label {font-size: 12px; font-weight: 500;}
+.meeting-live-review textarea {width: 100%; min-height: 68px; max-height: 150px; resize: vertical; border: 1px solid #8b8995; border-radius: 7px; padding: 8px 10px; font: inherit; font-size: 12px; line-height: 1.6; color: var(--meeting-ink); background: #fff;}
+.meeting-live-review small {font-size: 10px; color: #69636b; line-height: 1.5;}
+.meeting-voice-options {grid-column: 1/-1; border-top: 1px solid #eeedf0; padding-top: 10px;}
+.meeting-voice-options summary {cursor: pointer; font-size: 11px; color: #635b67; padding: 6px 0;}
+.meeting-voice-options > div {display: grid; gap: 7px; padding: 7px 0 0;}
+.meeting-voice-options p {margin: -4px 0 3px 25px; font-size: 10px; line-height: 1.5; color: #69636b;}
+.meeting-dialog.is-text-mode .meeting-voice-options, .meeting-dialog.is-unsupported-device .meeting-voice-options {display: none;}
 .meeting-alert {padding: 10px 13px; color: #8e3514; background: #fff2e9; border: 1px solid #dcb299; border-radius: 10px; font-size: 12px; line-height: 1.65; max-height: 100px; overflow-y: auto;}
 .meeting-device-requirement {max-height: none; min-height: min-content; overflow: visible;}
 .meeting-device-requirement strong {font-size: 13px; font-weight: 550;}

@@ -9,17 +9,25 @@ FOCUS = {'hr': 'Learning potential, motivation, integrity, collaboration and ada
 SLOTS = ['opening', 'background', 'motivation', 'behavior', 'competency', 'decision', 'candidate_questions']
 
 
-def blueprint(count, uuid, personas=None, guide=None):
+def blueprint(count, uuid, personas=None, guide=None, assessment=None):
     from app.ai.guidebook import snapshot
     guide = guide or snapshot()
     personas = personas or ['hr']
     indices = [0, 3, 5] if count == 3 else [0, 1, 3, 5, 6] if count == 5 else range(7)
     rng = random.Random(uuid)
     pools = {p: rng.sample(guide['roles'][p]['angles'], len(guide['roles'][p]['angles'])) for p in personas}
+    job_keys = list((assessment or {}).get('weights', {})) if (assessment or {}).get('profile_id') else []
+    rng.shuffle(job_keys)
     result = []
     for order, i in enumerate(indices, 1):
         persona = personas[(order - 1) % len(personas)]
-        angle = pools[persona].pop()
+        if job_keys:
+            key = job_keys[(order-1) % len(job_keys)]
+            definition = assessment['competency_definitions'][key]
+            # The specialized purpose is fixed, while wording/examples remain CV-adaptive.
+            angle = {'id':f'em.{key}.{order}', 'intent':definition['definition'], 'competencies':[key]}
+        else:
+            angle = pools[persona].pop()
         result.append({'slot': SLOTS[i], 'angle': angle['intent'], 'intent_id': angle['id'],
                        'competencies': angle['competencies'], 'interviewer': persona, 'main_order': order})
     return result

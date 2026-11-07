@@ -50,7 +50,7 @@
 {% if user and page not in ('login', 'register', 'room') %}{% include 'partials/site-footer.html' %}{% endif %}
 </div></main>
 {% if user and page == 'room' %}{% include 'partials/site-footer.html' %}{% endif %}
-<div id="toast" class="toast" role="status" hidden></div><script src="{{ asset_url('js/app.js') }}" defer></script>{% if page == 'room' %}<script src="{{ asset_url('js/interview-room.js') }}" defer></script>{% endif %}
+<div id="toast" class="toast" role="status" hidden></div><script src="{{ asset_url('js/app.js') }}" defer></script>{% if page == 'room' %}<script src="{{ asset_url('js/realtime-voice.js') }}" defer></script><script src="{{ asset_url('js/interview-room.js') }}" defer></script>{% endif %}
 {% if page in ('form', 'dashboard', 'history', 'login', 'register') %}<script src="{{ asset_url('js/custom-select.js') }}" defer></script>{% endif %}
 {% if page in ('login', 'register') %}<script src="{{ asset_url('js/auth.js') }}" defer></script>{% endif %}
 {% if page == 'form' %}<script src="{{ asset_url('js/session-setup.js') }}" defer></script>{% endif %}

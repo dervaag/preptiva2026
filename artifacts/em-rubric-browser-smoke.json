@@ -1,0 +1,15 @@
+{
+  "ok": true,
+  "synthetic": true,
+  "paid_api_calls": false,
+  "human_validation": false,
+  "opt_in_scope": true,
+  "five_competencies": true,
+  "indicator_evidence_gap_sources": true,
+  "legacy_general_untouched": true,
+  "responsive_widths": [
+    390,
+    768,
+    1440
+  ]
+}

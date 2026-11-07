@@ -11,7 +11,8 @@ def public_question(q, session):
     role = speaker(session, q.main_order)
     return {'id': q.id, 'kind': q.kind, 'main_order': q.main_order, 'slot': q.slot, 'category': q.category,
             'interviewer': role, 'persona': PERSONAS[role],
-            'question_text': q.question_text, 'audio_url': f'/api/sessions/{session.uuid}/audio/{q.audio_file}' if q.audio_file else None}
+            'question_text': q.question_text, 'audio_url': f'/api/sessions/{session.uuid}/audio/{q.audio_file}' if q.audio_file else
+                f'/api/sessions/{session.uuid}/speech/question/{q.id}' if session.script.get('settings', {}).get('streaming_voice') else None}
 
 
 async def turns(db, session):

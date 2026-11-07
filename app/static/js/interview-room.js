@@ -14,7 +14,7 @@
     'avatar-motion-toggle', 'fullscreen', 'leave-room', 'leave-dialog', 'cancel-leave', 'confirm-leave', 'room-tools',
     'device-status', 'device-requirement', 'preflight-description', 'preflight-title', 'verification-status', 'preflight-body',
     'panel-members', 'participant-count', 'text-mode', 'use-text', 'text-answer-area', 'text-answer', 'send-text', 'stop-audio',
-    'interruption', 'interruption-status', 'retry-question', 'skip-question'];
+    'interruption', 'interruption-status', 'retry-question', 'skip-question', 'realtime-mode', 'auto-send', 'barge-in', 'live-review', 'live-transcript'];
   const elements = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
   const node = id => elements[id];
   const base = `/api/sessions/${encodeURIComponent(sid)}`;
@@ -28,6 +28,7 @@
   const spoken = new Set();
   const resultFlows = new Map();
   const waits = new Map();
+  const sentLatency = new Set();
 
   let state = null, current = null, stream = null, audioContext = null;
   let micSource = null, micAnalyser = null, audioSource = null, audioAnalyser = null;
@@ -45,6 +46,8 @@
   let motionEnabled = !reducedMotion?.matches, motionChosen = false, speaking = false, captionsEnabled = false;
   let captionText = '', deviceGeneration = 0, acquisitionId = 0, lifecycle = 0, retries = 0, recordingStart = 0;
   let sessionStartedAt = 0, lastAvatarUpdate = 0, newMessageCount = 0, lastMessageRole = null;
+  let realtimeVoice = null, realtimeAttempt = null, vadTimer = null, pendingBargeIn = false;
+  let endOfTurnAt = null, latencyAnswer = null;
 
   function storage(kind, method, key, value) {
     try {return window[kind]?.[method](key, value);} catch {return null;}
@@ -263,7 +266,13 @@
   }
   node('avatar-motion-toggle').addEventListener('click', () => {motionChosen = true; motionEnabled = !motionEnabled; renderMotion();});
   reducedMotion?.addEventListener?.('change', event => {if (!motionChosen) {motionEnabled = !event.matches; renderMotion();}});
-  interviewerAudio.addEventListener('playing', () => setSpeaking(true));
+  interviewerAudio.addEventListener('playing', () => {
+    setSpeaking(true);
+    if (available() && latencyAnswer != null && endOfTurnAt !== null && !sentLatency.has(latencyAnswer)) {
+      sentLatency.add(latencyAnswer);
+      postData(`${base}/voice-latency`, {answer_id: latencyAnswer, elapsed_ms: Math.min(300000, Math.max(0, Math.round(performance.now() - endOfTurnAt)))}).catch(() => {});
+    }
+  });
   for (const event of ['pause', 'ended', 'error', 'waiting', 'stalled']) interviewerAudio.addEventListener(event, () => setSpeaking(false));
   renderMotion();
   setSpeaking(false);
@@ -304,6 +313,7 @@
         interviewerAudio.removeEventListener('error', failed);
         if (playbackCancel === cancel) playbackCancel = null;
         playbackStop = null; node('stop-audio').hidden = true;
+        interviewerAudio.pause(); interviewerAudio.removeAttribute('src'); interviewerAudio.load();
         setSpeaking(false);
         cause ? reject(cause) : resolve();
       }
@@ -351,6 +361,7 @@
   }
   function stopStream() {
     deviceGeneration++;
+    cancelRealtime(); realtimeVoice?.destroy(); realtimeVoice = null;
     cancelAnimationFrame(meterFrame); meterFrame = null;
     micSource?.disconnect(); micSource = null; micAnalyser = null;
     const previous = stream; stream = null;
@@ -391,7 +402,7 @@
     pendingFlow = null; flowBusy = false; uploadBusy = false; interruptBusy = false; recoveryBusy = false; interruptionPending = false;
     node('resume-flow').hidden = true; node('retry-upload').hidden = true;
     node('record-controls').hidden = true; node('room-countdown').hidden = true;
-    node('text-answer-area').hidden = true; node('use-text').hidden = true; node('stop-audio').hidden = true;
+    node('text-answer-area').hidden = true; node('use-text').hidden = true; node('stop-audio').hidden = true; node('live-review').hidden = true;
     room.classList.remove('is-recording');
     checkReady();
   }
@@ -419,6 +430,7 @@
   }
   function stopQuestion() {
     lifecycle++;
+    cancelRealtime();
     clearInterval(recordingTimer); recordingTimer = null;
     for (const [timer, reject] of waits) {clearTimeout(timer); reject(interrupted());}
     waits.clear();
@@ -432,7 +444,7 @@
     recorded = null; pendingText = null; revokePreview();
     flowBusy = false; pendingFlow = null; recoveryBusy = false;
     setPhase('interrupted'); status('PERTANYAAN DIJEDA');
-    for (const id of ['record-controls', 'text-answer-area', 'use-text', 'stop-audio', 'retry-upload', 'replay', 'resume-flow', 'room-countdown']) node(id).hidden = true;
+    for (const id of ['record-controls', 'text-answer-area', 'use-text', 'stop-audio', 'retry-upload', 'replay', 'resume-flow', 'room-countdown', 'live-review']) node(id).hidden = true;
     node('answer-timer').textContent = '00:00'; node('interruption').hidden = false;
     node('retry-question').disabled = true; node('skip-question').disabled = true;
     if (current) markCandidate(current.id, 'Terhenti · Belum terkirim');
@@ -572,6 +584,7 @@
         }
       }));
       node('devices').textContent = 'Periksa ulang';
+      if (state?.script.settings?.streaming_voice) await setupRealtime(generation);
     } catch (cause) {
       acquired?.getTracks().forEach(track => track.stop());
       if (available() && generation === deviceGeneration) {stopStream(); showError('preflight-error', deviceError(cause)); node('devices').textContent = 'Coba lagi';}
@@ -583,6 +596,74 @@
     }
   }
   node('devices').addEventListener('click', acquireDevices);
+  function cancelRealtime() {
+    const attempt = realtimeAttempt;
+    realtimeAttempt = null; pendingBargeIn = false;
+    clearTimeout(vadTimer); vadTimer = null;
+    realtimeVoice?.cancel();
+    node('live-review').hidden = true; node('live-transcript').value = '';
+    if (attempt) {
+      const key = `candidate:q:${attempt.questionId}`;
+      const message = messages.get(key);
+      if (message) {message.outer.remove(); messages.delete(key); lastMessageRole = lastMessageAuthor = null;}
+      node('transcript').textContent = ''; node('transcript').hidden = true;
+    }
+  }
+  function realtimeCurrent(attempt = realtimeAttempt) {
+    return !!attempt && available() && active && attempt === realtimeAttempt && attempt.token === lifecycle &&
+      attempt.questionId === current?.id && attempt.voice === realtimeVoice;
+  }
+  function realtimeFailed(cause, attempt) {
+    if (!realtimeCurrent(attempt)) return;
+    cancelRealtime(); clearInterval(recordingTimer); recordingTimer = null;
+    if (cause.transportLost || navigator.onLine === false) {interruptQuestion('offline'); return;}
+    node('realtime-mode').checked = false;
+    setPhase('answer-ready'); status('GUNAKAN REKAMAN BIASA / TEKS');
+    node('record').hidden = false; node('record').disabled = !micOn(); node('record').textContent = 'Mulai jawab';
+    node('answer-timer').textContent = formatTime(state.answer_seconds);
+    renderAnswerMode(); showError('room-error', cause);
+  }
+  async function setupRealtime(generation) {
+    let voice;
+    try {
+      if (!window.RealtimeVoice) throw new Error('Audio realtime belum tersedia.');
+      voice = new window.RealtimeVoice(stream, {
+        onTranscript: text => {
+          if (!realtimeCurrent() || !['connecting', 'recording', 'transcribing'].includes(phase)) return;
+          candidateMessage(current.id, text, 'Transkrip sementara');
+        },
+        onSpeech: type => {
+          if (!realtimeCurrent() || phase !== 'recording') return;
+          clearTimeout(vadTimer); vadTimer = null;
+          if (type === 'speech_started') status('MENDENGARKAN ANDA');
+          else {
+            status(node('auto-send').checked ? 'JEDA BICARA · AKAN DIKIRIM' : 'JEDA TERDETEKSI · SILAKAN LANJUT');
+            const attempt = realtimeAttempt;
+            if (node('auto-send').checked) vadTimer = setTimeout(() => {
+              if (realtimeCurrent(attempt) && node('auto-send').checked && !document.hidden) stopRealtime(false, true);
+            }, 1800);
+          }
+        },
+        onActivity: () => {
+          if (voice !== realtimeVoice || !available() || !active || phase !== 'speaking' || !current || answerWithText ||
+            !micOn() || !node('barge-in').checked || !node('realtime-mode').checked || document.hidden) return;
+          // Only a question can hand control to the microphone; acknowledgements and closing keep their flow.
+          if (!playbackStop || !interviewerAudio.src || !captionText || captionText !== current.question_text) return;
+          pendingBargeIn = true; playbackStop();
+        },
+        onError: cause => {if (voice === realtimeVoice) realtimeFailed(cause, realtimeAttempt);}
+      });
+      realtimeVoice = voice;
+      await voice.initialize();
+      if (!available() || generation !== deviceGeneration || realtimeVoice !== voice) {voice.destroy(); return;}
+    } catch {
+      voice?.destroy();
+      if (!available() || generation !== deviceGeneration || (voice && realtimeVoice !== voice)) return;
+      realtimeVoice = null; node('realtime-mode').checked = false;
+      showError('preflight-error', 'Audio realtime tidak didukung di browser ini. Rekaman biasa dan teks tetap tersedia.');
+    }
+  }
+  node('auto-send').addEventListener('change', () => {if (!node('auto-send').checked) {clearTimeout(vadTimer); vadTimer = null;}});
   node('text-mode').addEventListener('change', () => {
     answerWithText = node('text-mode').checked;
     node('preflight').classList.toggle('is-text-mode', answerWithText);
@@ -743,7 +824,7 @@
   node('use-text').addEventListener('click', () => {
     if (!available() || !active || flowBusy || !['answer-ready', 'recorded'].includes(phase)) return;
     answerWithText = !answerWithText;
-    recorded = null; pendingText = null; revokePreview(); setPhase('answer-ready');
+    cancelRealtime(); recorded = null; pendingText = null; revokePreview(); setPhase('answer-ready');
     node('send').hidden = true; node('retry').hidden = true; node('record').hidden = false; node('record').textContent = 'Mulai jawab';
     renderAnswerMode();
     if (answerWithText) node('text-answer').focus();
@@ -753,6 +834,7 @@
     if (!question?.id) throw new Error('Pertanyaan berikutnya belum tersedia. Coba lanjutkan lagi.');
     const token = lifecycle;
     if (current?.id !== question.id || restart) {
+      cancelRealtime(); pendingBargeIn = false;
       current = question; retries = 0; recorded = null; pendingText = null; revokePreview();
       node('text-answer').value = '';
       node('transcript').textContent = ''; node('transcript').hidden = true;
@@ -775,6 +857,7 @@
     node('answer-timer').textContent = formatTime(state.answer_seconds);
     if (!micOn()) answerWithText = true;
     renderAnswerMode();
+    if (pendingBargeIn && !answerWithText) {pendingBargeIn = false; await startRealtime();}
   }
   node('start').addEventListener('click', async () => {
     checkReady();
@@ -833,7 +916,9 @@
   });
 
   function stopRecording(timedOut = false) {
+    if (realtimeAttempt) {stopRealtime(timedOut); return;}
     if (!recorder || recorder.state !== 'recording') return;
+    endOfTurnAt = performance.now();
     clearInterval(recordingTimer); recordingTimer = null;
     recorder.timedOut = timedOut;
     recorder.stop();
@@ -843,6 +928,7 @@
     if (!available() || !active || flowBusy) return;
     if (phase === 'recording') {stopRecording(); return;}
     if (phase !== 'answer-ready' || !current || !micOn() || answerWithText) return;
+    if (node('realtime-mode').checked && realtimeVoice) {startRealtime(); return;}
     const token = lifecycle;
     const questionId = current.id;
     let capture;
@@ -879,9 +965,49 @@
       recorder = null; showError('room-error', cause);
     }
   });
+  async function startRealtime() {
+    if (!available() || !active || !current || !micOn() || answerWithText || !realtimeVoice || realtimeAttempt || phase !== 'answer-ready') return;
+    const attempt = {token: lifecycle, questionId: current.id, voice: realtimeVoice};
+    realtimeAttempt = attempt; recorded = null; recordingStart = performance.now();
+    node('live-review').hidden = true; node('transcript').textContent = ''; node('transcript').hidden = true;
+    node('record-controls').hidden = false; node('record').hidden = false; node('record').disabled = true;
+    for (const id of ['send', 'retry', 'replay', 'use-text']) node(id).hidden = true;
+    clearError('room-error'); setPhase('connecting'); status('MENGHUBUNGKAN MIKROFON');
+    try {
+      await attempt.voice.start(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}${base}/voice/${encodeURIComponent(attempt.questionId)}`);
+      if (!realtimeCurrent(attempt)) return;
+      setPhase('recording'); status('MENDENGARKAN ANDA');
+      node('record').disabled = false; node('record').textContent = 'Selesai bicara';
+      recordingTimer = setInterval(() => {
+        if (!realtimeCurrent(attempt)) return;
+        const remaining = Math.max(0, state.answer_seconds - Math.floor((performance.now() - recordingStart) / 1000));
+        node('answer-timer').textContent = formatTime(remaining);
+        if (!remaining) stopRealtime(true);
+      }, 200);
+    } catch (cause) {if (cause.name !== 'AbortError') realtimeFailed(cause, attempt);}
+  }
+  async function stopRealtime(timedOut = false, autoSend = false) {
+    const attempt = realtimeAttempt;
+    if (!realtimeCurrent(attempt) || !['recording', 'connecting'].includes(phase)) return;
+    clearInterval(recordingTimer); recordingTimer = null; clearTimeout(vadTimer); vadTimer = null;
+    endOfTurnAt = performance.now();
+    node('record').hidden = true; setPhase('transcribing'); status('MENUNTASKAN TRANSKRIP');
+    try {
+      const result = await attempt.voice.finish();
+      if (!realtimeCurrent(attempt)) return;
+      realtimeAttempt = null;
+      recorded = {capture_token: result.capture_token, transcript: result.transcript, duration: result.duration_ms, timedOut, questionId: attempt.questionId};
+      candidateMessage(attempt.questionId, result.transcript, 'Belum terkirim');
+      node('live-transcript').value = result.transcript; node('live-review').hidden = false;
+      setPhase('recorded'); status('TINJAU TRANSKRIP');
+      node('send').hidden = false; node('send').disabled = false; node('retry').hidden = retries >= state.retry_limit;
+      node('use-text').hidden = false;
+      if (autoSend && node('auto-send').checked && !document.hidden) await upload();
+    } catch (cause) {if (cause.name !== 'AbortError') realtimeFailed(cause, attempt);}
+  }
   node('retry').addEventListener('click', () => {
     if (!available() || !active || retries >= state.retry_limit || phase !== 'recorded' || uploadBusy) return;
-    retries++; recorded = null; revokePreview(); setPhase('answer-ready'); status('GILIRAN ANDA');
+    retries++; cancelRealtime(); recorded = null; revokePreview(); setPhase('answer-ready'); status('GILIRAN ANDA');
     node('record').hidden = false; node('record').textContent = 'Mulai jawab';
     node('send').hidden = true; node('retry').hidden = true; node('replay').hidden = false;
     node('answer-timer').textContent = formatTime(state.answer_seconds); renderAnswerMode();
@@ -927,12 +1053,13 @@
   node('skip-question').addEventListener('click', () => recoverQuestion('next'));
   async function handleResult(result, questionId) {
     guard();
+    latencyAnswer = result.answer_id ?? null;
     node('retry-upload').hidden = true;
     if (result.skipped) {
       markCandidate(questionId, 'Dilewati');
       upsertMessage(`skipped:${questionId}`, 'system', 'Pertanyaan dilewati.');
     } else candidateMessage(questionId, result.transcript || node('transcript').textContent, 'Terkirim', result.answer_id);
-    recorded = null; pendingText = null; revokePreview();
+    recorded = null; pendingText = null; revokePreview(); node('live-review').hidden = true;
     const key = result.answer_id == null ? `question:${questionId}` : `answer:${result.answer_id}`;
     if (!resultFlows.has(key)) {
       resultFlows.set(key, async () => {
@@ -996,15 +1123,22 @@
     node('send').hidden = true; node('retry').hidden = true; node('retry-upload').hidden = true;
     node('answer-preview').pause(); node('answer-preview').hidden = true; clearError('room-error');
     node('text-answer-area').hidden = true; node('use-text').hidden = true; node('send-text').disabled = true;
+    node('live-review').hidden = true;
     setPhase('processing'); status('MEMPROSES');
     setChatActivity('Memproses jawaban…');
     const candidateKey = `candidate:q:${questionId}`;
-    if (textSubmission) candidateMessage(questionId, text, 'Memproses…');
+    if (textSubmission) {endOfTurnAt = performance.now(); candidateMessage(questionId, text, 'Memproses…');}
+    else if (answer.capture_token) candidateMessage(questionId, node('live-transcript').value.trim() || answer.transcript, 'Memproses…');
     else if (!messages.has(candidateKey)) upsertMessage(candidateKey, 'candidate', 'Jawaban suara', 'Memproses transkrip…');
     else markCandidate(questionId, 'Memproses ulang…');
     const form = new FormData();
     form.append('question_id', String(questionId)); form.append('retry_count', String(retries));
     if (textSubmission) {form.append('text_answer', text); form.append('duration_ms', '100');}
+    else if (answer.capture_token) {
+      form.append('capture_token', answer.capture_token); form.append('duration_ms', String(answer.duration)); form.append('timed_out', String(answer.timedOut));
+      const corrected = node('live-transcript').value.trim();
+      if (corrected && corrected !== answer.transcript) form.append('corrected_transcript', corrected);
+    }
     else {
       const extension = answer.blob.type.includes('mp4') ? 'mp4' : answer.blob.type.includes('ogg') ? 'ogg' : 'webm';
       form.append('audio', answer.blob, `answer.${extension}`); form.append('duration_ms', String(answer.duration)); form.append('timed_out', String(answer.timedOut));
@@ -1051,6 +1185,9 @@
   });
 
   function renderSession() {
+    node('realtime-mode').disabled = !desktopSupported || !state.script.settings?.streaming_voice;
+    if (node('realtime-mode').disabled) node('realtime-mode').checked = false;
+    node('auto-send').disabled = node('barge-in').disabled = node('realtime-mode').disabled;
     node('room-title').textContent = `Latihan ${state.job_role}`;
     node('room-subtitle').textContent = `${state.level} · ${state.question_count} pertanyaan · ${state.answer_seconds} detik per jawaban`;
     if ((state.panel || []).length > 1) node('room-subtitle').textContent += ` · Panel ${state.panel.length}`;
@@ -1099,7 +1236,7 @@
   node('retry-upload').hidden = true;
   node('resume-flow').hidden = true;
   node('room-countdown').hidden = true;
-  for (const id of ['interruption', 'text-answer-area', 'use-text', 'stop-audio']) node(id).hidden = true;
+  for (const id of ['interruption', 'text-answer-area', 'use-text', 'stop-audio', 'live-review']) node(id).hidden = true;
   node('device-status').textContent = desktopSupported ? 'PC / laptop terdeteksi' : 'HP / tablet tidak didukung';
   node('device-requirement').hidden = desktopSupported;
   node('preflight').classList.toggle('is-unsupported-device', !desktopSupported);

@@ -28,7 +28,8 @@ jobs:
           package-manager-cache: false
       - run: pip install -r requirements.txt
       - run: python -m unittest discover -s tests -v
-      - run: node --check app/static/js/app.js && node --check app/static/js/interview-room.js
+      - run: node --check app/static/js/app.js && node --check app/static/js/interview-room.js && node --check app/static/js/realtime-voice.js && node --check app/static/js/pcm-worklet.js
+      - run: node tests/rubric_ui_test.js
 
   deploy:
     needs: test

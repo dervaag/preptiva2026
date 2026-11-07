@@ -45,3 +45,7 @@ Sebelum dipakai untuk seleksi nyata: tentukan kompetensi lewat analisis pekerjaa
 ## Fokus persona dan bahasa (versi 2026-11-05.2)
 
 Batas fokus persona adalah desain produk yang mengikuti analisis pekerjaan, bukan aturan bahwa semua HR di dunia dilarang menilai teknis. Bobot HR baru: communication 25, problem_solving 10, technical 0, analytical 10, teamwork 25, adaptability 25, leadership 5. User dan Manager tidak berubah. Sesi lama mempertahankan bobot dan snapshot aslinya.
+
+## Profil draf khusus Engineering Manager
+
+Mulai 7 November 2026, [profil EM/persona Manager](engineering-manager-rubric.md) versi `2026-11-07.em.1` dapat dipilih secara eksplisit untuk latihan. Profil ini memiliki lima kompetensi dengan 25 jangkar perilaku internal, sumber metodologi/pekerjaan dan snapshot tersendiri. Rubrik umum di atas tetap menjadi default; HR, User, panel, pekerjaan lain dan sesi historis tidak dialihkan. Draf belum ditinjau ahli pekerjaan, belum dinilai asesor, dan selalu `validated: false`. Detail alur manusia ada di [panduan asesor](assessor-validation.md).

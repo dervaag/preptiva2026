@@ -14,6 +14,22 @@
 - Ruang mengikuti nama, karakter, dan suara pewawancara aktif; chat mempertahankan penulis tiap giliran dan jumlah peserta mencakup kandidat. Mode teks, penghentian suara, Retry/Next, dan pemulihan penilaian terhubung ke kontrak backend terbaru. PC/laptop tetap wajib.
 - Dashboard dan riwayat mengenali seluruh anggota panel serta status penilaian tertunda. Memperbaiki penguncian tombol pemulihan ketika interupsi kedua terjadi saat permintaan Retry belum selesai.
 - Verifikasi lokal: 52 tes backend, 19 skenario controller, serta Chrome untuk form, dropdown, dashboard/riwayat, ruang, dan alur tunggal/panel hingga hasil lulus. Seluruh uji memakai data/perangkat sintetis dan provider tiruan; tidak melakukan panggilan AI berbayar atau deployment Kiri.
+## 2026-11-07 — Draf rubrik Engineering Manager dan alur validasi asesor
+
+- Menambahkan profil latihan EM/Manager opt-in dengan lima kompetensi, 25 jangkar, bobot usulan dan pemetaan sumber/tugas. Seluruh indikator disusun internal, ahli belum meninjau, dan validated tetap false.
+- Menambahkan snapshot lengkap dan pemisahan tren kompetensi menurut hash rubrik. Form/API menolak penerapan profil di HR/User/panel atau pekerjaan lain; snapshot dan hasil lama dipertahankan.
+- Menampilkan skor, kutipan asli, indikator, alasan belum naik tingkat dan rujukan sumber. ID/level/kutipan diverifikasi kode dan sumber hanya diambil dari snapshot. Keluaran evaluator tidak lengkap mendapat satu kesempatan perbaikan.
+- Menambahkan paket offline 20 kasus tanpa skor AI, rating independen, konsensus koordinator setelah minimal tiga asesor, provenance lima run AI, serta laporan yang menjelaskan kasus bukti kurang dan denominator metrik. Tidak ada penilaian manusia atau konsensus yang dibuat otomatis.
+- Verifikasi: 71 tes Python dan pemeriksaan keamanan/gating UI lulus; Chrome end-to-end EM lima pertanyaan pada lebar 390/768/1440px lulus. Probe model asli berhasil menyiapkan lima kompetensi serta membedakan contoh bukti cukup dan jawaban tanpa contoh setelah perbaikan.
+- Probe sintetis model asli menemukan kelemahan penggolongan jawaban tanpa contoh dan kelengkapan struktur; aturan prompt dan pemeriksaan struktur diperketat. Pengujian ini adalah regresi perangkat lunak, bukan kalibrasi atau validasi psikometrik.
+
+## 2026-11-07 — Audio realtime dan paket asesor
+
+- Menambahkan transkripsi WebSocket dengan PCM AudioWorklet, VAD, delta transkrip dan receipt bertanda tangan. Sesi baru memakai TTS streaming saat diputar; kunci API tetap di server. Model/provider yang sudah dikonfigurasi dipertahankan.
+- Menambahkan tinjau/koreksi transkrip sebelum pengiriman dengan arsip teks STT asli, pilihan kirim otomatis setelah jeda, dan pilihan sela pembacaan pertanyaan. Tab/offline/putus transport tetap menghentikan pertanyaan dan membuka Retry/Next; lease rekaman lama dibersihkan.
+- Mencatat event waktu akhir rekaman hingga audio respons mulai diputar. Waktu review manual ikut terhitung; belum tersedia dashboard distribusi latensi/biaya.
+- Menyiapkan paket HTML offline tanpa skor AI untuk tiga calon asesor, tujuh contoh sintetis dengan skor kosong, validasi hasil JSON dan runner AI lima kali per kasus yang harus dipilih secara eksplisit. Asesor belum tersedia, penilaian manusia belum dilakukan, `validated` tetap false. Lihat [panduan asesor](assessor-validation.md).
+- Verifikasi: tes otomatis receipt, koreksi, pembatasan akses, idempotensi, cache streaming dan integritas paket; Chrome sintetis untuk realtime/VAD/Retry/sela suara/form asesor serta regresi panel. Probe STT/TTS asli lulus tanpa LLM atau data kandidat nyata; satu sampel TTS chunk pertama 449 ms bukan jaminan latensi produksi. Lihat [audio realtime](realtime-voice.md) dan artefak smoke terkait.
 
 ## 2026-11-07 — Konteks panel, bukti dan pemulihan pertanyaan
 

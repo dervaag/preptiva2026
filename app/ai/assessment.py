@@ -4,7 +4,12 @@ from app.config import ROOT
 from app.ai.scoring import WEIGHTS
 
 
-def snapshot(persona, panel=None):
+def snapshot(persona, panel=None, job_role=None, use_job_rubric=False):
+    if use_job_rubric:
+        from app.ai.job_rubric import matches_scope, snapshot_profile
+        if not matches_scope(job_role, persona, panel):
+            raise ValueError('Rubrik draf hanya tersedia untuk Engineering Manager dengan interviewer tunggal Manager.')
+        return snapshot_profile()
     text = (ROOT / 'docs/assessment-reference.md').read_text()
     rubric = text.split('<!-- rubric:start -->')[1].split('<!-- rubric:end -->')[0].strip()
     panel = panel or [persona]

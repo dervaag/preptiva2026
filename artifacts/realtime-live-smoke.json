@@ -1,0 +1,13 @@
+{
+  "synthetic": true,
+  "paid_stt_tts": true,
+  "paid_llm": false,
+  "ok": true,
+  "vad_started": true,
+  "vad_stopped": true,
+  "transcript_deltas": 20,
+  "transcript_chars": 91,
+  "receipt_committed": true,
+  "tts_first_chunk_ms": 449,
+  "tts_bytes": 37660
+}

@@ -19,6 +19,7 @@ os.environ['DATABASE_URL'] = f'sqlite+aiosqlite:///{temporary.name}/browser.db'
 os.environ['APP_ENV'] = 'development'
 os.environ['REDIS_URL'] = ''
 os.environ['AI_MOCK'] = 'false'
+os.environ['REALTIME_VOICE_ENABLED'] = 'false'
 os.environ['COOKIE_SECURE'] = 'false'
 os.environ['SECRET_KEY'] = 'isolated-browser-test-secret'
 

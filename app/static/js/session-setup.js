@@ -140,6 +140,7 @@
     document.querySelector('#panel-personas').hidden = !panelMode;
     panelInputs.forEach(input => {input.disabled = !panelMode;});
     validatePanel();
+    updateJobRubricOption();
   }
   modeInput.addEventListener('change', renderMode);
   panelInputs.forEach(input => input.addEventListener('change', validatePanel));

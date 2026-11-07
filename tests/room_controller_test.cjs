@@ -49,10 +49,12 @@ function fixture(options = {}) {
     'countdown-number','chat-log','chat-empty','chat-new-messages','chat-panel','record-controls','answer-timer','record','send','retry','replay','answer-preview','retry-upload','resume-flow',
     'question-progress','question-text','transcript','camera-toggle','mic-toggle','mirror-toggle','captions-toggle','chat-toggle','avatar-motion-toggle','fullscreen','leave-room','leave-dialog',
     'cancel-leave','confirm-leave','mirror','sound-bars','interviewer-initial','device-status','device-requirement','preflight-description','preflight-title','verification-status','preflight-body','chat-activity','chat-activity-label',
-    'panel-members','participant-count','text-mode','use-text','text-answer-area','text-answer','send-text','stop-audio','interruption','interruption-status','retry-question','skip-question'];
+    'panel-members','participant-count','text-mode','use-text','text-answer-area','text-answer','send-text','stop-audio','interruption','interruption-status','retry-question','skip-question',
+    'realtime-mode','auto-send','barge-in','live-review','live-transcript'];
   ids.forEach(id => nodes.set(id, new Element(id)));
   ['preflight','room-countdown','record-controls','send','retry','retry-upload','resume-flow','answer-preview','stage-caption','preflight-error','room-error'].forEach(id => nodes.get(id).hidden = true);
   nodes.get('start').disabled = true; nodes.get('speaker-check').disabled = true;
+  nodes.get('realtime-mode').checked = true; nodes.get('live-review').hidden = true;
   const document = new EventTarget(); document.body = {dataset:{sid:'fixture-session'}};
   document.hidden = false; document.visibilityState = 'visible'; document.fullscreenEnabled = false;
   document.querySelector = selector => nodes.get(selector.slice(1)); document.getElementById = id => nodes.get(id);
@@ -92,6 +94,15 @@ function fixture(options = {}) {
     start() {this.state = 'recording';}
     stop() {this.state = 'inactive'; this.ondataavailable?.({data:new Blob(['audio'],{type:this.mimeType})}); queueMicrotask(() => this.onstop?.());}
   }
+  const voices = [];
+  class RealtimeVoiceFake {
+    constructor(stream, callbacks) {this.callbacks = callbacks; this.cancelled = 0; this.destroyed = false; voices.push(this);}
+    async initialize() {}
+    start(url) {this.url = url; return options.realtimeStart?.(this) || Promise.resolve();}
+    finish() {return options.realtimeFinish?.(this) || Promise.resolve({capture_token:'capture-1',transcript:'Transkrip realtime.',duration_ms:1200});}
+    cancel() {this.cancelled++;}
+    destroy() {this.destroyed = true; this.cancel();}
+  }
   const state = {session_id:'fixture-session',status:'ready',interviewer:'hr',persona:{name:'Rina',title:'HR Interviewer'},job_role:'Engineer',level:'junior',question_count:3,answer_seconds:60,retry_limit:2,max_followups:2,
     script:{intro:{text:'Selamat datang.',audio_url:'/intro.mp3'},closing:{text:'Selesai.',audio_url:'/closing.mp3'},fillers:[],settings:{language:'id'}},
     questions:[],answered_mains:0,current_turn:{id:1,kind:'main',main_order:1,slot:'opening',category:'opening',question_text:'Ceritakan pengalaman Anda.',audio_url:'/question.mp3'}};
@@ -124,7 +135,7 @@ function fixture(options = {}) {
   }
   const local = new Map(Object.entries(options.storage || {})), session = new Map();
   const storage = map => ({getItem:key=>map.get(key)??null,setItem:(key,value)=>map.set(key,String(value)),removeItem:key=>map.delete(key)});
-  const location = {replace:url=>navigations.push(url),assign:url=>navigations.push(url)};
+  const location = {protocol:'http:',host:'fixture.local',replace:url=>navigations.push(url),assign:url=>navigations.push(url)};
   const navigator = {userAgent:'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',platform:'Win32',maxTouchPoints:0,...options.device,mediaDevices:{getUserMedia:() => options.getUserMedia ? options.getUserMedia(new MediaStreamFake()) : Promise.resolve(new MediaStreamFake())},sendBeacon:(url,body)=>{calls.push([url,{method:'BEACON',body}]); return true;}};
   const context = {console,document,window,navigator,location,localStorage:storage(local),sessionStorage:storage(session),performance:{now:()=>now},
     setTimeout:setTimeoutFake,clearTimeout:id=>timers.delete(id),setInterval:setIntervalFake,clearInterval:id=>timers.delete(id),
@@ -133,9 +144,9 @@ function fixture(options = {}) {
     matchMedia:()=>({matches:!!options.reducedMotion,addEventListener(){}}),fetch:fetchFake,AbortController,DOMException,Blob,FormData,Response,TextDecoder,Uint8Array,URL:Object.assign(URL,{createObjectURL:()=>`blob:fixture-${now}`,revokeObjectURL(){}}),
     $:selector=>document.querySelector(selector),api:async url=>(await fetchFake(url)).json(),postJSON:async url=>(await fetchFake(url,{method:'POST'})).json(),
     showError:(selector,error)=>{const node=document.querySelector(selector);node.textContent=error.message||error;node.hidden=false;},toast(){}};
-  Object.assign(window,{AudioContext:AudioContextFake,MediaRecorder:MediaRecorderFake,matchMedia:context.matchMedia});
+  Object.assign(window,{AudioContext:AudioContextFake,MediaRecorder:MediaRecorderFake,RealtimeVoice:RealtimeVoiceFake,matchMedia:context.matchMedia});
   vm.runInNewContext(source, context, {filename:sourcePath});
-  return {nodes,calls,plays,document,window,tracks,navigations,advance,flush,local,get uploads(){return uploads;}};
+  return {nodes,calls,plays,document,window,tracks,navigations,voices,advance,flush,local,get uploads(){return uploads;}};
 }
 
 async function verify(f) {
@@ -383,4 +394,64 @@ async function answer(f) {f.nodes.get('record').click();await f.advance(1000);f.
   releaseRecovery();await flush();racing.document.hidden=false;racing.nodes.get('retry-question').click();await flush();
   assert.equal(recoveryCalls,2,'an older recovery response must not leave the newer interrupted turn permanently busy');
   console.log('PASS interruption during pending recovery can recover again');
+
+  const realtimeState = {script:{intro:{text:'Selamat datang.',audio_url:'/intro.mp3'},closing:{text:'Selesai.',audio_url:'/closing.mp3'},settings:{language:'id',streaming_voice:true}}};
+  const live = fixture({state:realtimeState}); await flush(); await start(live);
+  assert.equal(live.nodes.get('realtime-mode').checked,true);
+  assert.equal(live.nodes.get('auto-send').checked,false); assert.equal(live.nodes.get('barge-in').checked,false);
+  live.nodes.get('record').click(); await flush();
+  live.voices[0].callbacks.onTranscript('Transkrip bertahap.');
+  assert.equal(live.nodes.get('transcript').textContent,'Transkrip bertahap.');
+  assert.equal(live.nodes.get('chat-log').children.at(-1).children[0].textContent,'Anda');
+  live.nodes.get('record').click(); await flush();
+  assert.equal(live.nodes.get('live-review').hidden,false);
+  live.nodes.get('live-transcript').value='Transkrip realtime yang saya koreksi.';
+  live.nodes.get('send').click(); await flush();
+  const captureForm = live.calls.find(([url])=>url.includes('/answers'))[1].body;
+  assert.equal(captureForm.get('capture_token'),'capture-1'); assert.equal(captureForm.has('audio'),false);
+  assert.equal(captureForm.get('corrected_transcript'),'Transkrip realtime yang saya koreksi.');
+  assert.equal(captureForm.get('duration_ms'),'1200'); assert.equal(captureForm.get('timed_out'),'false');
+  assert.equal(live.calls.filter(([url])=>url.endsWith('/voice-latency')).length,1);
+  live.nodes.get('replay').click(); await flush();
+  assert.equal(live.calls.filter(([url])=>url.endsWith('/voice-latency')).length,1,'replay must not duplicate first-playing latency');
+  console.log('PASS realtime partial chat, manual review, corrected receipt upload, and once-per-answer latency');
+
+  let completeLate;
+  const interruptedLive = fixture({state:realtimeState,realtimeFinish:()=>new Promise(resolve=>{completeLate=resolve;})});
+  await flush(); await start(interruptedLive); interruptedLive.nodes.get('record').click(); await flush();
+  interruptedLive.voices[0].callbacks.onTranscript('Belum terkirim.');
+  interruptedLive.nodes.get('record').click(); await flush();
+  interruptedLive.document.hidden=true; interruptedLive.document.dispatchEvent(new Event('visibilitychange')); await flush();
+  completeLate({capture_token:'stale',transcript:'Tidak boleh kembali.',duration_ms:1000}); await flush();
+  assert.equal(interruptedLive.nodes.get('live-review').hidden,true); assert.equal(interruptedLive.nodes.get('record-controls').hidden,true);
+  assert.equal(interruptedLive.nodes.get('transcript').textContent,''); assert.equal(interruptedLive.uploads,0);
+  assert(interruptedLive.voices[0].cancelled>0);
+  interruptedLive.document.hidden=false; interruptedLive.nodes.get('retry-question').click(); await flush();
+  interruptedLive.nodes.get('record').click(); await flush();
+  assert.equal(interruptedLive.nodes.get('room-status').textContent,'MENDENGARKAN ANDA');
+  console.log('PASS interrupted realtime completion stays discarded and Retry starts a fresh capture');
+
+  const vad = fixture({state:realtimeState}); await flush(); await start(vad);
+  vad.nodes.get('record').click(); await flush(); vad.voices[0].callbacks.onSpeech('speech_stopped'); await vad.advance(2000);
+  assert.equal(vad.uploads,0,'VAD must not send without explicit opt-in');
+  vad.nodes.get('auto-send').checked=true; vad.voices[0].callbacks.onSpeech('speech_stopped'); await vad.advance(1000);
+  vad.voices[0].callbacks.onSpeech('speech_started'); await vad.advance(1500);
+  assert.equal(vad.uploads,0,'resumed speech cancels the pending auto-send');
+  vad.voices[0].callbacks.onSpeech('speech_stopped'); await vad.advance(1800);
+  assert.equal(vad.uploads,1); assert.equal(vad.nodes.get('live-review').hidden,true);
+  console.log('PASS VAD remains opt-in and resumed speech cancels auto-send');
+
+  const broken = fixture({state:realtimeState}); await flush(); await start(broken);
+  broken.nodes.get('record').click(); await flush(); broken.voices[0].callbacks.onError(new Error('Provider indisponibel.')); await flush();
+  assert.equal(broken.nodes.get('realtime-mode').checked,false); assert.equal(broken.nodes.get('record').disabled,false);
+  assert.equal(broken.nodes.get('use-text').hidden,false); await answer(broken);
+  assert(broken.calls.find(([url])=>url.includes('/answers'))[1].body.has('audio'));
+  console.log('PASS realtime provider failure restores recorder and text fallbacks');
+
+  const barge = fixture({state:realtimeState,holdAudio:url=>url==='/question.mp3'}); await flush(); await start(barge);
+  barge.voices[0].callbacks.onActivity(); await flush(); assert.equal(barge.voices[0].url,undefined,'barge-in must be opt-in');
+  barge.nodes.get('barge-in').checked=true; barge.voices[0].callbacks.onActivity(); await flush();
+  assert.match(barge.voices[0].url,/\/voice\/1$/); assert.equal(barge.nodes.get('room-status').textContent,'MENDENGARKAN ANDA');
+  barge.window.dispatchEvent(new Event('pagehide')); await flush(); assert.equal(barge.voices[0].destroyed,true);
+  console.log('PASS explicit barge-in hands a question to capture and pagehide destroys realtime audio');
 })().catch(error=>{console.error(error);process.exitCode=1;});
