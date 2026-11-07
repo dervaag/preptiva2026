@@ -26,16 +26,19 @@ function renderResult(r) {
   const personRoles = {hr: 'HR', user: 'User', manager: 'Manager'};
   const statusLabels = {measured: 'Bukti cukup', insufficient: 'Bukti terbatas', not_assessed: 'Belum dinilai', unusable_transcript: 'Transkrip tidak dapat digunakan'};
   const scoreLabel = score === null ? 'Belum terukur' : r.label || 'Hasil latihan';
-  return `${assessmentNotice(assessment)}
+  const orderedCompetencies = [...competencies].sort((a, b) => Number(resultPoints(a.score) === null) - Number(resultPoints(b.score) === null));
+  return `<nav class="result-sections" aria-label="Bagian hasil"><a href="#result-overview">Ringkasan hasil</a><a href="#result-competencies">Kompetensi</a>${review.study_recommendations?.length ? '<a href="#result-next">Latihan berikutnya</a>' : ''}<a href="#result-answers">Tinjau jawaban</a></nav>
+    ${assessmentNotice(assessment)}
     ${score === null ? '<section class="ws-panel result-score-explanation" role="status"><h2>Skor belum tersedia</h2><p>Jawaban Anda tetap tersimpan dan dapat dibaca di bawah. Belum ada kompetensi berbobot dengan bukti yang cukup dan terverifikasi untuk menghitung skor keseluruhan. Ini bukan nilai nol. Lihat alasan penilaian pada setiap jawaban untuk mengetahui bukti yang masih diperlukan.</p></section>' : ''}
-    <section class="ws-panel result-overview" aria-label="Ringkasan hasil">
-      <div class="result-score">
+    <section class="result-overview" id="result-overview" aria-label="Ringkasan hasil">
+      <div class="ws-panel result-score">
         <h2>Skor keseluruhan</h2>
-        <div class="result-score-ring" style="--score-progress:${score ?? 0}%" role="img" aria-label="${score === null ? 'Skor belum terukur' : `Skor ${score} dari 100`}"><div><span class="score-number">${score ?? '—'}</span><small>/100</small></div></div>
+        <div class="result-score-display" role="img" aria-label="${score === null ? 'Skor belum terukur' : `Skor ${score} dari 100`}"><span class="score-number">${score ?? '—'}</span><small>/100</small></div>
         <strong class="score-label">${esc(scoreLabel)}</strong>
+        <div class="result-score-meter" aria-hidden="true"><div><span style="width:${score ?? 0}%"></span></div><span>0</span><span>50</span><span>100</span></div>
         <p>Penilaian untuk latihan wawancara.</p>
       </div>
-      <div class="result-summary">
+      <div class="ws-panel result-summary">
         <h2>Ringkasan wawancara</h2>
         <p class="result-summary-text">${esc(review.summary || 'Ringkasan belum tersedia untuk sesi ini.')}</p>
         <div class="result-metrics">
@@ -47,11 +50,11 @@ function renderResult(r) {
     </section>
     ${(r.panel_results || []).length > 1 ? `<section class="result-panel-scores" aria-label="Hasil per interviewer">${r.panel_results.map(p => `<article class="ws-panel"><div><h2>${esc(personNames[p.interviewer] || p.interviewer)}</h2><p>${esc(personRoles[p.interviewer] || 'Pewawancara')}</p></div><strong>${resultPoints(p.total_score) ?? '—'}<small>/100</small></strong></article>`).join('')}</section>` : ''}
     <div class="result-analysis">
-      <section class="ws-panel result-competencies">
+      <section class="ws-panel result-competencies" id="result-competencies">
         <div class="ws-panel-heading"><div><h2>Kompetensi</h2><p>Skor berdasarkan bukti jawaban.</p></div><span class="result-scale">/100</span></div>
-        <div class="result-competency-list">${competencies.length ? competencies.map(c => {
+        <div class="result-competency-list">${orderedCompetencies.length ? orderedCompetencies.map(c => {
           const value = resultPoints(c.score);
-          return `<article class="competency result-competency"><div class="result-competency-label"><h3>${esc(c.name)}</h3><span>${esc(statusLabels[c.status] || (value === null ? 'Belum terukur' : ''))}</span></div><strong>${value ?? '—'}</strong><div class="result-competency-track" aria-hidden="true"><span style="width:${value ?? 0}%"></span></div>${c.evidence?.length ? `<details class="result-competency-evidence"><summary>Lihat bukti ${resultChevron}</summary>${c.evidence.map(quote => `<blockquote>${esc(quote)}</blockquote>`).join('')}</details>` : ''}</article>`;
+          return `<article class="competency result-competency${value === null ? ' is-unmeasured' : ''}"><div class="result-competency-label"><h3>${esc(c.name)}</h3><span>${esc(statusLabels[c.status] || (value === null ? 'Belum terukur' : ''))}</span></div><strong>${value ?? '—'}${value === null ? '' : '<small>/100</small>'}</strong><div class="result-competency-track" aria-hidden="true"><span style="width:${value ?? 0}%"></span></div>${c.evidence?.length ? `<details class="result-competency-evidence"><summary>Lihat bukti ${resultChevron}</summary>${c.evidence.map(quote => `<blockquote>${esc(quote)}</blockquote>`).join('')}</details>` : ''}</article>`;
         }).join('') : '<p class="result-muted">Belum ada kompetensi yang dinilai.</p>'}</div>
         <p class="result-coverage-note">${coverage ? 'Kompetensi dengan bukti terbatas tidak dimasukkan ke skor total.' : 'Skor sesi ini mengikuti kebijakan penilaian versi sebelumnya.'}</p>
       </section>
@@ -61,8 +64,8 @@ function renderResult(r) {
         ${Object.keys(r.star_summary || {}).length ? `<details class="result-star"><summary>Struktur jawaban STAR ${resultChevron}</summary><div>${[['situation', 'Situasi'], ['task', 'Tugas'], ['action', 'Tindakan'], ['result', 'Hasil']].map(([key, name]) => `<p><span>${name}</span><strong>${typeof r.star_summary[key] === 'number' ? `${Math.round(r.star_summary[key])}%` : r.star_summary[key] ? 'Terlihat' : 'Belum terlihat'}</strong></p>`).join('')}</div><small>Bagian yang muncul pada jawaban sesi ini.</small></details>` : ''}
       </section>
     </div>
-    ${review.study_recommendations?.length ? `<section class="ws-panel result-next"><div class="ws-panel-heading"><div><h2>Latihan berikutnya</h2><p>Rekomendasi dari sesi ini.</p></div></div><div class="result-next-list">${review.study_recommendations.map((item, index) => `<article><span class="result-step-number">${String(index + 1).padStart(2, '0')}</span><div><h3>${esc(item.topic)}</h3><p>${esc(item.action)}</p>${item.reason ? `<details><summary>Alasan rekomendasi ${resultChevron}</summary><p>${esc(item.reason)}</p></details>` : ''}</div></article>`).join('')}</div></section>` : ''}
-    <section class="ws-panel result-answers"><div class="ws-panel-heading"><div><h2>Tinjau jawaban</h2><p>Pertanyaan, transkrip, dan umpan balik.</p></div><span class="result-answer-count">${items.length} jawaban</span></div>
+    ${review.study_recommendations?.length ? `<section class="ws-panel result-next" id="result-next"><div class="ws-panel-heading"><div><h2>Latihan berikutnya</h2><p>Rekomendasi dari sesi ini.</p></div></div><div class="result-next-list">${review.study_recommendations.map((item, index) => `<article><span class="result-step-number">${String(index + 1).padStart(2, '0')}</span><div><h3>${esc(item.topic)}</h3><p>${esc(item.action)}</p>${item.reason ? `<details><summary>Alasan rekomendasi ${resultChevron}</summary><p>${esc(item.reason)}</p></details>` : ''}</div></article>`).join('')}</div></section>` : ''}
+    <section class="ws-panel result-answers" id="result-answers"><div class="ws-panel-heading"><div><h2>Tinjau jawaban</h2><p>Pertanyaan, transkrip, dan umpan balik.</p></div><span class="result-answer-count">${items.length} jawaban</span></div>
       ${items.map((item, index) => {
         const feedback = item.feedback || {};
         return `<details class="review-item result-answer" open><summary><span class="result-step-number">${String(index + 1).padStart(2, '0')}</span><span class="result-answer-heading"><strong>${esc(item.question_text)}</strong><small>${esc([item.persona?.name, item.kind === 'follow_up' ? 'Pertanyaan lanjutan' : `Pertanyaan ${item.main_order}`, item.skipped ? 'Dilewati' : item.input_mode === 'text' ? 'Jawaban teks' : 'Jawaban suara'].filter(Boolean).join(' · '))}</small></span>${resultChevron}</summary><div class="result-answer-body">

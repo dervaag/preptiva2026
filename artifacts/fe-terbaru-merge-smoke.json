@@ -1,0 +1,70 @@
+{
+  "recorded_at": "2026-11-07T08:45:45.938499+00:00",
+  "main_parent": "a85d0da61c87f21a39ad5ca824365275632bc599",
+  "frontend_branch": "FE-TERBARU",
+  "frontend_parent": "5883a73b6ecfb29d775ff196be13b92e861e17c6",
+  "python": {
+    "discovered": 219,
+    "passed": 218,
+    "skipped": 1,
+    "skip_reason": "PostgreSQL-only test in isolated SQLite run",
+    "seconds": 62.567,
+    "result": "passed"
+  },
+  "javascript": {
+    "syntax": "passed",
+    "rubric_helpers": "passed",
+    "room_controller_scenarios": 30
+  },
+  "chrome": {
+    "profile_pdf_and_languages": "passed",
+    "dashboard_history": "passed",
+    "single_and_two_three_interviewer_panels": "passed",
+    "result_visibility_and_pdf": "passed",
+    "security_privacy": {
+      "ok": true,
+      "backend": "mocked contract",
+      "paid_api_calls": false,
+      "email_reauthentication": true,
+      "cv_confirmation_and_receipt": true,
+      "password_change": true,
+      "single_and_bulk_history_delete": true,
+      "pending_files_disclosed": true,
+      "account_receipt_before_navigation": true,
+      "no_password_storage": true,
+      "late_status_request_cannot_hide_account_receipt": true,
+      "languages": [
+        "id",
+        "en"
+      ],
+      "viewport_widths": [
+        390,
+        768,
+        1440
+      ]
+    },
+    "realtime": {
+      "paid_api_calls": false,
+      "ok": true,
+      "text_to_realtime_voice": true,
+      "realtime_pcm": true,
+      "live_transcript": true,
+      "correction": true,
+      "interruption_retry": true,
+      "auto_send_vad": true,
+      "barge_in": true,
+      "assessor_packet_download": true,
+      "connections": 4,
+      "pcm_bytes": 324352,
+      "streamed_responses": 9
+    }
+  },
+  "paid_provider_calls": 0,
+  "data_scope": "Temporary databases/storage and synthetic identities/providers only; no production account used",
+  "integration_choices": [
+    "PDF-only CV forms with existing text-CV API compatibility",
+    "Password confirmation and deletion receipts retained",
+    "Null-score explanation, visible transcripts and print content retained",
+    "Selected-answer-language validation and bilingual results retained"
+  ]
+}

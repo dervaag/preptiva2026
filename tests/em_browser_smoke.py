@@ -73,7 +73,7 @@ def main():
             assert page.locator('[name=interview_mode]').input_value()=='single'
             page.locator('[name=job_role]').fill('Engineering Manager')
             page.locator('label:has(input[name=interviewer][value=manager])').click();option.check()
-            page.locator('[name=cv_text]').fill('Saya memimpin proyek engineering, meninjau risiko migrasi layanan, mengembangkan anggota tim, dan menyelaraskan prioritas dengan tim produk. '*3)
+            page.locator('[name=cv_pdf]').set_input_files(fixture.cv_pdf('Saya memimpin proyek engineering, meninjau risiko migrasi layanan, mengembangkan anggota tim, dan menyelaraskan prioritas dengan tim produk. '*3))
             choose('career_stage','experienced');choose('level','manager')
             page.locator('[name=industry]').fill('Technology');page.locator('[name=job_description]').fill('Mengembangkan tim engineering, meninjau keputusan teknis, dan mengelola prioritas bersama stakeholder.')
             page.locator('.setup-question-choice:has(input[value="5"])').click();page.locator('[name=consent]').check()

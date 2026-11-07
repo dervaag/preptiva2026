@@ -175,13 +175,17 @@ def main():
             page.locator('#profile-delete-form [name=password]').fill(secret)
             page.locator('#profile-confirm-delete').click()
             expect(page.locator('#profile-delete-dialog')).not_to_be_visible()
-            expect(page.locator('#profile-cv-text')).to_have_value('')
+            expect(page.locator('[name=cv_text]')).to_have_count(0)
             expect(page.locator('#profile-delete-cv')).to_be_disabled()
             assert download('#profile-cv-receipt')['scope']=='saved_cv'
+            page.locator('#account-menu > summary').click()
             page.locator('[data-language-toggle]').click()
+            page.keyboard.press('Escape')
             expect(page.locator('#profile-security')).to_contain_text('Account security')
             expect(page.locator('#profile-retention-policy')).to_contain_text('7 days')
+            page.locator('#account-menu > summary').click()
             page.locator('[data-language-toggle]').click()
+            page.keyboard.press('Escape')
 
             page.goto(origin+'/riwayat')
             expect(page.locator('#history-list .ws-session-row')).to_have_count(3)

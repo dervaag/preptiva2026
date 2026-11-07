@@ -11,7 +11,7 @@
 }
 .site-footer-main {display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-bottom: 23px;}
 .site-footer .brand--site-footer {gap: 7px; font: 400 20px/1.4 'DM Sans', sans-serif; color: #24242c;}
-.site-footer .brand-symbol {width: 25px; height: 25px;}
+.site-footer .brand-symbol {width: 30px; height: 30px;}
 .site-footer .brand-name {font: inherit; color: inherit; letter-spacing: -.045em;}
 .site-footer-tagline {margin: 6px 0 0; font-size: 11px; color: #686b76;}
 .site-footer .site-footer-nav {display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 8px 24px; margin: 0;}

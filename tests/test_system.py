@@ -83,6 +83,17 @@ class TextAndScoringTests(unittest.TestCase):
         self.assertIn('35%', cleaned)
         self.assertEqual(cleaned, clean_text(cleaned))
 
+    def test_job_description_requires_five_words_while_cv_uses_characters(self):
+        self.assertEqual(validate_text('Build APIs and write tests', 'JD'), 'Build APIs and write tests')
+        for text in ('Build APIs and tests', 'OneVeryLongWord' * 5):
+            with self.subTest(text=text), self.assertRaises(HTTPException) as caught:
+                validate_text(text, 'JD')
+            self.assertEqual(caught.exception.status_code, 422)
+        with self.assertRaises(HTTPException) as caught:
+            validate_text('x' * 199, 'CV')
+        self.assertEqual(caught.exception.status_code, 422)
+        self.assertEqual(len(validate_text('x' * 200, 'CV')), 200)
+
     def test_chunks_keep_end_and_limits(self):
         text = 'Experience 2025.\n' * 4000 + 'END_UNIQUE_FACT'
         parts = chunks(text, 6000)
@@ -332,7 +343,8 @@ class SystemTests(unittest.IsolatedAsyncioTestCase):
             response = await self.client.get(route)
             self.assertEqual(response.status_code, 200, response.text)
             self.assertNotIn('</textarea><script>alert(1)</script>', response.text)
-            self.assertIn('&lt;/textarea&gt;&lt;script&gt;', response.text)
+            self.assertNotIn('&lt;/textarea&gt;&lt;script&gt;', response.text)
+            self.assertNotIn('name="cv_text"', response.text)
         response = await self.client.request('DELETE', '/api/profile/cv',
             json={'password':'test12345','confirmation':'HAPUS CV'})
         self.assertEqual(response.status_code, 200, response.text)

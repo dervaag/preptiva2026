@@ -1,5 +1,13 @@
 # Log perubahan
 
+## 2026-11-07 — Penggabungan `FE-TERBARU` ke `main`
+
+- Menggabungkan pembaruan frontend sampai `5883a73`: branding/avatar, dashboard, profil, hasil, pemeriksaan perangkat dan notifikasi ruang wawancara.
+- Form profil/simulasi memakai unggahan CV PDF atau CV tersimpan; input teks CV tetap didukung API untuk kompatibilitas. Deskripsi pekerjaan minimal lima kata diperiksa browser dan server.
+- Menyelesaikan konflik dengan mempertahankan konfirmasi password, hapus CV/riwayat/akun dan receipt, retensi, bahasa jawaban, hasil bilingual, transkrip terbuka, penjelasan skor belum tersedia serta isi cetak/PDF.
+- Menyesuaikan regresi profil/privasi untuk form PDF dan tombol bahasa di menu akun. Akun serta volume PostgreSQL/Redis tetap dikelola deployment yang sama.
+- Verifikasi: 219 tes Python (218 lulus, 1 khusus PostgreSQL dilewati), 30 skenario controller dan sintaks JavaScript lulus. Chrome sintetis memeriksa profil PDF/ID–EN, privasi/receipt, dashboard/riwayat, panel 1/2/3 interviewer, hasil cetak/PDF serta realtime/VAD/Retry. Bukti: `artifacts/fe-terbaru-merge-smoke.json`; tanpa panggilan AI berbayar.
+
 ## 2026-11-07 — Penyelarasan tes generator panel dengan penutup bilingual
 
 - Memperbarui ekspektasi tes panel yang masih mengharapkan penutup mentah dari provider setelah penutup standar diterapkan. Tes kini memeriksa bahasa Indonesia/Inggris, pemisahan prompt HR/User/Manager dan urutan panel dalam satu alur generasi.

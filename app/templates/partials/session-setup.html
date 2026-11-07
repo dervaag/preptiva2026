@@ -42,12 +42,13 @@
   <form id="session-form" class="setup-options">
     <div class="setup-options-scroll">
       {% if not configured %}<div class="setup-notice" role="status">Wawancara belum tersedia. Hubungi pengelola untuk mengaktifkan layanan AI.</div>{% endif %}
+      <p class="setup-helper setup-required-note"><span class="setup-required" aria-hidden="true">*</span> Wajib diisi</p>
       <details class="setup-section setup-persona-section" open>
         <summary><h2>{{ icon('users') }} Pilih pewawancara</h2><span class="setup-collapse-icon">{{ icon('chevron') }}</span></summary>
         <div class="setup-section-content">
           <div class="setup-mode-field">{{ select_field('interview_mode', 'Format wawancara', [('single', 'Satu pewawancara'), ('panel', 'Panel · 2–3 pewawancara')], 'single') }}</div>
           <div id="single-personas">
-          <fieldset class="setup-personas"><legend class="sr-only">Persona pewawancara</legend>
+          <fieldset class="setup-personas"><legend class="setup-field setup-persona-label">Persona pewawancara <span class="setup-required" aria-hidden="true">*</span></legend>
             {% for value, name, role, description in personas %}
             {{ persona_card(value, name, role, description) }}
             {% endfor %}
@@ -55,7 +56,7 @@
           <p class="setup-helper setup-persona-description" id="setup-persona-description">Rina · HR. Menggali motivasi, kolaborasi, dan potensi belajar Anda.</p>
           </div>
           <fieldset id="panel-personas" class="setup-panel-options" aria-describedby="setup-panel-description" hidden>
-            <legend class="sr-only">Anggota panel</legend>
+            <legend class="setup-field setup-persona-label">Anggota panel <span class="setup-required" aria-hidden="true">*</span></legend>
             <div class="setup-personas">
               {% for value, name, role, description in personas %}
               {{ persona_card(value, name, role, description, true) }}
@@ -76,33 +77,35 @@
       <details class="setup-section setup-context" id="setup-context">
         <summary><div><h2>{{ icon('file') }} Detail kandidat &amp; posisi</h2><p>Lengkapi CV dan konteks latihan Anda.</p></div><span class="setup-collapse-icon">{{ icon('chevron') }}</span></summary>
         <div class="setup-section-content setup-context-fields">
-          <label class="setup-field">Nama kandidat<input name="candidate_name" value="{{ user.name }}" required minlength="2" maxlength="120" autocomplete="name"></label>
+          <label class="setup-field">Nama kandidat <span class="setup-required" aria-hidden="true">*</span><input name="candidate_name" value="{{ user.name }}" required minlength="2" maxlength="120" autocomplete="name"></label>
           <div class="setup-field-row">
-            {{ select_field('gender', 'Gender', [('male', 'Laki-laki'), ('female', 'Perempuan')], user.gender or 'male') }}
-            <label class="setup-field">Usia<input type="number" name="age" min="15" max="80" value="{{ user.age or '' }}" required></label>
+            {{ select_field('gender', 'Gender', [('male', 'Laki-laki'), ('female', 'Perempuan')], user.gender or 'male', required=true) }}
+            <label class="setup-field">Usia <span class="setup-required" aria-hidden="true">*</span><input type="number" name="age" min="15" max="80" value="{{ user.age or '' }}" required></label>
           </div>
           {{ select_field('career_stage', 'Latar pengalaman', [('auto', 'Sesuaikan dari CV'), ('student', 'Mahasiswa / pelajar'), ('fresh_graduate', 'Fresh graduate'), ('experienced', 'Sudah bekerja'), ('career_switcher', 'Beralih karier')], 'auto') }}
-          <div class="setup-cv-box">
+          <div class="setup-cv-box" role="group" aria-labelledby="setup-cv-label" aria-describedby="setup-cv-hint">
+            <p class="setup-field" id="setup-cv-label">CV <span class="setup-required" aria-hidden="true">*</span></p>
+            <p class="setup-helper" id="setup-cv-hint">Unggah PDF atau gunakan CV terakhir yang tersimpan.</p>
             <label class="setup-field">CV dalam PDF<input type="file" name="cv_pdf" accept="application/pdf,.pdf"></label>
             <p class="setup-helper">PDF berteks, maksimal 5 MB dan 30 halaman.</p>
-            <label class="setup-field" for="setup-cv-text">Atau tempel teks CV<textarea id="setup-cv-text" name="cv_text" rows="5" maxlength="60000" placeholder="Ceritakan pengalaman, pendidikan, dan keahlian Anda. Minimal 200 karakter."></textarea></label>
             <label class="setup-check"><input type="checkbox" name="use_last_cv" value="true" {{ 'disabled' if not user.last_cv_text }}>Gunakan CV terakhir yang tersimpan</label>
             {% if not user.last_cv_text %}<p class="setup-helper">Belum ada CV yang tersimpan di akun ini.</p>{% endif %}
           </div>
-          <label class="setup-field">Posisi pekerjaan<input name="job_role" placeholder="Contoh: Product Designer" required minlength="2" maxlength="150"></label>
+          <label class="setup-field">Posisi pekerjaan <span class="setup-required" aria-hidden="true">*</span><input name="job_role" placeholder="Contoh: Product Designer" required minlength="2" maxlength="150"></label>
           <section id="job-rubric-option" hidden>
             <label class="setup-check"><input type="checkbox" name="use_job_rubric" value="true" disabled aria-describedby="job-rubric-description">Rubrik khusus Engineering Manager (draf)</label>
             <p class="setup-helper" id="job-rubric-description">Draf untuk satu pewawancara Manager. Indikator dan bobot belum ditinjau ahli atau divalidasi.</p>
           </section>
           <div class="setup-field-row">
-            {{ select_field('level', 'Level', [('junior', 'Junior'), ('middle', 'Middle'), ('senior', 'Senior'), ('manager', 'Manager')], 'middle') }}
-            <label class="setup-field">Industri<input name="industry" placeholder="Contoh: Teknologi" required minlength="2" maxlength="80"></label>
+            {{ select_field('level', 'Level', [('junior', 'Junior'), ('middle', 'Middle'), ('senior', 'Senior'), ('manager', 'Manager')], 'middle', required=true) }}
+            <label class="setup-field">Industri <span class="setup-required" aria-hidden="true">*</span><input name="industry" placeholder="Contoh: Teknologi" required minlength="2" maxlength="80"></label>
           </div>
           <label class="setup-field">Perusahaan <span class="setup-field-translation">(opsional)</span><input name="company" placeholder="Nama perusahaan" maxlength="150"></label>
-          <label class="setup-field">Deskripsi pekerjaan<textarea name="job_description" rows="5" required minlength="30" maxlength="40000" placeholder="Tempel tanggung jawab dan kualifikasi posisi yang ingin Anda latih."></textarea></label>
+          <label class="setup-field">Deskripsi pekerjaan <span class="setup-required" aria-hidden="true">*</span><textarea name="job_description" rows="5" required maxlength="40000" aria-describedby="setup-jd-hint" placeholder="Tempel tanggung jawab dan kualifikasi posisi yang ingin Anda latih."></textarea></label>
+          <p class="setup-helper" id="setup-jd-hint">Minimal 5 kata.</p>
         </div>
       </details>
-      <label class="setup-check setup-consent"><input type="checkbox" name="consent" value="true" required>Saya setuju CV dan audio jawaban diproses provider AI untuk latihan. Transkrip tetap tersimpan.</label>
+      <label class="setup-check setup-consent"><input type="checkbox" name="consent" value="true" required><span>Saya setuju CV dan audio jawaban diproses provider AI untuk latihan. Transkrip tetap tersimpan. <span class="setup-required" aria-hidden="true">*</span></span></label>
       <div class="setup-form-error" id="form-error" role="alert" hidden></div>
     </div>
     <div class="setup-actions"><a class="setup-cancel" href="/dashboard">Batal</a><button class="setup-submit" type="submit"><span>Siapkan wawancara</span>{{ icon('arrow') }}</button></div>

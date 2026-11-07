@@ -60,9 +60,12 @@ def main():
                             if cookie['name'] == 'preptiva_ui_language') == value
 
             def toggle(value):
+                if not page.locator('#account-menu').evaluate('(menu) => menu.open'):
+                    page.locator('#account-menu > summary').click()
                 page.locator('[data-language-toggle]').click()
                 language(value)
-                expect(page.locator('[data-language-label]')).to_have_text(value.upper())
+                expect(page.locator('[data-language-toggle]')).to_have_attribute('data-language', value)
+                page.keyboard.press('Escape')
 
             def profile():
                 response = context.request.get(base + '/api/profile')
@@ -137,36 +140,59 @@ def main():
             expect(page.locator('#profile-personal-status')).to_have_text('Changes saved.')
 
             cv = ('</textarea><script>window.__profileXss=true</script>\n'
-                  + 'Komunikasi, Kepemimpinan, dan Kerja sama. Pengalaman sintetis untuk latihan. ' * 8)
-            page.locator('#profile-cv-text').fill(cv)
+                  + 'Komunikasi, Kepemimpinan, dan Kerja sama. Pengalaman sintetis untuk latihan.\n' * 8).strip()
+            document = fixture.cv_pdf(cv)
+            pdf = page.locator('#profile-cv-pdf')
+            expect(page.locator('[name=cv_text]')).to_have_count(0)
+            page.locator('#profile-cv-form [type=submit]').click()
+            assert pdf.evaluate('(input) => !input.checkValidity()')
+            assert profile()['has_cv'] is False
+            pdf.set_input_files({'name': 'cv.txt', 'mimeType': 'text/plain', 'buffer': cv.encode()})
+            assert pdf.evaluate('(input) => !input.checkValidity()')
+            pdf.set_input_files(document)
+            assert pdf.evaluate('(input) => input.checkValidity()')
             toggle('id')
-            expect(page.locator('#profile-cv-text')).to_have_value(cv)
+            expect(page.locator('#profile-file-name')).to_have_text(document['name'])
             toggle('en')
-            expect(page.locator('#profile-cv-text')).to_have_value(cv)
+            assert pdf.evaluate('(input) => input.files[0].name') == document['name']
             with page.expect_response(lambda response: response.url.endswith('/api/profile')
                                       and response.request.method == 'PATCH') as response:
                 page.locator('#profile-cv-form [type=submit]').click()
             assert response.value.status == 200
-            cv = cv.strip()
             expect(page.locator('#profile-cv-status')).to_have_text('CV saved.')
-            expect(page.locator('#profile-cv-text')).to_have_value(cv)
+            expect(page.locator('#profile-file-selection')).not_to_be_visible()
             expect(page.locator('#profile-delete-cv')).to_be_enabled()
             assert profile()['cv_text'] == cv
             page.reload()
             language('en')
             names_equal(name)
-            expect(page.locator('#profile-cv-text')).to_have_value(cv)
+            expect(page.locator('[name=cv_text]')).to_have_count(0)
+            expect(page.locator('#profile-delete-cv')).to_be_enabled()
+            assert profile()['cv_text'] == cv
             assert page.evaluate('window.__profileXss') is False
             responsive('profile-en')
             toggle('id')
             names_equal(name)
-            expect(page.locator('#profile-cv-text')).to_have_value(cv)
+            assert profile()['cv_text'] == cv
             responsive('profile-id')
 
             page.locator('.setup-nav a[href="/simulasi/baru"]').click()
             page.wait_for_url('**/simulasi/baru')
             language('id')
             page.locator('#setup-context > summary').click()
+            expect(page.locator('[name=cv_text]')).to_have_count(0)
+            setup_pdf = page.locator('[name=cv_pdf]')
+            saved_cv = page.locator('[name=use_last_cv]')
+            expect(saved_cv).to_be_enabled()
+            assert setup_pdf.evaluate('(input) => !input.checkValidity()')
+            saved_cv.check()
+            assert setup_pdf.evaluate('(input) => input.checkValidity()')
+            saved_cv.uncheck()
+            assert setup_pdf.evaluate('(input) => !input.checkValidity()')
+            setup_pdf.set_input_files({'name': 'cv.txt', 'mimeType': 'text/plain', 'buffer': cv.encode()})
+            assert setup_pdf.evaluate('(input) => !input.checkValidity()')
+            setup_pdf.set_input_files(document)
+            assert setup_pdf.evaluate('(input) => input.checkValidity()')
             expect(page.locator('[name=candidate_name]')).to_have_value(name)
             page.locator('[name=job_role]').fill('Komunikasi')
             description = 'Kerja sama dan Kepemimpinan. Ini isian pengguna yang harus tetap asli.'
@@ -180,6 +206,11 @@ def main():
                 expect(page.locator('[name=candidate_name]')).to_have_value(name)
                 expect(page.locator('[name=job_role]')).to_have_value('Komunikasi')
                 expect(page.locator('[name=job_description]')).to_have_value(description)
+                assert setup_pdf.evaluate('(input) => input.files[0].name') == document['name']
+                assert setup_pdf.evaluate('(input) => input.checkValidity()')
+            setup_pdf.set_input_files([])
+            saved_cv.check()
+            assert setup_pdf.evaluate('(input) => input.checkValidity()')
             responsive('setup-en')
 
             page.locator('#account-menu > summary').click()
@@ -187,7 +218,7 @@ def main():
             page.wait_for_url('**/profile')
             language('en')
             names_equal(name)
-            expect(page.locator('#profile-cv-text')).to_have_value(cv)
+            assert profile()['cv_text'] == cv
             page.locator('#profile-delete-cv').click()
             expect(page.locator('#profile-delete-dialog')).to_be_visible()
             expect(page.locator('#profile-delete-title')).to_have_text('Remove your saved CV?')
@@ -203,12 +234,11 @@ def main():
             assert response.value.status == 200
             expect(page.locator('#profile-delete-dialog')).not_to_be_visible()
             expect(page.locator('#profile-cv-status')).to_have_text('CV removed.')
-            expect(page.locator('#profile-cv-text')).to_have_value('')
             expect(page.locator('#profile-delete-cv')).to_be_disabled()
-            assert profile()['has_cv'] is False
+            assert profile()['has_cv'] is False and profile()['cv_text'] == ''
             page.reload()
             language('en')
-            expect(page.locator('#profile-cv-text')).to_have_value('')
+            expect(page.locator('[name=cv_text]')).to_have_count(0)
             expect(page.locator('#profile-delete-cv')).to_be_disabled()
             expect(page.locator('#profile-name')).to_have_value(name)
             expect(page.locator('#profile-email')).to_have_value(email)
@@ -225,7 +255,7 @@ def main():
     finally:
         server.should_exit = True
         thread.join(timeout=10)
-    print('PASS: isolated profile update/CV save/cancel/delete/logout, escaped user content, '
+    print('PASS: isolated profile update/PDF upload/cancel/delete/logout, PDF-only validation and saved CV reuse, escaped user content, '
           'EN/ID persistence and content preservation, separate interview language, '
           '390/768/1440px layouts. No external requests or provider calls.')
 

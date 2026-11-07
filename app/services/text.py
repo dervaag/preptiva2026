@@ -15,11 +15,13 @@ def clean_text(text):
 
 def validate_text(text, kind):
     text = clean_text(text)
-    minimum, maximum = (200, 60000) if kind == 'CV' else (30, 40000)
+    minimum, maximum = (200, 60000) if kind == 'CV' else (5, 40000)
     if len(text) > maximum:
         raise HTTPException(413, f'{kind} maksimal {maximum:,} karakter.')
-    if len(text) < minimum:
-        raise HTTPException(422, f'{kind} minimal {minimum} karakter setelah dibersihkan.')
+    length = len(text) if kind == 'CV' else len(text.split())
+    if length < minimum:
+        unit = 'karakter' if kind == 'CV' else 'kata'
+        raise HTTPException(422, f'{kind} minimal {minimum} {unit} setelah dibersihkan.')
     return text
 
 
@@ -56,7 +58,7 @@ def extract_pdf(content):
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(422, 'PDF tidak dapat dibaca. Gunakan PDF berteks atau tempel CV.') from exc
+        raise HTTPException(422, 'PDF tidak dapat dibaca. Unggah PDF berteks yang dapat dibuka.') from exc
 
 
 def chunks(text, limit):

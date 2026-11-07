@@ -19,7 +19,7 @@
   flex: 0 0 auto;
   width: 36px;
   height: 36px;
-  mix-blend-mode: multiply;
+  object-fit: contain;
 }
 
 .brand-name {
@@ -27,6 +27,14 @@
   line-height: 1.15;
   color: inherit;
   white-space: nowrap;
+}
+
+.brand-wordmark {
+  display: block;
+  flex: 0 0 auto;
+  width: auto;
+  height: 1.18em;
+  object-fit: contain;
 }
 
 .auth-story .brand {

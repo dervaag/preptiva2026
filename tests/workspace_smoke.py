@@ -159,9 +159,7 @@ def main():
             expect(page.locator('#focus-content')).to_contain_text('Komunikasi')
             expect(page.locator('#focus-content .ws-focus-item').filter(has_text='Komunikasi').locator('.ws-focus-score')).to_have_text('60/100')
             expect(page.locator('#focus-content')).not_to_contain_text(re.compile(r'technical|teknis', re.I))
-            expect(page.locator('#recent-sessions .ws-session-row')).to_have_count(5)
-            for position, session in enumerate(reversed(sessions[-5:])):
-                expect(page.locator('#recent-sessions .ws-session-row').nth(position)).to_have_attribute('href', expected_href(session))
+            expect(page.locator('#recent-sessions')).to_have_count(0)
             assert_layout('dashboard')
 
             page.goto(base + '/riwayat')
@@ -330,7 +328,7 @@ def main():
             expect(page.locator('#focus-content .ws-focus-score')).to_have_text('30/100')
             expect(page.locator('#focus-content a')).to_have_attribute('href', expected_href(sessions[0]))
             assert scenario_results == [sessions[0].uuid], scenario_results
-            expect(page.locator('#recent-sessions .ws-session-row').first).to_have_attribute('href', expected_href(sessions[14]))
+            expect(page.locator('#recent-sessions')).to_have_count(0)
             page.goto(base + '/riwayat')
             expect(rows().first).to_have_attribute('href', expected_href(sessions[14]))
 
@@ -374,7 +372,7 @@ def main():
             scenario_items = []
             page.goto(base + '/dashboard')
             expect(page.locator('#stat-completed')).to_have_text('0')
-            expect(page.locator('#recent-sessions .ws-session-row')).to_have_count(0)
+            expect(page.locator('#recent-sessions')).to_have_count(0)
             expect(page.locator('#focus-content')).not_to_contain_text('Komunikasi')
             expect(page.locator('#stat-average')).not_to_contain_text('NaN')
             expect(page.locator('#stat-best')).not_to_contain_text('NaN')
