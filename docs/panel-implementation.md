@@ -48,3 +48,7 @@ Transaksi/row lock PostgreSQL menyerialkan perubahan giliran; SQLite lokal memak
 | Kalibrasi asesor, fairness, stabilitas pada gold set | Paket HTML tanpa skor AI, merge dan runner AI disiapkan; asesor/penilaian manusia belum tersedia |
 
 Lihat [persiapan validasi asesor](assessor-validation.md) dan [rencana rubrik](rubric-validation-plan.md). Tidak ada perubahan ke `validated: true`.
+
+## Benchmark eksternal setelah implementasi panel
+
+[Mohler](mohler-benchmark.md) sudah tersedia sebagai dataset lokal bernilai manusia beserta pilot 50 jawaban. Ini jalur CLI penilaian akademik terpisah; bukan data panel, konsensus antarpersona atau kalibrasi asesor EM. Tidak ada perubahan peristiwa/checkpoint, skor sesi atau status `validated`. Run AI benchmark belum dilakukan.

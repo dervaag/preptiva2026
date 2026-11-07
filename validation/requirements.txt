@@ -1,0 +1,2 @@
+# Optional, only needed to import the Mohler benchmark; not a web runtime dependency.
+pyarrow>=18,<24

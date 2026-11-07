@@ -379,3 +379,7 @@ Result menyertakan `panel_results` (skor dan kompetensi tiap persona). Field lam
 - `answers` menerima salah satu `audio` atau `text_answer` (1–8.000 karakter), bersama field durasi/pertanyaan yang sudah ada. Jawaban teks melewati STT. Audio hasil dapat `null` jika TTS gagal. Payload menambahkan `turn_id`, `input_mode`, `skipped`, `source_refs`.
 - `state.checkpoint` menyediakan fase, pertanyaan, pembicara dan status interupsi. `finish` juga menerima `evaluation_failed` untuk mengantrekan penilaian ulang; jawaban tetap tersimpan.
 - `result.coverage` terpisah dari skor untuk sesi dengan kebijakan bukti baru. `competency_scores` menambahkan status, kecukupan, provisional, alasan, serta rujukan kutipan/offset. Skor sementara tidak masuk agregat baru. Sesi lama mempertahankan skor/snapshot historis.
+
+## Benchmark eksternal dan API sesi
+
+[Impor dan evaluasi Mohler](mohler-benchmark.md) berjalan melalui CLI `validation/mohler.py`, bukan endpoint HTTP. Tidak ada endpoint impor dataset atau perubahan kontrak `result`, `panel_results`, skor sesi maupun `validated` akibat penambahan benchmark. Data jawaban akademik dan labelnya tidak disimpan sebagai wawancara pengguna. Keluaran benchmark belum tersedia karena run model belum dijalankan.

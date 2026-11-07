@@ -1,6 +1,18 @@
 # Menyiapkan pembandingan AI–asesor
 
-Status 7 November 2026: perangkat lunak dan paket penilaian tanpa skor AI tersedia. **Asesor belum tersedia; belum ada penilaian independen, konsensus manusia, atau hasil validasi AI–manusia.** Semua perintah mempertahankan `validated: false`. Rubrik khusus Engineering Manager/persona Manager masih draf internal yang belum ditinjau ahli pekerjaan; rencana dan syarat peninjauannya ada di [rubric-validation-plan.md](rubric-validation-plan.md).
+Mulai dari [pedoman dasar asesor](pedoman-asesor.md) untuk sumber, fokus kompetensi dan urutan penilaian satu jawaban.
+
+## Audit kesiapan yang dapat diulang
+
+```sh
+.venv/bin/python validation/audit.py data/assessor-em-2026-11-07/dataset.json --output data/assessor-em-2026-11-07/readiness-audit.json
+```
+
+Gunakan nama output baru jika laporan sudah ada. Audit memeriksa hash snapshot, keterhubungan ID sumber, cakupan kasus, kelengkapan bukti manusia dan kesiapan perbandingan. Pada dataset tanpa rating, metrik akurasi tetap kosong dan status `pending_human_evidence`. Setelah impor rating/konsensus serta run AI selesai, jalankan audit terhadap dataset hasil terakhir. Laporan tidak mengubah status validasi dan tidak memverifikasi isi sumber, identitas asesor atau relevansi semantik bukti.
+
+Hasil pemeriksaan awal 7 November 2026 dicatat di [laporan awal](validation-initial-report.md).
+
+Status 7 November 2026: perangkat lunak dan paket penilaian tanpa skor AI tersedia. **Asesor EM belum tersedia; belum ada penilaian independen atas kasus EM, konsensus manusia EM, atau hasil validasi AI–manusia.** Semua perintah mempertahankan `validated: false`. Rubrik khusus Engineering Manager/persona Manager masih draf internal yang belum ditinjau ahli pekerjaan; rencana dan syarat peninjauannya ada di [rubric-validation-plan.md](rubric-validation-plan.md).
 
 ## Paket yang tersedia
 
@@ -99,3 +111,7 @@ Setiap kasus uji tetap membutuhkan minimal tiga asesor yang sama dan lima run AI
 Keberadaan kutipan tidak membuktikan relevansinya. Statistik kelompok kecil bukan bukti fairness, dan perbandingan bahasa saja bukan pengujian dampak kesalahan STT. Studi sensitivitas STT dan tinjauan relevansi pekerjaan tetap pekerjaan tersendiri. Tidak ada perintah yang mengubah rubrik menjadi `validated: true`.
 
 Simpan jawaban nyata/hasil penilaian di luar repository. `data/` diabaikan Git dan tidak dimasukkan ke image deployment. Gunakan data sintetis atau data dengan persetujuan yang telah dianonimkan; jangan memasukkan CV/transkrip kandidat nyata ke artefak publik CI.
+
+## Rating manusia eksternal bukan rating asesor EM
+
+[Dataset Mohler](mohler-benchmark.md) kini tersedia lokal dengan 2.442 jawaban bernilai manusia dan pilot 50 jawaban. Itu rating akademik yang sudah ada dari sumber, bukan penilaian independen atas 20 kasus EM. Jangan mengimpor rata-rata Mohler sebagai tiga asesor atau konsensus pada `validation/kit.py`. Gunakan alur `validation/mohler.py` tersendiri. Run model belum dijalankan. Kebutuhan ahli pekerjaan dan tiga asesor pada protokol EM tetap terbuka.

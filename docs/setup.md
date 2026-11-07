@@ -180,3 +180,7 @@ docker compose logs web worker | grep '"event": "step"'
 # Cek biaya per sesi (jika session_var di-set di log)
 docker compose logs web worker | grep '"event": "tts_usage"'
 ```
+
+## Opsional: dataset benchmark Mohler
+
+Server web tidak membutuhkan PyArrow. Untuk mengimpor ulang dataset pada checkout baru, instal `.venv/bin/pip install -r validation/requirements.txt`, lalu ikuti [panduan Mohler](mohler-benchmark.md). Dataset lokal berisi 2.442 jawaban; pilot 50 jawaban sudah disiapkan pada workspace ini, tetapi berkas `data/` tidak masuk Git/image. Download dan prepare tidak memerlukan kredensial AI. Tahap run memerlukan `OPENAI_API_KEY` dan `MODEL_DEEP` dari `.env`, menggunakan kredit API, dan wajib menyertakan `--run-paid`.

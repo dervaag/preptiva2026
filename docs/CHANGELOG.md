@@ -7,6 +7,15 @@
 - Izin mikrofon yang ditolak mempertahankan mode teks. Izin yang baru datang setelah tab/offline menghentikan pertanyaan tidak dapat melewati Retry/Next. Sela suara otomatis tidak aktif saat mode teks dipilih.
 - Verifikasi: Chrome sintetis untuk izin ditolak/terlambat, panel dengan jawaban audio/teks/audio, preservasi draf dan layout 390/768/1440px; regresi interview tunggal/panel serta sintaks JavaScript lulus. Tidak menggunakan akun atau suara pengguna.
 
+## 2026-11-07 — Dataset Mohler dan benchmark eksternal
+
+- Mengunduh Mohler ASAG dari revisi `dac06732b42d01a5169f543f6d272f1476cced3e`: 2.442 jawaban dengan rating manusia (2.273 open-ended, 169 closed-ended). Manifest menyimpan atribusi, lisensi yang dinyatakan distributor, URL, hash dan perubahan; data berada di `data/external/`, di luar Git/image.
+- Mempertahankan skor asli 0–5/0–10 dan rata-rata sumber 0–5. Menandai 214 ketidaksesuaian rata-rata tanpa memperbaikinya otomatis; mengecualikannya dari pilot deterministik 50 jawaban. Label manusia dipisahkan dari masukan AI dan diikat hash.
+- Menambahkan CLI `validation/mohler.py` (download/prepare/run/report), dependensi Parquet opsional, penyimpanan hasil per kasus dan provenance model/prompt. Runner memakai klien aplikasi dengan prompt akademik terpisah; report menghitung Spearman, MAE 0–5 dan persentase selisih maksimal satu poin.
+- Menambahkan audit kesiapan serta pembanding skor eksternal. RecruitView tidak diimpor karena pembatasan penggunaan; MIT/AVI tetap memerlukan akses sesuai ketentuan. Rincian ada di [benchmark eksternal](external-benchmark.md).
+- Verifikasi terpisah: 3 tes impor/persiapan Mohler, 3 tes pembanding eksternal dan 3 tes audit lulus. Ini bukan klaim bahwa seluruh suite dijalankan ulang. Tidak ada run Mohler berbayar atau metrik AI–manusia; rubrik produksi dan `validated: false` dipertahankan.
+- Menyelaraskan dokumentasi setup, pipeline, API, penyimpanan, asesmen dan hasil pemeriksaan. Panduan operasional: [benchmark Mohler](mohler-benchmark.md).
+
 ## 2026-11-07 — Draf rubrik Engineering Manager dan alur validasi asesor
 
 - Menambahkan profil latihan EM/Manager opt-in dengan lima kompetensi, 25 jangkar, bobot usulan dan pemetaan sumber/tugas. Seluruh indikator disusun internal, ahli belum meninjau, dan validated tetap false.
