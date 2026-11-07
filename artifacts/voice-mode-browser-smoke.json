@@ -1,0 +1,15 @@
+{
+  "ok": true,
+  "synthetic": true,
+  "paid_api_calls": false,
+  "denied_permission_preserves_text": true,
+  "voice_requires_explicit_record_click": true,
+  "mode_switch_preserves_draft": true,
+  "late_permission_cannot_override_interruption": true,
+  "audio_text_audio_panel_results": true,
+  "responsive_widths": [
+    390,
+    768,
+    1440
+  ]
+}

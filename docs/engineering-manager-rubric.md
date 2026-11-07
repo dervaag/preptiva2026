@@ -524,3 +524,7 @@ Blok ini menjadi sumber profil draf dan harus disalin ke snapshot sesi/paket pen
 3. Tiga asesor yang memenuhi syarat menilai secara independen tanpa skor AI, dengan kutipan dan indikator. Paket kosong atau jawaban sintetis tanpa skor bukan gold set.
 4. Tetapkan konsensus setelah skor independen disimpan, lalu gunakan himpunan uji terpisah untuk pembandingan AI, stabilitas, bahasa campuran dan sensitivitas kesalahan transkripsi.
 5. Catat hasil dan batas penggunaan. Tinjauan dokumen atau kelulusan tes perangkat lunak tidak mengubah `validated` menjadi true.
+
+## Batas benchmark Mohler
+
+[Benchmark Mohler](mohler-benchmark.md) terpisah dari profil ini. Rating jawaban akademik tidak menjadi bukti penilaian kepemimpinan atau keputusan manajerial, dan prompt benchmark berbeda dari evaluator EM. Unduhan dataset serta pilot tidak mengubah blok rubrik runtime, hash, versi `2026-11-07.em.1`, bobot maupun status `validated: false`. Penilaian manusia atas kasus EM tetap belum tersedia.

@@ -54,3 +54,7 @@ Bahasa Indonesia/English, jawaban campuran, 61 variasi sudut, validasi peran HR/
 Pada aksi next untuk pertanyaan terakhir, kode membersihkan ajakan lanjut sebelum TTS. Follow-up yang masih diizinkan pada pertanyaan terakhir tetap dapat berjalan; penutup hanya terjadi ketika aksi next dan tidak ada pertanyaan utama berikutnya.
 
 Interupsi pertanyaan, event/checkpoint, fallback teks, dan status brief dijelaskan di [panel-implementation.md](panel-implementation.md). Retry mengulang pertanyaan yang sama; Next menyimpan penanda dilewati tanpa skor. Penilaian gagal dapat dicoba ulang tanpa kehilangan jawaban.
+
+## Benchmark eksternal terpisah — 7 November 2026
+
+[Benchmark Mohler](mohler-benchmark.md) memakai `app.ai.model_router.complete` dan `MODEL_DEEP`, dengan prompt penilaian akademik berbasis jawaban instruktur di `validation/mohler.py`. Ini bukan pemanggilan evaluator wawancara `orchestrator.evaluate`. Masukan AI hanya pertanyaan, jawaban acuan dan jawaban peserta; rating manusia disimpan terpisah. Dataset tidak ditambahkan ke retrieval atau prompt sesi pengguna. Runner menyimpan hasil per kasus dan provenance; report menghitung Spearman, MAE 0–5 dan persentase selisih maksimal satu poin. Run model belum dijalankan dan tidak ada hasil akurasi baru.

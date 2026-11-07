@@ -546,12 +546,12 @@
       cause?.name === 'NotFoundError' ? 'Kamera atau mikrofon tidak ditemukan. Hubungkan perangkat, lalu coba lagi.' :
       cause?.message || 'Perangkat belum dapat diaktifkan. Pastikan tidak sedang dipakai aplikasi lain, lalu coba lagi.';
   }
-  async function acquireDevices() {
+  async function acquireDevices(withCamera = true) {
     if (!desktopSupported || !available() || (active && !['interrupted', 'answer-ready'].includes(phase)) || startPending || acquiring) return;
     acquiring = true; clearError('preflight-error');
     const requestId = ++acquisitionId;
     stopStream();
-    const generation = deviceGeneration;
+    const generation = deviceGeneration, token = lifecycle;
     node('devices').disabled = true;
     node('devices').textContent = 'Mengaktifkan perangkat…';
     node('camera-check').checked = false;
@@ -561,14 +561,14 @@
       if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) throw new Error('Gunakan browser terbaru melalui localhost atau HTTPS untuk kamera dan perekaman.');
       const contextPromise = ensureAudioContext();
       contextPromise.catch(() => {});
-      acquired = await navigator.mediaDevices.getUserMedia({video: {width: {ideal: 640}, height: {ideal: 480}, facingMode: 'user'},
+      acquired = await navigator.mediaDevices.getUserMedia({video: withCamera ? {width: {ideal: 640}, height: {ideal: 480}, facingMode: 'user'} : false,
         audio: {channelCount: 1, echoCancellation: true, noiseSuppression: true}});
-      if (!available() || generation !== deviceGeneration) {acquired.getTracks().forEach(track => track.stop()); return;}
+      if (!available() || generation !== deviceGeneration || token !== lifecycle) {acquired.getTracks().forEach(track => track.stop()); return;}
       stream = acquired;
       node('camera').srcObject = stream;
       node('preflight-camera').srcObject = stream;
-      await Promise.all([node('camera').play(), node('preflight-camera').play(), contextPromise]);
-      if (!available() || generation !== deviceGeneration) {acquired.getTracks().forEach(track => track.stop()); return;}
+      await Promise.all([...(withCamera ? [node('camera').play(), node('preflight-camera').play()] : []), contextPromise]);
+      if (!available() || generation !== deviceGeneration || token !== lifecycle) {acquired.getTracks().forEach(track => track.stop()); return;}
       micAnalyser = audioContext.createAnalyser(); micAnalyser.fftSize = 256;
       micSource = audioContext.createMediaStreamSource(new MediaStream(stream.getAudioTracks()));
       micSource.connect(micAnalyser);
@@ -595,7 +595,7 @@
       }
     }
   }
-  node('devices').addEventListener('click', acquireDevices);
+  node('devices').addEventListener('click', () => acquireDevices());
   function cancelRealtime() {
     const attempt = realtimeAttempt;
     realtimeAttempt = null; pendingBargeIn = false;
@@ -619,7 +619,7 @@
     if (cause.transportLost || navigator.onLine === false) {interruptQuestion('offline'); return;}
     node('realtime-mode').checked = false;
     setPhase('answer-ready'); status('GUNAKAN REKAMAN BIASA / TEKS');
-    node('record').hidden = false; node('record').disabled = !micOn(); node('record').textContent = 'Mulai jawab';
+    node('record').hidden = false; node('record').disabled = !micOn(); node('record').textContent = 'Mulai rekam suara';
     node('answer-timer').textContent = formatTime(state.answer_seconds);
     renderAnswerMode(); showError('room-error', cause);
   }
@@ -812,20 +812,39 @@
     node('room-countdown').hidden = true;
   }
   function renderAnswerMode() {
-    const usable = available() && active && phase === 'answer-ready';
+    const usable = available() && active && ['answer-ready', 'recorded'].includes(phase) && !acquiring;
     node('record-controls').hidden = !usable || answerWithText;
     node('text-answer-area').hidden = !usable || !answerWithText;
-    node('use-text').hidden = !usable || (answerWithText && !micOn());
+    node('use-text').hidden = !usable;
     node('use-text').textContent = answerWithText ? 'Jawab dengan suara' : 'Jawab dengan teks';
     node('send-text').disabled = !usable || !answerWithText || !node('text-answer').value.trim() || node('text-answer').value.length > 8000;
+    node('answer-preview').hidden = !usable || answerWithText || !recorded?.blob;
+    node('live-review').hidden = !usable || answerWithText || !recorded?.capture_token;
     renderDevices();
   }
   node('text-answer').addEventListener('input', renderAnswerMode);
-  node('use-text').addEventListener('click', () => {
-    if (!available() || !active || flowBusy || !['answer-ready', 'recorded'].includes(phase)) return;
+  node('use-text').addEventListener('click', async () => {
+    if (!available() || !active || flowBusy || acquiring || !['answer-ready', 'recorded'].includes(phase)) return;
+    const token = lifecycle;
+    if (answerWithText && !micOn()) {
+      const tracks = stream?.getAudioTracks().filter(track => track.readyState === 'live');
+      if (tracks?.length) tracks.forEach(track => {track.enabled = true;});
+      else await acquireDevices(false);
+      if (!available() || token !== lifecycle || !micOn()) {
+        if (available() && token === lifecycle) showError('room-error', node('preflight-error').textContent || 'Mikrofon belum dapat diaktifkan.');
+        return;
+      }
+    }
     answerWithText = !answerWithText;
-    cancelRealtime(); recorded = null; pendingText = null; revokePreview(); setPhase('answer-ready');
-    node('send').hidden = true; node('retry').hidden = true; node('record').hidden = false; node('record').textContent = 'Mulai jawab';
+    pendingBargeIn = false;
+    if (!recorded) cancelRealtime();
+    pendingText = null;
+    if (answerWithText) node('answer-preview').pause();
+    setPhase(!answerWithText && recorded ? 'recorded' : 'answer-ready');
+    node('send').hidden = answerWithText || !recorded;
+    node('retry').hidden = answerWithText || !recorded || retries >= state.retry_limit;
+    node('record').hidden = !answerWithText && !!recorded;
+    node('record').textContent = 'Mulai rekam suara';
     renderAnswerMode();
     if (answerWithText) node('text-answer').focus();
   });
@@ -852,7 +871,7 @@
     guard(token);
     setPhase('answer-ready'); status('GILIRAN ANDA');
     node('record-controls').hidden = false; node('record').hidden = false;
-    node('record').textContent = 'Mulai jawab'; node('record').disabled = !micOn();
+    node('record').textContent = 'Mulai rekam suara'; node('record').disabled = !micOn();
     node('send').hidden = true; node('retry').hidden = true; node('replay').hidden = !question.audio_url;
     node('answer-timer').textContent = formatTime(state.answer_seconds);
     if (!micOn()) answerWithText = true;
@@ -942,13 +961,13 @@
         if (!available() || !active || token !== lifecycle || current?.id !== questionId || recorder !== capture) return;
         clearInterval(recordingTimer); recordingTimer = null;
         const blob = new Blob(parts, {type: capture.mimeType});
-        if (!blob.size) {setPhase('answer-ready'); node('record').hidden = false; node('record').textContent = 'Mulai jawab'; renderDevices(); showError('room-error', 'Audio belum terekam. Coba mulai jawab lagi.'); return;}
+        if (!blob.size) {setPhase('answer-ready'); node('record').hidden = false; node('record').textContent = 'Mulai rekam suara'; renderDevices(); showError('room-error', 'Audio belum terekam. Coba mulai jawab lagi.'); return;}
         recorded = {blob, questionId, duration: Math.max(100, Math.round(performance.now() - recordingStart)), timedOut: !!capture.timedOut};
         recorder = null; revokePreview();
         previewUrl = URL.createObjectURL(blob); node('answer-preview').src = previewUrl; node('answer-preview').hidden = false;
         setPhase('recorded'); status('TINJAU JAWABAN');
         node('record').hidden = true; node('send').hidden = false; node('send').disabled = false;
-        node('retry').hidden = retries >= state.retry_limit; node('replay').hidden = true;
+        node('retry').hidden = retries >= state.retry_limit; node('replay').hidden = true; node('use-text').hidden = false;
       };
       capture.onerror = () => {if (available() && token === lifecycle) {showError('room-error', 'Perekaman terhenti. Tinjau audio sebelum mengirim.'); stopRecording();}};
       capture.start(500);
@@ -1008,7 +1027,7 @@
   node('retry').addEventListener('click', () => {
     if (!available() || !active || retries >= state.retry_limit || phase !== 'recorded' || uploadBusy) return;
     retries++; cancelRealtime(); recorded = null; revokePreview(); setPhase('answer-ready'); status('GILIRAN ANDA');
-    node('record').hidden = false; node('record').textContent = 'Mulai jawab';
+    node('record').hidden = false; node('record').textContent = 'Mulai rekam suara';
     node('send').hidden = true; node('retry').hidden = true; node('replay').hidden = false;
     node('answer-timer').textContent = formatTime(state.answer_seconds); renderAnswerMode();
   });

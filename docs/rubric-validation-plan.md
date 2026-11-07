@@ -140,3 +140,7 @@ Klaim tersebut tidak berlaku untuk pekerjaan atau persona lain, dan tetap bukan 
 - Perangkat asesor menyediakan paket offline tanpa skor AI, penggabungan rating, template konsensus kosong setelah tiga asesor, impor keputusan koordinator, runner AI lima kali, dan laporan dengan pengecualian/denominator untuk bukti kurang. Tidak ada konsensus atau rating manusia yang diisi otomatis.
 
 Seluruh kriteria tinjauan manusia di atas tetap terbuka. Dua puluh contoh sintetis hanya menyiapkan proses, tidak menggantikan usulan sampel lebih besar yang harus disetujui ahli. Mengaktifkan opsi draf tidak mengaktifkan status validated.
+
+## Jalur cepat benchmark untuk hackathon
+
+[Benchmark Mohler](mohler-benchmark.md) telah disiapkan sebagai pengujian tambahan atas jawaban teknis akademik: 2.442 baris, 214 ketidaksesuaian rata-rata ditandai, dan pilot 50 jawaban yang konsisten. Label manusia asli dipisahkan dari prompt AI. Evaluasi nyata belum dijalankan. Hasil kelak hanya berlaku pada scorer berbasis jawaban acuan yang diuji, bukan otomatis pada rubrik EM, pekerjaan non-IT atau evaluator produksi. Benchmark ini tidak menyelesaikan kriteria tinjauan ahli, rating independen dan konsensus di atas.

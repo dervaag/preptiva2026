@@ -49,3 +49,7 @@ Batas fokus persona adalah desain produk yang mengikuti analisis pekerjaan, buka
 ## Profil draf khusus Engineering Manager
 
 Mulai 7 November 2026, [profil EM/persona Manager](engineering-manager-rubric.md) versi `2026-11-07.em.1` dapat dipilih secara eksplisit untuk latihan. Profil ini memiliki lima kompetensi dengan 25 jangkar perilaku internal, sumber metodologi/pekerjaan dan snapshot tersendiri. Rubrik umum di atas tetap menjadi default; HR, User, panel, pekerjaan lain dan sesi historis tidak dialihkan. Draf belum ditinjau ahli pekerjaan, belum dinilai asesor, dan selalu `validated: false`. Detail alur manusia ada di [panduan asesor](assessor-validation.md).
+
+## Benchmark akademik eksternal
+
+[Mohler ASAG](mohler-benchmark.md) menyediakan rating manusia untuk jawaban akademik ilmu komputer dan telah diunduh sebagai benchmark terpisah. Rata-rata label sumber memakai skala 0–5, berbeda dari rubrik wawancara 1–5 dan agregat skala 100; jangan mengonversinya menjadi skor kompetensi sesi. Pilot berisi 50 jawaban setelah mengecualikan label rata-rata yang tidak konsisten. Prompt benchmark bukan evaluator produksi. Belum ada run model atau hasil AI–manusia; sumber ini tidak mengubah rubrik, bobot, versi atau status validasi sesi.

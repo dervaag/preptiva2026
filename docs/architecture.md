@@ -182,3 +182,7 @@ Bobot per kompetensi berbeda berdasarkan tipe interviewer (HR / User / Manager).
 ## Pembaruan bahasa dan identitas publik
 
 URL/API memakai `interview_sessions.uuid`; ID numerik tetap internal untuk relasi/job. Bahasa sesi di `script.settings.language`; konteks campuran dan persona didokumentasikan dalam [languages-and-personas.md](languages-and-personas.md). Generator menggunakan variasi sudut ber-seed UUID dan sampai 35 pertanyaan pemilik/persona yang sama untuk menghindari pengulangan.
+
+## Komponen benchmark lokal
+
+`validation/mohler.py` menyediakan download → prepare → run → report untuk [benchmark Mohler](mohler-benchmark.md). Komponen ini memakai klien model aplikasi dengan prompt akademik tersendiri dan tidak berada dalam alur web/worker wawancara. `validation/audit.py` tetap mengaudit kesiapan dataset asesor EM; `validation/external_compare.py` membandingkan skor eksternal dengan provenance tersendiri. Ketiga alat tidak menandai rubrik tervalidasi. Artefak benchmark berada di `data/external/` dan tidak dikemas ke deployment.

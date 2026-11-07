@@ -1,6 +1,7 @@
 {
   "paid_api_calls": false,
   "ok": true,
+  "text_to_realtime_voice": true,
   "realtime_pcm": true,
   "live_transcript": true,
   "correction": true,
@@ -9,6 +10,6 @@
   "barge_in": true,
   "assessor_packet_download": true,
   "connections": 4,
-  "pcm_bytes": 343680,
+  "pcm_bytes": 324352,
   "streamed_responses": 9
 }

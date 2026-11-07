@@ -172,3 +172,7 @@ Snapshot acuan disimpan dalam kolom JSON yang sudah ada: `interview_sessions.scr
 ## Identitas publik dan bahasa
 
 Kolom `interview_sessions.uuid` yang sudah ada digunakan pada seluruh URL dan payload ID sesi publik. `id` numerik internal tetap menjaga FK dan job yang sudah ada. Bahasa disnapshot pada `script.settings.language` (`id`/`en`); sesi lama default `id`. Snapshot rubrik versi baru `2026-11-05.2` membedakan fokus persona dan tidak memberi penalti code-switching. Tidak diperlukan migrasi skema atau penghapusan sesi lama.
+
+## Penyimpanan benchmark eksternal
+
+[Dataset Mohler](mohler-benchmark.md) disimpan sebagai Parquet sumber, manifest unduhan dan JSON di `data/external/mohler-v1/`. Pilot berada di `data/external/mohler-pilot-50/`; masukan AI dan label manusia dipisahkan dan diikat hash. Hasil run/report juga berupa berkas lokal. Tidak ada tabel, migrasi, seed pengguna atau perubahan snapshot sesi untuk benchmark ini. `data/` diabaikan Git dan dikecualikan dari image Docker.

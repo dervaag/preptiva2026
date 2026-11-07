@@ -30,6 +30,10 @@ Buka http://localhost:8000 — login dengan `demo@interview.local` / `demo1234`,
 
 ## Acuan dan pemeliharaan
 
+- [Pedoman dasar asesor: sumber, langkah penilaian dan contoh bukti](pedoman-asesor.md)
+- [Benchmark eksternal: sumber rating manusia, akses dan pembanding skor](external-benchmark.md)
+- [Benchmark Mohler: dataset lokal dan perintah evaluasi](mohler-benchmark.md)
+- [Hasil pemeriksaan teknis dan status validasi](validation-initial-report.md)
 - [Acuan asesmen](assessment-reference.md)
 - [Rencana rubrik berbasis referensi dan pengujiannya](rubric-validation-plan.md)
 - [Perangkat, fokus sesi, dan latensi](session-experience.md)

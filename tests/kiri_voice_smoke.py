@@ -46,6 +46,14 @@ async def run():
 asyncio.run(run())
 '''.replace('EMAIL',repr(email))
             fixture=json.loads(container_python(source))
+            page.goto(url+'/sesi/'+fixture['sid']+'/ruang')
+            page.wait_for_function("document.querySelector('#room-status').textContent === 'SIAP DIMULAI'")
+            assert page.locator('#voice-mode').is_checked()
+            assert page.locator('#text-mode').get_attribute('type') == 'radio'
+            assert page.locator('#use-voice').count() == 1
+            page.locator('#text-mode').check()
+            assert not page.locator('#voice-mode').is_checked()
+            report['answer_mode_choices']=True
             status=page.evaluate('''data => new Promise(resolve => {
                 const socket=new WebSocket(`wss://${location.host}/api/sessions/${data.sid}/voice/${data.qid}`);
                 const timer=setTimeout(()=>{socket.close();resolve('timeout')},25000);

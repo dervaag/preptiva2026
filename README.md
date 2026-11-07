@@ -49,3 +49,9 @@ The supplied Python backend runs locally or with Docker, PostgreSQL and an arq/R
 See [implementation status](docs/implementation-status.md) for differences from the broader reference design and remaining validation work.
 
 Pemulihan pertanyaan dan context packet: [status brief panel](docs/panel-implementation.md). Persiapan pembandingan skor manusia: [validasi asesor](docs/assessor-validation.md).
+
+## External answer-grading benchmark
+
+[Mohler ASAG](docs/mohler-benchmark.md) is available locally as a separate benchmark: 2,442 human-rated answers and a 50-answer pilot. The importer preserves original scores, flags 214 inconsistent source averages and excludes them from pilot selection. Data stays under ignored `data/external/`; it is not included in a fresh clone or deployment image. Re-download using the pinned-revision command in the guide.
+
+The benchmark uses a separate reference-based grading prompt through the application's model client. It does not change interview scoring or validate the production evaluator. Model evaluation has not been run; there are no AI–human benchmark metrics yet. Running it requires `OPENAI_API_KEY`, `MODEL_DEEP` and the explicit `--run-paid` flag. Optional Parquet dependencies are in `validation/requirements.txt`. See [initial verification results](docs/validation-initial-report.md).

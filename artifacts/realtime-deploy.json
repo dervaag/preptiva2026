@@ -1,0 +1,16 @@
+{
+  "checked_at": "2026-11-07T05:34:53.409941+00:00",
+  "revision": "a7b7d1baaa63fd00fb8d80cd926fa8863d578469",
+  "deployment": "github-actions-kiri",
+  "runner_result": "Succeeded",
+  "unit_tests": 56,
+  "public_https": true,
+  "public_voice_handshake": true,
+  "containers_healthy": [
+    "web",
+    "worker",
+    "db",
+    "redis"
+  ],
+  "rubric_validated": false
+}

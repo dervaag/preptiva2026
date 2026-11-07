@@ -198,3 +198,17 @@ Konvensi commit message:
 Lihat [acuan dan snapshot rubrik](assessment-reference.md), [persiapan perangkat dan stream jawaban](session-experience.md), serta [log runtime](logging.md). Setiap perubahan selanjutnya wajib memperbarui Markdown terkait dan [changelog](CHANGELOG.md).
 
 Tes browser menggunakan nada sintetis dan menonaktifkan echo/noise suppression hanya pada fixture agar nada tidak dianggap noise setelah beberapa detik. Pemrosesan audio pada aplikasi nyata tetap aktif. Tes terbaru memeriksa UUID, mirror logo/video terpisah, pilihan fullscreen saat mulai dan keluar fullscreen tanpa menutup sesi.
+
+## Benchmark penilaian jawaban
+
+Lihat [panduan Mohler](mohler-benchmark.md) untuk berkas lokal, dependensi opsional dan perintah download/prepare/run/report. Revisi sumber dikunci, skor manusia dipisahkan dari masukan AI, dan 214 rata-rata tidak konsisten dikecualikan dari pilot. Benchmark tidak memakai rubrik produksi atau tabel sesi pengguna. Runner belum dijalankan dengan model nyata.
+
+Pemeriksaan terkait dapat dijalankan tanpa provider berbayar:
+
+```sh
+.venv/bin/python -m unittest discover -s tests -p 'test_mohler.py' -v
+.venv/bin/python -m unittest discover -s tests -p 'test_external_compare.py' -v
+.venv/bin/python -m unittest discover -s tests -p 'test_validation_audit.py' -v
+```
+
+Tiga kelompok tersebut masing-masing memiliki tiga tes. Hasilnya merupakan verifikasi perangkat lunak; metrik AI–manusia hanya dihasilkan oleh run/report dengan prediksi model nyata.

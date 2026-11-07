@@ -120,3 +120,7 @@ Dipakai untuk laporan biaya internal per sesi di log. Cek ulang di halaman harga
 `STT_FALLBACK_PROVIDER` default kosong; transkripsi tetap OpenAI. Nilai PRICE_* adalah konfigurasi estimasi historis, bukan harga otomatis atau tagihan aktual. Karena live TTS kini Multilingual v2, jangan memakai asumsi biaya Flash untuk laporan biaya.
 
 Bahasa dipilih per sesi di form/API (`language=id|en`), bukan environment global. Fullscreen dan mirror adalah opsi browser, bukan pengaturan `.env`. STT tetap model yang sama; bahasa audio tidak dipaksa ke Indonesia.
+
+## Konfigurasi benchmark Mohler
+
+[Runner Mohler](mohler-benchmark.md) memakai konfigurasi `OPENAI_API_KEY` dan `MODEL_DEEP` yang sudah ada melalui klien aplikasi. Tidak ada environment variable baru. Download/prepare tidak memanggil AI; `run --run-paid` mengirim pertanyaan, jawaban instruktur dan jawaban peserta ke OpenAI, tanpa skor manusia. Tidak memakai STT/TTS, ElevenLabs, Redis atau sesi database. Kredensial tetap hanya dibaca dari environment/`.env` dan tidak dimasukkan ke manifest/report.

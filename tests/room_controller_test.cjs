@@ -353,6 +353,29 @@ async function answer(f) {f.nodes.get('record').click();await f.advance(1000);f.
   assert.equal(typed.nodes.get('chat-log').children.filter(child=>child.className==='chat-message chat-message--candidate').length,1);
   console.log('PASS desktop-only text startup and multipart text answers preserve chat idempotency');
 
+  const modes = fixture(); await flush();
+  modes.nodes.get('text-mode').checked = true;
+  modes.nodes.get('text-mode').dispatchEvent(new Event('change'));
+  modes.nodes.get('focus-check').checked = true;
+  modes.nodes.get('focus-check').dispatchEvent(new Event('change'));
+  modes.nodes.get('start').click(); await flush(); await modes.advance(3100);
+  modes.nodes.get('text-answer').value = 'Draf tetap tersedia';
+  assert.equal(modes.nodes.get('use-text').hidden, false);
+  modes.nodes.get('use-text').click(); await flush();
+  assert.equal(modes.nodes.get('text-answer-area').hidden, true);
+  modes.nodes.get('realtime-mode').checked = false;
+  modes.nodes.get('record').click(); await modes.advance(1000);
+  modes.nodes.get('record').click(); await flush();
+  const savedPreview = modes.nodes.get('answer-preview').src;
+  modes.nodes.get('use-text').click(); await flush();
+  assert.equal(modes.nodes.get('text-answer-area').hidden, false);
+  assert.equal(modes.nodes.get('text-answer').value, 'Draf tetap tersedia');
+  modes.nodes.get('use-text').click(); await flush();
+  assert.equal(modes.nodes.get('answer-preview').src, savedPreview);
+  assert.equal(modes.nodes.get('answer-preview').hidden, false);
+  assert.equal(modes.nodes.get('send').hidden, false);
+  console.log('PASS text startup returns to microphone and mode switches preserve drafts and recordings');
+
   const panel=fixture({state:{panel:[{key:'hr',name:'Rina',title:'HR Interviewer'},{key:'user',name:'Andi',title:'Technical Lead'},{key:'manager',name:'Hendra',title:'Hiring Manager'}]},
     result:{action:'next',response_interviewer:'hr',response_text:'Terima kasih.',follow_up_question:null,next_question:{id:3,kind:'main',main_order:2,interviewer:'user',persona:{name:'Andi',title:'Technical Lead'},question_text:'Bagaimana Anda menguji hasil kerja?',audio_url:null}}});
   await flush();await start(panel);await answer(panel);
