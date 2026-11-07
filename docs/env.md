@@ -22,6 +22,23 @@ File konfigurasi: `.env` (copy dari `.env.example`)
 | `SECRET_KEY` | `dev-secret-change-me` | Secret key untuk session cookie. **Wajib diganti di produksi.** |
 | `COOKIE_SECURE` | `false` | Set `true` setelah HTTPS aktif (wajib untuk kamera di HP/luar localhost) |
 
+### Keamanan akun dan retensi
+
+| Variable | Default | Keterangan |
+| --- | --- | --- |
+| `AUTH_LOGIN_MAX_ATTEMPTS` | `5` | Percobaan login per akun per jendela; konfirmasi password memakai bucket terpisah. |
+| `AUTH_LOGIN_IP_MAX_ATTEMPTS` | `50` | Percobaan per alamat peer; registrasi dan konfirmasi password memakai bucket terpisah. |
+| `AUTH_LOGIN_WINDOW_SECONDS` | `900` | Jendela pembatasan, 15 menit. |
+| `AUTH_IDLE_SECONDS` | `1800` | Sesi login berakhir setelah 30 menit tanpa request terautentikasi. |
+| `AUTH_ABSOLUTE_SECONDS` | `43200` | Batas mutlak sesi login, 12 jam. |
+| `RETENTION_ENABLED` | `true` | Maintenance umur data saat worker mulai dan setiap jam. Jurnal penghapusan pengguna tetap diulang walaupun false. |
+| `RETENTION_AUDIO_DAYS` | `7` | Masa simpan berkas suara/cache TTS. |
+| `RETENTION_HISTORY_DAYS` | `90` | Riwayat, transkrip, hasil dan CV/JD yang disalin ke sesi. |
+| `RETENTION_RECEIPT_DAYS` | `30` | Tanda terima yang sudah selesai; pekerjaan tertunda tetap disimpan. |
+| `MAX_REQUEST_BYTES` | `31457280` | Batas total HTTP 30 MiB sebelum parsing, termasuk transfer chunked; batas PDF/audio per berkas tetap berlaku. |
+
+CV profil tidak kedaluwarsa otomatis. Login kedua ditolak selama sesi pertama aktif. Detail cakupan dan batas penghapusan: [keamanan dan privasi](security-and-privacy.md).
+
 ---
 
 ## Database & Queue
@@ -52,7 +69,7 @@ File konfigurasi: `.env` (copy dari `.env.example`)
 | `TTS_MODEL` | `gpt-4o-mini-tts` | Model OpenAI TTS. `tts-1` juga valid (lebih murah, dijadwalkan pensiun 6 Jan 2027) |
 | `TTS_LIVE_TIMEOUT_SEC` | `30.0` | Timeout TTS untuk tanggapan/follow-up (kandidat menunggu) |
 | `TTS_PREPARED_TIMEOUT_SEC` | `60.0` | Timeout TTS untuk intro/pertanyaan/penutup (dibuat saat prepare) |
-| `TTS_CACHE` | `true` | Cache audio TTS di `data/tts_cache/` berdasarkan hash konten |
+| `TTS_CACHE` | `true` | Cache TTS berdasarkan hash konten dalam `data/audio/<uuid>/cache/`, terpisah per sesi. Cache global lama dibersihkan maintenance. |
 | `TTS_VOICE_HR` | `nova` | Suara OpenAI TTS untuk interviewer HR |
 | `TTS_VOICE_USER` | `onyx` | Suara OpenAI TTS untuk interviewer User/Technical |
 | `TTS_VOICE_MANAGER` | `alloy` | Suara OpenAI TTS untuk interviewer Manager |

@@ -520,4 +520,4 @@ async def audio_file(name: str, session=Depends(owned_session)):
     path = safe_audio_path(session.uuid, name)
     if not path:
         raise HTTPException(404, 'Audio tidak ditemukan.')
-    return FileResponse(path, media_type='audio/mpeg', headers={'Cache-Control':'private, max-age=3600'})
+    return FileResponse(path, media_type='audio/mpeg', headers={'Cache-Control':'private, no-store'})

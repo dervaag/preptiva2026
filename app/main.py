@@ -1,8 +1,8 @@
 import asyncio
 from contextlib import asynccontextmanager
 from uuid import uuid4
-from urllib.parse import urlsplit
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -11,10 +11,12 @@ from sqlalchemy import text, select
 from app.config import settings, ROOT
 from app.db import init_db, SessionLocal
 from app.models import User
-from app.api import auth, sessions, dashboard, voice, profile
-from app.log import request_var
+from app.api import auth, sessions, dashboard, voice, profile, privacy
+from app.log import request_var, emit, failure_fields
 from app.assets import asset_url
 from app.graphs.policy import UnsupportedGraphVersion
+from app.services.auth_sessions import resolve_user, issue_session
+from app.services.http_security import unsafe_browser_request, protect_response, RequestBodyLimitMiddleware
 
 
 @asynccontextmanager
@@ -30,13 +32,21 @@ async def lifespan(app):
 app = FastAPI(title='Preptiva — AI Interview Simulator', version='0.1.0', lifespan=lifespan)
 
 
+@app.exception_handler(RequestValidationError)
+async def invalid_request(request, exc):
+    # Pydantic can embed an entire password form in input/ctx.
+    return JSONResponse({'detail': [{key: item[key] for key in ('loc', 'msg', 'type')}
+                                   for item in exc.errors()]}, status_code=422)
+
+
 @app.exception_handler(UnsupportedGraphVersion)
 async def unsupported_graph_version(request, exc):
     return JSONResponse({'detail': 'Versi sesi ini belum didukung server. Hubungi pengelola untuk melanjutkan.'}, status_code=503)
 
 
 app.add_middleware(SessionMiddleware, secret_key=settings.secret_key, session_cookie='isim_session',
-                   same_site='lax', https_only=settings.cookie_secure, max_age=60*60*24*7)
+                   same_site='lax', https_only=settings.cookie_secure, max_age=settings.auth_absolute_seconds)
+app.add_middleware(RequestBodyLimitMiddleware)
 
 
 @app.middleware('http')
@@ -44,19 +54,17 @@ async def request_context(request: Request, call_next):
     rid = uuid4().hex
     token = request_var.set(rid)
     try:
-        # Cookies are ambient credentials: reject browser cross-origin mutations.
-        origin = request.headers.get('origin')
-        if request.method in ('POST','PUT','PATCH','DELETE') and (request.headers.get('sec-fetch-site') == 'cross-site' or
-            (origin and urlsplit(origin).netloc != request.headers.get('host') and origin != settings.public_origin)):
-            return JSONResponse({'detail': 'Cross-origin request ditolak.'}, status_code=403)
+        if unsafe_browser_request(request):
+            return protect_response(JSONResponse({'detail': 'Cross-origin request ditolak.'}, status_code=403),
+                                    request.url.path, rid)
         response = await call_next(request)
-        response.headers['X-Request-ID'] = rid
-        response.headers['X-Content-Type-Options'] = 'nosniff'
-        response.headers['Referrer-Policy'] = 'same-origin'
-        response.headers['Permissions-Policy'] = 'camera=(self), microphone=(self)'
-        if request.url.path.startswith('/api'):
-            response.headers.setdefault('Cache-Control', 'no-store')
-        return response
+        return protect_response(response, request.url.path, rid)
+    except Exception as exc:
+        # Database/provider exceptions can embed CV text or credentials in their
+        # messages. Handle before the server formats an unredacted traceback.
+        emit('request_failed', **failure_fields(exc))
+        return protect_response(JSONResponse({'detail': 'Permintaan belum dapat diproses. Coba kembali.'},
+            status_code=500), request.url.path, rid)
     finally:
         request_var.reset(token)
 
@@ -66,6 +74,7 @@ app.include_router(sessions.router)
 app.include_router(dashboard.router)
 app.include_router(voice.router)
 app.include_router(profile.router)
+app.include_router(privacy.router)
 app.mount('/static', StaticFiles(directory=ROOT / 'app/static'), name='static')
 templates = Jinja2Templates(directory=ROOT / 'app/templates')
 templates.env.globals['asset_url'] = asset_url
@@ -99,10 +108,10 @@ async def dev_login(request: Request):
         return JSONResponse({'detail':'Not found'}, status_code=404)
     async with SessionLocal() as db:
         user = await db.scalar(select(User).where(User.email == 'demo@interview.local'))
-    if not user:
-        return RedirectResponse('/login?seed=1', status_code=303)
-    request.session.clear()
-    request.session['user_id'] = user.id
+        if not user:
+            return RedirectResponse('/login?seed=1', status_code=303)
+        await issue_session(request, user, db)
+        await db.commit()
     return RedirectResponse('/simulasi/baru', status_code=303)
 
 
@@ -122,8 +131,7 @@ async def page(request: Request, page: str = ''):
         return JSONResponse({'detail':'Not found'}, status_code=404)
     user = None
     async with SessionLocal() as db:
-        if request.session.get('user_id'):
-            user = await db.get(User, request.session['user_id'])
+        user = await resolve_user(request, db)
         if kind not in ('login', 'register') and not user:
             return RedirectResponse('/login', status_code=303)
         if sid:

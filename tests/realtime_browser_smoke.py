@@ -44,7 +44,7 @@ async def connection(language):
     stats['connections']+=1
     yield Upstream()
 
-async def stream_audio(text,persona):
+async def stream_audio(text,persona,uuid):
     stats['streamed_responses']+=1
     data=fixture.wav(3 if '?' in text else .2)
     for i in range(0,len(data),4096):

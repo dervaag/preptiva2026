@@ -48,7 +48,7 @@ async def check(folder):
     try:
         # A synthetic answer, synthesized via the same provider; no user recordings.
         answer_audio=bytearray()
-        async for data in speech.stream_audio('Saya memimpin proyek bersama tim. Kami membagi tugas dan menyelesaikan laporan tepat waktu.','hr'):answer_audio.extend(data)
+        async for data in speech.stream_audio('Saya memimpin proyek bersama tim. Kami membagi tugas dan menyelesaikan laporan tepat waktu.','hr',sid):answer_audio.extend(data)
         assert answer_audio,'Synthetic TTS failed'
         mp3=folder/'answer.mp3';mp3.write_bytes(answer_audio)
         pcm=folder/'answer.pcm'

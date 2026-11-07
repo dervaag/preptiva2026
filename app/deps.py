@@ -2,10 +2,11 @@ from fastapi import Depends, HTTPException, Request
 from sqlalchemy import select
 from app.db import get_db
 from app.models import User, InterviewSession
+from app.services.auth_sessions import resolve_user
 
 
 async def current_user(request: Request, db=Depends(get_db)):
-    user = await db.get(User, request.session.get('user_id', -1))
+    user = await resolve_user(request, db)
     if not user:
         raise HTTPException(401, 'Silakan masuk terlebih dahulu.')
     return user

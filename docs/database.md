@@ -2,6 +2,23 @@
 
 Database: **PostgreSQL 16** (produksi) / **SQLite** (dev)
 
+## Pembaruan keamanan dan retensi — 7 November 2026
+
+Sumber skema aktif adalah model SQLAlchemy; beberapa kolom dalam rancangan historis di bawah belum dipakai. Fitur keamanan menambah tabel berikut tanpa memindahkan data PostgreSQL:
+
+| Tabel | Isi dan relasi |
+| --- | --- |
+| `auth_sessions` | Satu baris per `user_id`, hash token, waktu login/idle/kedaluwarsa. FK akun dengan cascade. |
+| `login_limits` | Bucket HMAC, penghitung dan kedaluwarsa; tanpa email/IP mentah. |
+| `deletion_receipts` | ID acak, lingkup, status, jumlah data dan waktu. FK pengguna nullable dengan `SET NULL` saat akun dihapus. |
+| `storage_cleanup` | Jurnal pembersihan berkas yang terikat receipt; dihapus setelah berkas berhasil dibersihkan. |
+
+Penghapusan riwayat mencakup seluruh tabel anak, termasuk event serta input/checkpoint/ledger LangGraph. Penghapusan database dan pembuatan jurnal satu transaksi; berkas dibersihkan setelah commit agar rollback tidak menghilangkan berkas yang masih diperlukan. Detail retensi, cache per sesi dan bukti: [keamanan dan privasi](security-and-privacy.md).
+
+SQLite memakai `AUTOINCREMENT` pada ID yang dibuat aplikasi agar ID terhapus tidak diberikan kepada akun/sesi baru. Startup meningkatkan tabel SQLite lama secara transaksional dengan mempertahankan data, relasi dan objek skema. Hentikan semua proses versi lama sebelum peningkatan SQLite. PostgreSQL tetap menggunakan sequence; tidak menjalankan rebuild SQLite.
+
+## Rancangan awal
+
 Tabel dibuat otomatis saat startup (`create_all`, idempotent). DDL referensi tersedia di `sql/01_schema.sql` dan bisa di-generate ulang dengan:
 ```bash
 python -m app.scripts.dump_schema

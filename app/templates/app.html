@@ -7,6 +7,7 @@
 {% if page in ('form', 'dashboard', 'history', 'result', 'profile') %}<link rel="stylesheet" href="{{ asset_url('css/session-setup.css') }}"><link rel="stylesheet" href="{{ asset_url('css/custom-select.css') }}"><link rel="stylesheet" href="{{ asset_url('css/account-menu.css') }}">{% endif %}
 {% if page in ('dashboard', 'history', 'result', 'profile') %}<link rel="stylesheet" href="{{ asset_url('css/workspace.css') }}">{% endif %}
 {% if page == 'profile' %}<link rel="stylesheet" href="{{ asset_url('css/profile.css') }}">{% endif %}
+{% if page in ('profile', 'history') %}<link rel="stylesheet" href="{{ asset_url('css/privacy.css') }}">{% endif %}
 {% if page == 'result' %}<link rel="stylesheet" href="{{ asset_url('css/result.css') }}">{% endif %}
 {% if page in ('login', 'register') %}<link rel="stylesheet" href="{{ asset_url('css/custom-select.css') }}"><link rel="stylesheet" href="{{ asset_url('css/auth.css') }}">{% endif %}
 {% if page == 'room' %}<link rel="stylesheet" href="{{ asset_url('css/interview-room.css') }}"><link rel="preload" as="image" href="/static/images/interviewers/office-background.png" fetchpriority="high">{% endif %}
@@ -59,6 +60,7 @@
 <div id="toast" class="toast" role="status" hidden></div>{% if page == 'result' %}<script src="{{ asset_url('js/result.js') }}" defer></script>{% endif %}<script src="{{ asset_url('js/app.js') }}" defer></script>{% if page == 'room' %}<script src="{{ asset_url('js/realtime-voice.js') }}" defer></script><script src="{{ asset_url('js/interview-room.js') }}" defer></script>{% endif %}
 {% if page in ('form', 'dashboard', 'history', 'profile', 'login', 'register') %}<script src="{{ asset_url('js/custom-select.js') }}" defer></script>{% endif %}
 {% if page in ('form', 'dashboard', 'history', 'result', 'profile') %}<script src="{{ asset_url('js/account-menu.js') }}" defer></script>{% endif %}
+{% if page in ('profile', 'history') %}<script src="{{ asset_url('js/privacy.js') }}" defer></script>{% endif %}
 {% if page == 'profile' %}<script src="{{ asset_url('js/profile.js') }}" defer></script>{% endif %}
 {% if page in ('login', 'register') %}<script src="{{ asset_url('js/auth.js') }}" defer></script>{% endif %}
 {% if page == 'form' %}<script src="{{ asset_url('js/session-setup.js') }}" defer></script>{% endif %}

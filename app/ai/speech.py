@@ -1,10 +1,9 @@
 import asyncio
 import hashlib
 import json
-from uuid import uuid4
 import httpx
 from app.config import settings, ROOT
-from app.storage import audio_dir
+from app.storage import session_cache_path, read_session_audio, write_session_audio
 from app.log import emit
 from app.ai.errors import check_response, provider_post
 
@@ -34,10 +33,10 @@ async def synthesize(text, persona, uuid, name, live=False):
         payload['language_code'] = settings.elevenlabs_language_code
     key = hashlib.sha256(json.dumps({'provider': 'elevenlabs', 'version': 2, 'voice': voice,
         'output_format': settings.elevenlabs_output_format, **payload}, sort_keys=True).encode()).hexdigest()
-    cache = ROOT / 'data/tts_cache' / (key + '.mp3')
-    target = audio_dir(uuid) / name
-    if settings.tts_cache and cache.exists():
-        target.write_bytes(cache.read_bytes())
+    cache_name = key + '.mp3'
+    cached = read_session_audio(uuid, cache_name, cache=True) if settings.tts_cache else None
+    if cached is not None:
+        write_session_audio(uuid, name, cached)
         return f'/api/sessions/{uuid}/audio/{name}'
     async with tts_semaphore:
         async with httpx.AsyncClient(timeout=settings.tts_live_timeout_sec if live else settings.tts_prepared_timeout_sec) as client:
@@ -51,12 +50,9 @@ async def synthesize(text, persona, uuid, name, live=False):
                 check_response(response, 'ElevenLabs')
                 if not response.content:
                     raise RuntimeError('ElevenLabs mengembalikan audio kosong.')
-                target.write_bytes(response.content)
+                write_session_audio(uuid, name, response.content)
                 if settings.tts_cache:
-                    cache.parent.mkdir(parents=True, exist_ok=True)
-                    temporary = cache.with_suffix(f'.{uuid4().hex}.tmp')
-                    temporary.write_bytes(response.content)
-                    temporary.replace(cache)
+                    write_session_audio(uuid, cache_name, response.content, cache=True)
                 emit('tts_usage', provider='elevenlabs', model=model, chars=len(text))
                 return f'/api/sessions/{uuid}/audio/{name}'
 
@@ -71,29 +67,28 @@ async def transcribe(content, filename, language):
         return response.json()['text'].strip()
 
 
-def stream_cache(text, persona):
+def stream_cache(text, persona, uuid):
     voice = getattr(settings, f'elevenlabs_voice_{persona}')
     key = hashlib.sha256(json.dumps({'v':1, 'voice':voice, 'model':settings.elevenlabs_model_live,
         'format':settings.elevenlabs_output_format,'language':settings.elevenlabs_language_code,'text':text},sort_keys=True).encode()).hexdigest()
-    return ROOT / 'data/tts_stream_cache' / (key+'.mp3')
+    return session_cache_path(uuid, key)
 
 
-async def stream_audio(text, persona):
+async def stream_audio(text, persona, uuid):
     from app.services.locks import local_lock
-    target = stream_cache(text, persona)
-    temporary = target.with_suffix('.'+uuid4().hex+'.tmp')
+    target = stream_cache(text, persona, uuid)
     voice = getattr(settings, f'elevenlabs_voice_{persona}')
     payload = {'text':text, 'model_id':settings.elevenlabs_model_live}
     if settings.elevenlabs_language_code and settings.elevenlabs_model_live.endswith('_v2_5'):
         payload['language_code'] = settings.elevenlabs_language_code
     try:
         async with local_lock(('stream-tts', str(target))):
-            if settings.tts_cache and target.exists():
-                with target.open('rb') as file:
-                    while chunk := file.read(16384):
-                        yield chunk
+            cached = read_session_audio(uuid, target.name, cache=True) if settings.tts_cache else None
+            if cached is not None:
+                for offset in range(0, len(cached), 16384):
+                    session_cache_path(uuid, target.name)  # Stop after deletion.
+                    yield cached[offset:offset+16384]
                 return
-            target.parent.mkdir(parents=True, exist_ok=True)
             async with tts_semaphore, httpx.AsyncClient(timeout=settings.tts_live_timeout_sec) as client:
                 async with client.stream('POST',f'https://api.elevenlabs.io/v1/text-to-speech/{voice}/stream',
                         headers={'xi-api-key':settings.elevenlabs_api_key},params={'output_format':settings.elevenlabs_output_format},json=payload) as response:
@@ -101,19 +96,17 @@ async def stream_audio(text, persona):
                         # Do not log provider bodies or headers.
                         emit('tts_stream_failed', status=response.status_code)
                         return
-                    size = 0
-                    with temporary.open('wb') as file:
-                        temporary.chmod(0o600)
-                        async for chunk in response.aiter_bytes():
-                            size += len(chunk)
-                            if size > 16*1024*1024:
-                                raise RuntimeError('Voice response too large.')
-                            file.write(chunk)
-                            yield chunk
-                    if size and settings.tts_cache:
-                        temporary.replace(target)
-                    emit('tts_stream_completed', chars=len(text), bytes=size)
+                    buffered = bytearray()
+                    async for chunk in response.aiter_bytes():
+                        session_cache_path(uuid, target.name)
+                        if len(buffered) + len(chunk) > 16*1024*1024:
+                            raise RuntimeError('Voice response too large.')
+                        buffered.extend(chunk)
+                        yield chunk
+                    if buffered and settings.tts_cache:
+                        # No partial cache on cancellation; deletion and final
+                        # writes share a process lock and tombstone check.
+                        write_session_audio(uuid, target.name, buffered, cache=True)
+                    emit('tts_stream_completed', chars=len(text), bytes=len(buffered))
     except (httpx.HTTPError, RuntimeError) as exc:
         emit('tts_stream_failed', error_type=type(exc).__name__)
-    finally:
-        temporary.unlink(missing_ok=True)

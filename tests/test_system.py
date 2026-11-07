@@ -1,9 +1,17 @@
 import os
 import tempfile
 from pathlib import Path
+from urllib.parse import urlsplit
 
 _temporary = tempfile.TemporaryDirectory()
-os.environ['DATABASE_URL'] = 'sqlite+aiosqlite:///' + str(Path(_temporary.name) / 'test.db')
+_test_database = os.environ.get('PREPTIVA_TEST_DATABASE_URL', '')
+if _test_database:
+    _parsed_test_database = urlsplit(_test_database)
+    if (_parsed_test_database.scheme != 'postgresql+asyncpg'
+            or _parsed_test_database.hostname not in ('127.0.0.1', 'localhost')
+            or not _parsed_test_database.path.startswith('/preptiva_test_')):
+        raise RuntimeError('Test database override requires a local disposable preptiva_test_* PostgreSQL database.')
+os.environ['DATABASE_URL'] = _test_database or 'sqlite+aiosqlite:///' + str(Path(_temporary.name) / 'test.db')
 os.environ['APP_ENV'] = 'development'
 os.environ['AI_MOCK'] = 'false'
 os.environ['REALTIME_VOICE_ENABLED'] = 'false'
@@ -108,6 +116,11 @@ class TextAndScoringTests(unittest.TestCase):
 
 class SystemTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
+        self.storage_temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.storage_temporary.cleanup)
+        storage_patch = patch('app.storage.ROOT', Path(self.storage_temporary.name))
+        storage_patch.start()
+        self.addCleanup(storage_patch.stop)
         async def adapt(context):
             return dict(context['planned_question'])
         self.adapt_patch = patch('app.api.sessions.orchestrator.adapt_question', side_effect=adapt)
@@ -211,6 +224,7 @@ class SystemTests(unittest.IsolatedAsyncioTestCase):
     async def test_public_tunnel_origin_keeps_cross_site_protection(self):
         public = 'https://test-public.runkiri.cloud'
         credentials = {'email':'budi@example.com', 'password':'test12345'}
+        await self.client.post('/api/auth/logout')
         with patch.object(settings, 'public_origin', ''):
             response = await self.other.post('/api/auth/login', json=credentials, headers={'Origin':public})
             self.assertEqual(response.status_code, 403)
@@ -259,20 +273,21 @@ class SystemTests(unittest.IsolatedAsyncioTestCase):
             response = await self.client.request(method, path, data=data,
                 headers={'Origin':'https://attacker.example'})
             self.assertEqual(response.status_code, 403)
-        self.assertEqual((await self.other.delete('/api/profile/cv')).status_code, 200)
+        self.assertEqual((await self.other.request('DELETE', '/api/profile/cv',
+            json={'password':'test12345','confirmation':'HAPUS CV'})).status_code, 200)
         self.assertEqual((await self.client.get('/api/profile')).json(), own)
         self.assertFalse((await self.other.get('/api/profile')).json()['has_cv'])
 
     async def test_profile_updates_login_and_rolls_back_duplicate_email(self):
         self.assertEqual((await self.register(self.other, 'other@example.com')).status_code, 200)
         response = await self.client.patch('/api/profile', data={
-            'name':'  Nama Baru  ', 'email':'NEW@example.com', 'gender':'female', 'age':'31'})
+            'name':'  Nama Baru  ', 'email':'NEW@example.com', 'gender':'female', 'age':'31', 'current_password':'test12345'})
         self.assertEqual(response.status_code, 200, response.text)
         profile = response.json()
         self.assertEqual((profile['name'], profile['email'], profile['gender'], profile['age']),
                          ('Nama Baru', 'new@example.com', 'female', 31))
         response = await self.client.patch('/api/profile', data={
-            'name':'Should roll back', 'email':'other@example.com'})
+            'name':'Should roll back', 'email':'other@example.com', 'current_password':'test12345'})
         self.assertEqual(response.status_code, 409, response.text)
         self.assertEqual((await self.client.get('/api/profile')).json(), profile)
         for changes in ({'name':'  '}, {'email':'not-an-email'}, {'age':'81'}, {}):
@@ -308,7 +323,8 @@ class SystemTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(response.status_code, 200, response.text)
             self.assertNotIn('</textarea><script>alert(1)</script>', response.text)
             self.assertIn('&lt;/textarea&gt;&lt;script&gt;', response.text)
-        response = await self.client.delete('/api/profile/cv')
+        response = await self.client.request('DELETE', '/api/profile/cv',
+            json={'password':'test12345','confirmation':'HAPUS CV'})
         self.assertEqual(response.status_code, 200, response.text)
         self.assertFalse(response.json()['has_cv'])
         self.assertEqual(response.json()['cv_text'], '')
@@ -963,8 +979,8 @@ class RealtimeAndPacketTests(unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(HTTPException):verify(token,session,2)
         with self.assertRaises(HTTPException):verify('tampered',session,2)
         for origin,valid in [('http://localhost:8000',True),('https://evil.example',False),('',False),('http://localhost:8000/else',False)]:
-            self.assertEqual(same_origin(SimpleNamespace(headers={'origin':origin,'host':'localhost:8000'})),valid)
-        self.assertFalse(same_origin(SimpleNamespace(headers={'origin':'http://localhost:8000','host':'localhost:8000','sec-fetch-site':'cross-site'})))
+            self.assertEqual(same_origin(SimpleNamespace(url=SimpleNamespace(scheme='ws'), headers={'origin':origin,'host':'localhost:8000'})),valid)
+        self.assertFalse(same_origin(SimpleNamespace(url=SimpleNamespace(scheme='ws'), headers={'origin':'http://localhost:8000','host':'localhost:8000','sec-fetch-site':'cross-site'})))
 
     async def test_speech_stream_yields_early_and_never_caches_cancelled_audio(self):
         from app.ai import speech
@@ -978,17 +994,18 @@ class RealtimeAndPacketTests(unittest.IsolatedAsyncioTestCase):
             return httpx.Response(200,stream=Chunks())
         original=httpx.AsyncClient
         with tempfile.TemporaryDirectory() as directory, patch.object(speech,'ROOT',Path(directory)), \
+                patch('app.storage.ROOT',Path(directory)), \
                 patch.object(settings,'tts_cache',True), \
                 patch('app.ai.speech.httpx.AsyncClient',side_effect=lambda **kw: original(transport=httpx.MockTransport(handle),**kw)):
-            cache=speech.stream_cache('Synthetic streaming fixture.','hr')
-            stream=speech.stream_audio('Synthetic streaming fixture.','hr')
+            cache=speech.stream_cache('Synthetic streaming fixture.','hr','stream-test')
+            stream=speech.stream_audio('Synthetic streaming fixture.','hr','stream-test')
             self.assertEqual(await stream.__anext__(),b'first')
             self.assertFalse(cache.exists())
             await stream.aclose()
             self.assertFalse(cache.exists());self.assertFalse(list(cache.parent.glob('*.tmp')))
-            self.assertEqual(b''.join([chunk async for chunk in speech.stream_audio('Synthetic streaming fixture.','hr')]),b'firstsecond')
+            self.assertEqual(b''.join([chunk async for chunk in speech.stream_audio('Synthetic streaming fixture.','hr','stream-test')]),b'firstsecond')
             self.assertTrue(cache.exists())
-            self.assertEqual(b''.join([chunk async for chunk in speech.stream_audio('Synthetic streaming fixture.','hr')]),b'firstsecond')
+            self.assertEqual(b''.join([chunk async for chunk in speech.stream_audio('Synthetic streaming fixture.','hr','stream-test')]),b'firstsecond')
             self.assertEqual(len(calls),2)
 
     def test_blind_packets_merge_integrity_and_no_automatic_validation(self):

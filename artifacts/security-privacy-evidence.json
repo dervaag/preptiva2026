@@ -1,0 +1,124 @@
+{
+  "recorded_at": "2026-11-07T08:03:34.485160+00:00",
+  "scope": "Automated software checks; not a penetration-test certificate or rubric validation",
+  "source_baseline_commit": "8a45de851e91d9ed23dd8147ec56545198855780",
+  "source_tree_sha256": "425a9c4cffdf4480316450168466e586aecd8b9935187ccc358624858a1c6495",
+  "source_fingerprint_method": "Sorted app/ and tests/ files excluding __pycache__ and .pyc, plus requirements.txt, .env.example, compose.kiri.yaml, .github/workflows/kiri.yml; SHA256 of relative_path + NUL + file_sha256 + LF for each file",
+  "source_file_count": 157,
+  "environment": {
+    "python": "3.12.16",
+    "fastapi": "0.162.0",
+    "starlette": "1.10.0"
+  },
+  "policy": {
+    "login_attempts_per_account": 5,
+    "login_window_seconds": 900,
+    "login_attempts_per_peer": 50,
+    "second_browser": "reject_while_first_active",
+    "idle_seconds": 1800,
+    "absolute_seconds": 43200,
+    "audio_days": 7,
+    "history_days": 90,
+    "saved_cv": "until_user_deletion",
+    "completed_receipt_days": 30
+  },
+  "python_regression": {
+    "command": "python -m unittest discover -s tests -v",
+    "discovered": 196,
+    "passed": 195,
+    "skipped": 1,
+    "skip_reason": "PostgreSQL-only row-lock test; run separately below",
+    "seconds": 53.253,
+    "database": "temporary SQLite",
+    "paid_provider_calls": 0,
+    "result": "passed"
+  },
+  "postgresql_security": {
+    "version": 16,
+    "discovered": 31,
+    "passed": 30,
+    "skipped": 1,
+    "skip_reason": "SQLite-specific concurrent stale-password barrier; PostgreSQL row-lock regression covers that engine",
+    "test_modules": [
+      "test_auth_security",
+      "test_privacy_security"
+    ],
+    "temporary_container_removed": true,
+    "production_resources_used": false,
+    "result": "passed"
+  },
+  "sqlite_migration": {
+    "tests": 6,
+    "result": "passed",
+    "preserves": [
+      "rows",
+      "foreign_keys",
+      "extra_columns",
+      "indexes",
+      "triggers",
+      "views"
+    ],
+    "failed_upgrade_rollback": true,
+    "unsupported_schema_fails_closed": true,
+    "late_request_cannot_read_new_account": true
+  },
+  "javascript": {
+    "all_app_scripts_syntax": "passed",
+    "rubric_ui_helpers": "passed",
+    "room_controller_scenarios": 29,
+    "result": "passed"
+  },
+  "browser_profile": {
+    "backend": "real local API with temporary database and storage",
+    "languages": [
+      "id",
+      "en"
+    ],
+    "viewport_widths": [
+      390,
+      768,
+      1440
+    ],
+    "profile_cv_confirmation_and_delete": "passed",
+    "email_reauthentication": "passed",
+    "paid_provider_calls": 0
+  },
+  "browser_privacy_ui_contract": {
+    "ok": true,
+    "backend": "mocked contract",
+    "paid_api_calls": false,
+    "email_reauthentication": true,
+    "cv_confirmation_and_receipt": true,
+    "password_change": true,
+    "single_and_bulk_history_delete": true,
+    "pending_files_disclosed": true,
+    "account_receipt_before_navigation": true,
+    "no_password_storage": true,
+    "late_status_request_cannot_hide_account_receipt": true,
+    "languages": [
+      "id",
+      "en"
+    ],
+    "viewport_widths": [
+      390,
+      768,
+      1440
+    ]
+  },
+  "browser_realtime_regression": {
+    "ok": true,
+    "live_transcript": true,
+    "interruption_retry": true,
+    "auto_send_vad": true,
+    "barge_in": true,
+    "connections": 4,
+    "pcm_bytes": 324480,
+    "streamed_responses": 9
+  },
+  "evidence_boundaries": [
+    "All regression identities and provider data are synthetic.",
+    "Receipt complete covers active database and application files, not external backups or provider copies.",
+    "Public deployment checks are recorded separately by tests/security_deployment_smoke.py.",
+    "No human assessment validity, physical microphone accuracy, penetration-test certification, MFA, email verification or backup erasure claim."
+  ]
+}

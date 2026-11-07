@@ -21,6 +21,8 @@
   let sessions = [], historyStatus = 'all', historyPage = 1, loaded = false, loading = false, disposed = false;
   let loadGeneration = 0, focusGeneration = 0, loadController = null, focusController = null;
   let trendSessions = [], trendWidth = 0, chartResizeFrame = null, chartObserver = null;
+  const privacy = window.PreptivaPrivacy;
+  let deletionTarget = null;
 
   function timestamp(value) {
     const time = typeof value === 'number' ? value : value ? Date.parse(value) : NaN;
@@ -52,13 +54,14 @@
       const status = Object.hasOwn(statusLabels, session.status) ? session.status : 'unknown';
       const score = scored(session) ? `${points(session.total_score)}<small>/100</small>` : '-';
       const metadata = [levelLabels[session.level] || session.level, session.company].filter(Boolean).join(' · ');
-      return `<a class="ws-session-row" href="${esc(sessionPath(session))}">
+      const row = `<a class="ws-session-row" href="${esc(sessionPath(session))}">
         <span class="ws-session-main"><span class="ws-persona ws-persona--${esc(Object.hasOwn(personas, session.interviewer) ? session.interviewer : 'unknown')}" aria-hidden="true">${interviewer.initial}</span><span><strong>${esc(session.job_role || 'Latihan wawancara')}</strong><small>${esc(metadata)}</small></span></span>
         <span class="ws-session-interviewer"><strong>${esc(interviewer.name)}</strong><small>${esc(interviewer.title)}</small></span>
         <span class="ws-session-date">${timeMarkup(session.created_at)}</span>
         <span class="ws-session-status ws-session-status--${status}"><span aria-hidden="true"></span>${esc(statusLabels[status] || 'Status tidak dikenal')}</span>
         <span class="ws-session-score">${score}</span><span class="ws-session-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
       </a>`;
+      return page === 'history' ? `<div class="privacy-session-row">${row}<button type="button" class="privacy-delete-session" data-delete-session="${esc(session.id)}">Hapus sesi</button></div>` : row;
     }).join('');
   }
 
@@ -194,6 +197,7 @@
     node('history-prev').disabled = historyPage <= 1;
     node('history-next').disabled = historyPage >= pages;
     node('history-reset').hidden = !search && interviewer === 'all' && historyStatus === 'all' && sort === 'newest';
+    node('history-delete-all').disabled = !sessions.length;
     for (const tab of tabs) {
       const selected = tab.dataset.historyStatus === historyStatus;
       tab.setAttribute('aria-pressed', String(selected));
@@ -204,6 +208,47 @@
   }
   function filtersChanged() {historyPage = 1; renderHistory();}
   if (page === 'history') {
+    const deletionDialog=node('history-delete-dialog'), deletionForm=node('history-delete-form');
+    privacy.bindDialog(deletionDialog,deletionForm);
+    function openDeletion(session) {
+      if(!loaded || deletionForm.dataset.busy === 'true' || (!session && !sessions.length))return;
+      deletionTarget=session ? {id:String(session.id),title:session.job_role || ''} : {all:true};
+      deletionForm.reset();node('history-delete-error').hidden=true;
+      node('history-delete-title').textContent=session ? 'Hapus sesi ini?' : 'Hapus seluruh riwayat?';
+      node('history-delete-description').textContent=session ?
+        'Pertanyaan, jawaban, transkrip, hasil, salinan CV dalam sesi, dan audio akan dihapus. Tindakan ini tidak dapat dibatalkan.' :
+        'Semua sesi Anda akan dihapus, termasuk yang tidak terlihat karena filter. CV yang tersimpan di profil tetap ada. Tindakan ini tidak dapat dibatalkan.';
+      node('history-delete-target').textContent=session ? deletionTarget.title : '';
+      node('history-delete-target').hidden=!session;
+      node('history-delete-expected').textContent=session ? 'HAPUS' : 'HAPUS RIWAYAT';
+      deletionDialog.showModal();
+    }
+    node('history-delete-all').addEventListener('click', () => openDeletion(null));
+    node('history-list').addEventListener('click', event => {
+      const button=event.target.closest('[data-delete-session]');if(!button)return;
+      const session=sessions.find(item => String(item.id) === button.dataset.deleteSession);
+      if(session)openDeletion(session);
+    });
+    node('history-delete-cancel').addEventListener('click', () => deletionDialog.close());
+    deletionForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      if(!deletionTarget || deletionForm.dataset.busy === 'true')return;
+      const target={...deletionTarget}, expected=target.all ? 'HAPUS RIWAYAT' : 'HAPUS';
+      if(!privacy.confirm(deletionForm,expected))return;
+      const payload={password:deletionForm.elements.password.value,confirmation:deletionForm.elements.confirmation.value.trim()};
+      privacy.busy(deletionForm,true);node('history-delete-error').hidden=true;
+      try {
+        const path=target.all ? '/api/sessions' : `/api/sessions/${encodeURIComponent(target.id)}`;
+        const data=await api(path,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        sessions=target.all ? [] : sessions.filter(item => String(item.id)!==target.id);
+        renderHistory();deletionDialog.close();deletionTarget=null;
+        privacy.showReceipt(node('history-delete-receipt'),data.receipt);
+        node('history-delete-receipt').scrollIntoView({block:'nearest'});
+      }catch(cause){node('history-delete-error').textContent=cause?.message || String(cause);node('history-delete-error').hidden=false;}
+      finally{deletionForm.elements.password.value='';privacy.busy(deletionForm,false);}
+    });
+    window.addEventListener('pagehide', () => {deletionForm.elements.password.value='';});
+    privacy.loadPolicy(node('history-retention-policy'));
     node('history-search').addEventListener('input', filtersChanged);
     interviewerInput.addEventListener('change', filtersChanged);
     sortInput.addEventListener('change', filtersChanged);

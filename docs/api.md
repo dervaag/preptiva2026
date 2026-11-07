@@ -8,7 +8,7 @@ Base URL: `http://localhost:8000`
 
 `state.answer_seconds`, `state.max_followups`, dan `state.retry_limit` mengikuti konfigurasi saat sesi dibuat. Batas retry/durasi juga divalidasi oleh server sebelum panggilan STT. Timeout tanggapan mengembalikan 504 pada endpoint JSON atau event `error` pada NDJSON; jawaban belum disimpan dan dapat dikirim ulang. Penolakan provider mengembalikan 502/event `error` dengan pesan aman tanpa kredensial atau isi respons mentah provider.
 
-Autentikasi: session cookie (`isim_session`) yang di-set setelah login. Semua endpoint `/api/*` kecuali `/api/auth/*` memerlukan session aktif.
+Autentikasi: cookie `isim_session` membawa token acak yang hash-nya diverifikasi terhadap sesi aktif di database. Login/registrasi tidak memerlukan login sebelumnya; logout idempoten. Endpoint privat, termasuk `/api/auth/session` dan `/api/auth/password`, memerlukan sesi aktif. Kebijakan dan bukti: [keamanan dan privasi](security-and-privacy.md).
 
 ---
 
@@ -60,11 +60,13 @@ Login dengan email dan password.
 
 **Error:**
 - `401` — email atau password salah
+- `409` — akun masih aktif pada browser/perangkat lain; sesi pertama tetap berlaku
+- `429` — batas percobaan tercapai; header `Retry-After` menyatakan detik tunggu
 
 ---
 
 ### POST /api/auth/logout
-Hapus session aktif.
+Cabut token sesi aktif di database dan hapus cookie. Cookie yang disalin sebelum logout tidak dapat digunakan kembali.
 
 **Response 200:**
 ```json
@@ -90,6 +92,24 @@ Data user yang sedang login.
 ```
 
 ---
+
+## Endpoint keamanan dan penghapusan
+
+| Endpoint | Masukan / hasil |
+| --- | --- |
+| `GET /api/auth/session` | Batas idle/absolut dan waktu kedaluwarsa; tidak mengembalikan token. |
+| `POST /api/auth/password` | JSON `current_password`, `new_password`, `password_confirm`; mengganti password dan meminta login ulang. |
+| `PATCH /api/profile` | Perubahan email memerlukan form `current_password`; perubahan nama saja tidak. |
+| `GET /api/privacy/policy` | Kebijakan retensi dan batas penghapusan. |
+| `GET /api/privacy/receipts` | Maksimal 20 tanda terima terbaru milik pengguna aktif. |
+| `DELETE /api/profile/cv` | JSON `password` dan `confirmation: "HAPUS CV"`; hapus CV profil, bukan snapshot sesi lama. |
+| `DELETE /api/sessions/{uuid}` | JSON `password` dan `confirmation: "HAPUS"`; hapus satu sesi milik pengguna. |
+| `DELETE /api/sessions` | JSON `password` dan `confirmation: "HAPUS RIWAYAT"`; hapus seluruh riwayat pengguna. |
+| `DELETE /api/profile` | JSON `password` dan `confirmation: "HAPUS AKUN"`; hapus akun dan data turunannya, cabut login. |
+
+Penghapusan mengembalikan objek `receipt`: ID, lingkup, waktu, jumlah data, `database_deleted`, `files_pending` dan status `complete` atau `pending_files`. Status tertunda berarti database sudah dihapus dan worker masih perlu membersihkan berkas. Tanda terima akun yang sudah dihapus hanya tersedia pada respons penghapusan; tidak ada endpoint unduhan publik. Konfirmasi salah ditolak 422, password salah 403, data pengguna lain 404, dan pembatasan konfirmasi password 429. Tidak ada password atau isi CV/jawaban dalam receipt.
+
+Mutasi browser wajib berasal dari Origin/Referer aplikasi; sumber asing ditolak 403. API privat dan halaman HTML memakai `Cache-Control: no-store`. Ukuran total permintaan melebihi batas ditolak 413, termasuk body chunked.
 
 ## Sessions
 

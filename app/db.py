@@ -14,8 +14,16 @@ if settings.db_url.startswith('sqlite'):
 async def init_db():
     from app.models import Base
     from app.graphs import models as graph_models  # Register additive persistence tables.
-    async with engine.begin() as connection:
-        await connection.run_sync(Base.metadata.create_all)
+    from app import security_models, privacy_models  # Additive auth and deletion journals.
+    if engine.dialect.name == 'sqlite':
+        # Dedicated connection: migration toggles foreign_keys only outside its
+        # atomic transaction, then restores it before this connection is reused.
+        from app.services.sqlite_identity import initialize_sqlite
+        async with engine.connect() as connection:
+            await connection.run_sync(initialize_sqlite, Base.metadata)
+    else:
+        async with engine.begin() as connection:
+            await connection.run_sync(Base.metadata.create_all)
 
 
 async def get_db():

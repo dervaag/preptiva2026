@@ -1,9 +1,9 @@
 {% from 'partials/custom-select.html' import select_field %}
 <div class="workspace-heading profile-heading"><div><h1>Profil saya</h1><p>Kelola data pribadi dan CV untuk latihan berikutnya.</p></div></div>
-<div class="profile-layout">
+<div class="profile-layout" id="profile-layout">
   <aside class="ws-panel profile-sidebar">
     <div class="profile-identity"><span class="profile-avatar" data-account-initial data-ui-content>{{ user.name[:1].upper() }}</span><h2 data-account-name data-ui-content>{{ user.name }}</h2><p data-account-email data-ui-content>{{ user.email }}</p></div>
-    <nav class="profile-nav" aria-label="Bagian profil"><a href="#profile-personal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg>Data pribadi</a><a href="#profile-cv">{{ icon('file') }}CV saya</a></nav>
+    <nav class="profile-nav" aria-label="Bagian profil"><a href="#profile-personal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg>Data pribadi</a><a href="#profile-cv">{{ icon('file') }}CV saya</a><a href="#profile-security">Keamanan akun</a><a href="#profile-privacy">Privasi dan data</a></nav>
     <p class="profile-sidebar-note">Data ini menjadi isian awal saat membuat simulasi baru.</p>
   </aside>
   <div class="profile-sections">
@@ -16,6 +16,7 @@
           {{ select_field('gender', 'Gender', [('male', 'Laki-laki'), ('female', 'Perempuan')], user.gender or 'male') }}
           <label class="setup-field" for="profile-age">Usia<input id="profile-age" name="age" type="number" value="{{ user.age or '' }}" required min="15" max="80" inputmode="numeric"></label>
         </div>
+        <label class="setup-field" id="profile-email-password-field" hidden>Password saat ini<input id="profile-email-password" name="current_password" type="password" autocomplete="current-password" maxlength="72" disabled><small class="profile-field-hint">Masukkan password saat ini untuk mengganti email login.</small></label>
         <div class="profile-error" id="profile-personal-error" role="alert" hidden></div>
         <div class="profile-form-actions"><span class="profile-save-status" id="profile-personal-status" role="status"></span><button class="ws-button" type="submit">Simpan perubahan</button></div>
       </form>
@@ -30,7 +31,57 @@
         <div class="profile-error" id="profile-cv-error" role="alert" hidden></div>
         <div class="profile-form-actions"><button id="profile-delete-cv" class="profile-delete" type="button"{{ ' disabled' if not user.last_cv_text }}>Hapus CV</button><span id="profile-cv-status" class="profile-save-status" role="status"></span><button class="ws-button" type="submit">Simpan CV</button></div>
       </form>
+      <div id="profile-cv-receipt" class="privacy-receipt" role="status" hidden></div>
+    </section>
+    <section class="ws-panel" id="profile-security">
+      <div class="profile-section-heading"><div><h2>Keamanan akun</h2><p>Satu akun hanya dapat memiliki satu sesi login aktif.</p></div></div>
+      <div class="privacy-body">
+        <p>Login dari browser atau perangkat lain ditolak selama sesi ini aktif. Keluar terlebih dahulu jika ingin berpindah perangkat.</p>
+        <p id="profile-session-info" class="privacy-note" role="status">Memuat informasi sesi…</p>
+        <form id="profile-password-form" class="privacy-form">
+          <label class="setup-field">Password saat ini<input name="current_password" type="password" autocomplete="current-password" required maxlength="72"></label>
+          <label class="setup-field">Password baru<input name="new_password" type="password" autocomplete="new-password" required minlength="8" maxlength="72"><small>Minimal 8 karakter, dengan huruf dan angka.</small></label>
+          <label class="setup-field">Konfirmasi password baru<input name="password_confirm" type="password" autocomplete="new-password" required minlength="8" maxlength="72"></label>
+          <p class="privacy-note">Setelah password berubah, sesi ini berakhir dan Anda perlu masuk kembali.</p>
+          <div id="profile-password-error" class="privacy-error" role="alert" hidden></div>
+          <div class="privacy-form-actions"><button class="ws-button" type="submit">Ganti password</button></div>
+        </form>
+      </div>
+    </section>
+    <section class="ws-panel" id="profile-privacy">
+      <div class="profile-section-heading"><div><h2>Privasi dan data</h2><p>Atur penyimpanan dan lihat bukti penghapusan data Anda.</p></div></div>
+      <div class="privacy-body">
+        <div id="profile-retention-policy" role="status"><p class="privacy-note">Memuat kebijakan retensi…</p></div>
+        <p><a class="ws-text-link" href="/riwayat">Kelola dan hapus riwayat latihan</a></p>
+        <h3>Bukti penghapusan</h3>
+        <div id="profile-receipts" aria-live="polite"><p class="privacy-note">Memuat tanda terima…</p></div>
+      </div>
+    </section>
+    <section class="ws-panel privacy-danger" id="profile-account-removal">
+      <div class="profile-section-heading"><div><h2>Hapus akun</h2><p>Hapus akun, CV, seluruh riwayat, jawaban, hasil, dan berkas audio dalam aplikasi.</p></div></div>
+      <div class="privacy-body"><p>Tindakan ini tidak dapat dibatalkan. Sesi login akan langsung berakhir.</p><button id="profile-delete-account" class="privacy-danger-button" type="button">Hapus akun saya</button></div>
     </section>
   </div>
 </div>
-<dialog class="profile-confirm" id="profile-delete-dialog" aria-labelledby="profile-delete-title"><h2 id="profile-delete-title">Hapus CV tersimpan?</h2><p>Anda dapat mengunggah atau menambahkan CV baru kapan saja.</p><div id="profile-delete-error" class="profile-error" role="alert" hidden></div><div class="profile-confirm-actions"><button id="profile-cancel-delete" type="button" class="ws-button ws-button--secondary" autofocus>Batal</button><button id="profile-confirm-delete" type="button" class="ws-button profile-delete-confirm">Hapus CV</button></div></dialog>
+<section id="profile-account-deleted" class="ws-panel privacy-body privacy-account-deleted" hidden>
+  <h2 id="profile-account-deleted-title" tabindex="-1">Akun sudah dihapus.</h2><p>Sesi login sudah berakhir. Simpan tanda terima sebelum meninggalkan halaman ini.</p>
+  <div id="profile-account-receipt" class="privacy-receipt"></div><a class="ws-button" href="/login">Kembali ke halaman masuk</a>
+</section>
+<dialog class="privacy-dialog" id="profile-delete-dialog" aria-labelledby="profile-delete-title" aria-describedby="profile-delete-description">
+  <h2 id="profile-delete-title">Hapus CV tersimpan?</h2><p id="profile-delete-description">Menghapus CV tersimpan tidak menghapus salinan dalam sesi lama. Hapus riwayat terkait untuk menghapus salinan tersebut.</p>
+  <form id="profile-delete-form" class="privacy-form">
+    <label class="setup-field">Password saat ini<input name="password" type="password" autocomplete="current-password" required maxlength="72"></label>
+    <label class="setup-field">Ketik teks konfirmasi<code>HAPUS CV</code><input name="confirmation" autocomplete="off" spellcheck="false" required aria-label="Konfirmasi hapus CV"></label>
+    <div id="profile-delete-error" class="privacy-error" role="alert" hidden></div>
+    <div class="privacy-form-actions"><button id="profile-cancel-delete" type="button" class="ws-button ws-button--secondary" autofocus>Batal</button><button id="profile-confirm-delete" type="submit" class="ws-button privacy-delete-submit">Hapus CV</button></div>
+  </form>
+</dialog>
+<dialog class="privacy-dialog" id="profile-account-dialog" aria-labelledby="profile-account-delete-title" aria-describedby="profile-account-delete-description">
+  <h2 id="profile-account-delete-title">Hapus akun secara permanen?</h2><p id="profile-account-delete-description">Akun, CV, seluruh riwayat, transkrip, hasil, dan audio dalam aplikasi akan dihapus. Tindakan ini tidak dapat dibatalkan.</p>
+  <form id="profile-account-delete-form" class="privacy-form">
+    <label class="setup-field">Password saat ini<input name="password" type="password" autocomplete="current-password" required maxlength="72"></label>
+    <label class="setup-field">Ketik teks konfirmasi<code>HAPUS AKUN</code><input name="confirmation" autocomplete="off" spellcheck="false" required aria-label="Konfirmasi hapus akun"></label>
+    <div id="profile-account-delete-error" class="privacy-error" role="alert" hidden></div>
+    <div class="privacy-form-actions"><button id="profile-account-cancel" type="button" class="ws-button ws-button--secondary" autofocus>Batal</button><button id="profile-account-confirm" type="submit" class="ws-button privacy-delete-submit">Hapus akun permanen</button></div>
+  </form>
+</dialog>

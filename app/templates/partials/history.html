@@ -4,6 +4,8 @@
   <a class="ws-button" href="/simulasi/baru"><span>Simulasi baru</span>{{ icon('arrow') }}</a>
 </div>
 {% include 'partials/workspace-state.html' %}
+<div class="privacy-history-tools"><p>Anda dapat menghapus satu sesi atau seluruh riwayat secara permanen.</p><button id="history-delete-all" class="privacy-danger-button" type="button" disabled>Hapus semua riwayat</button></div>
+<div id="history-delete-receipt" class="privacy-receipt" role="status" hidden></div>
 <div id="workspace-data" hidden>
   <section class="ws-panel ws-history" aria-label="Daftar latihan">
     <div class="ws-history-tabs" id="history-tabs" role="group" aria-label="Status sesi">
@@ -23,3 +25,14 @@
     <div class="ws-pagination" aria-label="Halaman riwayat"><span id="history-page"></span><div><button id="history-prev" class="ws-page-button" type="button" aria-label="Halaman sebelumnya" disabled><span aria-hidden="true">‹</span><span>Sebelumnya</span></button><button id="history-next" class="ws-page-button" type="button" aria-label="Halaman berikutnya" disabled><span>Berikutnya</span><span aria-hidden="true">›</span></button></div></div>
   </section>
 </div>
+<section class="ws-panel privacy-body privacy-history-policy" aria-labelledby="history-policy-title"><h2 id="history-policy-title">Penyimpanan data latihan</h2><div id="history-retention-policy" role="status"><p class="privacy-note">Memuat kebijakan retensi…</p></div><a class="ws-text-link" href="/profile#profile-privacy">Lihat bukti penghapusan</a></section>
+<dialog class="privacy-dialog" id="history-delete-dialog" aria-labelledby="history-delete-title" aria-describedby="history-delete-description">
+  <h2 id="history-delete-title">Hapus sesi ini?</h2><p id="history-delete-description">Pertanyaan, jawaban, transkrip, hasil, salinan CV dalam sesi, dan audio akan dihapus. Tindakan ini tidak dapat dibatalkan.</p>
+  <p id="history-delete-target" data-ui-content></p>
+  <form id="history-delete-form" class="privacy-form">
+    <label class="setup-field">Password saat ini<input name="password" type="password" autocomplete="current-password" required maxlength="72"></label>
+    <label class="setup-field">Ketik teks konfirmasi<code id="history-delete-expected">HAPUS</code><input name="confirmation" autocomplete="off" spellcheck="false" required aria-label="Konfirmasi hapus riwayat"></label>
+    <div id="history-delete-error" class="privacy-error" role="alert" hidden></div>
+    <div class="privacy-form-actions"><button id="history-delete-cancel" type="button" class="ws-button ws-button--secondary" autofocus>Batal</button><button id="history-delete-confirm" type="submit" class="ws-button privacy-delete-submit">Hapus permanen</button></div>
+  </form>
+</dialog>

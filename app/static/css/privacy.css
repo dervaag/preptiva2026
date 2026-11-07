@@ -1,0 +1,56 @@
+.privacy-body {padding: 23px 28px;}
+.privacy-body > p, .privacy-note {font-size: 12px; line-height: 1.8; color: #686b76;}
+.privacy-body > p + p {margin-top: 10px;}
+#profile-email-password-field {margin-top: 22px;}
+.privacy-body > h3 {font-size: 15px; margin-top: 24px;}
+.privacy-body > .privacy-danger-button {margin-top: 18px;}
+#profile-password-form {margin-top: 22px;}
+.privacy-policy-details, .privacy-receipt-details {display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 10px 20px; margin: 0 0 16px; font-size: 12px; line-height: 1.8;}
+.privacy-policy-details dt, .privacy-receipt-details dt {color: #686b76;}
+.privacy-policy-details dd, .privacy-receipt-details dd {margin: 0; overflow-wrap: anywhere;}
+.privacy-form {display: grid; gap: 19px;}
+.privacy-form .setup-field {display: flex; flex-direction: column; gap: 8px; min-width: 0; font-size: 12px;}
+.privacy-form input {box-sizing: border-box; width: 100%; min-height: 45px; border: 1px solid #d5d5df; border-radius: 8px; padding: 11px 13px; font: inherit; font-size: 14px; background: #fff;}
+.privacy-form .setup-field small {font-weight: 400; line-height: 1.8; color: #686b76;}
+.privacy-form .privacy-form-actions {display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 12px;}
+.privacy-form code {font-size: 12px; padding: 3px 6px; background: #f3f2f5; border-radius: 4px; align-self: flex-start;}
+.privacy-danger {border-color: #dccac5;}
+.privacy-danger-button {border: 1px solid #a13c25; border-radius: 8px; min-height: 42px; padding: 10px 15px; color: #913823; background: #fff; font: inherit; font-size: 12px; cursor: pointer;}
+.privacy-danger-button:hover {background: #fff5f0;}
+.privacy-danger-button:disabled {opacity: .55; cursor: default;}
+.privacy-dialog {width: min(500px,calc(100vw - 32px)); max-height: calc(100dvh - 40px); overflow-y: auto; border: 1px solid #e1dce0; border-radius: 16px; padding: 27px; color: #27272f; font-family: 'DM Sans',sans-serif;}
+.privacy-dialog::backdrop {background: #25222866;}
+.privacy-dialog h2 {font-size: 21px; letter-spacing: -.035em; font-weight: 550;}
+.privacy-dialog > p {font-size: 12px; color: #686b76; line-height: 1.8; margin: 13px 0 24px;}
+.privacy-dialog .ws-button {font-size: 12px;}
+.privacy-dialog .privacy-delete-submit {background: #a13c25; color: #fff;}
+.privacy-error {color: #8b3012; font-size: 12px; line-height: 1.8; white-space: pre-wrap;}
+.privacy-receipt {margin: 20px 0; padding: 22px; border: 1px solid #c7dacb; border-radius: 12px; background: #f7fbf7;}
+.privacy-receipt[data-state="pending_files"] {border-color: #e3d4b7; background: #fffaf0;}
+.privacy-receipt h3 {font-size: 16px; margin: 0 0 10px;}
+.privacy-receipt > p {font-size: 12px; line-height: 1.8; margin: 0 0 15px;}
+.privacy-receipt .ws-button {margin-top: 10px;}
+.privacy-receipt-row {display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 13px 0; border-bottom: 1px solid #e7e7ec;}
+.privacy-receipt-row > div {min-width: 0;}
+.privacy-receipt-row strong {font-size: 12px;}
+.privacy-receipt-row small {display: block; font-size: 10px; color: #686b76; line-height: 1.8; overflow-wrap: anywhere;}
+.privacy-session-row {position: relative; padding-bottom: 37px; border-bottom: 1px solid #e7e7ec;}
+.privacy-session-row .ws-session-row {border-bottom: 0;}
+.privacy-session-row > .privacy-delete-session {position: absolute; right: 18px; bottom: 9px; border: 0; background: transparent; font: inherit; font-size: 11px; color: #913823; cursor: pointer; padding: 4px 8px;}
+.privacy-session-row > .privacy-delete-session:hover {text-decoration: underline;}
+.privacy-history-tools {display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 16px; margin-bottom: 20px;}
+.privacy-history-tools > p {font-size: 12px; line-height: 1.8; color: #686b76;}
+.privacy-history-policy {margin-top: 24px;}
+.privacy-account-deleted h2 {font-size: 23px; margin: 0 0 12px;}
+.privacy-account-deleted > p {font-size: 13px; line-height: 1.9; color: #686b76;}
+.privacy-form-actions input:focus-visible,.privacy-form input:focus-visible,.privacy-danger-button:focus-visible,.privacy-delete-session:focus-visible {outline: 3px solid #a6340d; outline-offset: 3px;}
+[hidden] {display: none !important;}
+@media (max-width: 500px) {
+  .privacy-body {padding: 21px 20px;}
+  .privacy-policy-details, .privacy-receipt-details {grid-template-columns: 1fr; gap: 3px;}
+  .privacy-policy-details dd, .privacy-receipt-details dd {margin-bottom: 12px;}
+  .privacy-dialog {padding: 22px 18px;}
+  .privacy-form input {font-size: 16px;}
+  .privacy-history-tools {align-items: flex-start;}
+  .privacy-receipt {padding: 18px;}
+}

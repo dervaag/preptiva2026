@@ -3,7 +3,6 @@ import json
 import time
 from datetime import timedelta
 from uuid import uuid4
-from urllib.parse import urlsplit
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException
 from fastapi.responses import StreamingResponse, FileResponse
 from pydantic import BaseModel, Field
@@ -17,19 +16,16 @@ from app.services.interview import turns
 from app.services.events import record
 from app.services.voice_capture import seal
 from app.log import emit
+from app.services.auth_sessions import resolve_user
+from app.services.http_security import trusted_browser_origin
+from app.storage import SessionStorageDeleted
 
 router = APIRouter()
 
 
 def same_origin(socket):
-    origin = socket.headers.get('origin', '')
-    try:
-        parsed = urlsplit(origin)
-    except ValueError:
-        return False
-    return bool(origin and (origin == settings.public_origin or
-        (parsed.scheme in ('http','https') and parsed.netloc == socket.headers.get('host') and parsed.path == ''
-         and not parsed.query and not parsed.fragment))) and socket.headers.get('sec-fetch-site') != 'cross-site'
+    return (socket.headers.get('sec-fetch-site') != 'cross-site'
+            and trusted_browser_origin(socket, socket.headers.get('origin', '')))
 
 
 async def check_turn(db, sid, owner, qid):
@@ -47,8 +43,13 @@ async def check_turn(db, sid, owner, qid):
 
 @router.websocket('/api/sessions/{sid}/voice/{qid}')
 async def capture(socket: WebSocket, sid: str, qid: int):
-    owner = socket.session.get('user_id')
-    if not owner or not same_origin(socket) or not settings.realtime_voice_enabled:
+    if not same_origin(socket) or not settings.realtime_voice_enabled:
+        await socket.close(code=1008)
+        return
+    async with SessionLocal() as db:
+        user = await resolve_user(socket, db)
+        owner = user.id if user else None
+    if owner is None:
         await socket.close(code=1008)
         return
     lease, started, session = uuid4().hex, time.monotonic(), None
@@ -132,6 +133,8 @@ async def capture(socket: WebSocket, sid: str, qid: int):
                         raise ValueError('Ucapan belum terdeteksi; coba rekam ulang atau gunakan teks.')
                     duration = round(count/48)
                     async with SessionLocal() as db:
+                        if await resolve_user(socket, db, touch=False) is None:
+                            raise ValueError('Login sudah berakhir.')
                         current = await check_turn(db, sid, owner, qid)
                         if current.script.get('voice_lease', {}).get('id') != lease:
                             raise ValueError('Percobaan rekaman sudah berubah.')
@@ -147,6 +150,8 @@ async def capture(socket: WebSocket, sid: str, qid: int):
                 while True:
                     await asyncio.sleep(2)
                     async with SessionLocal() as db:
+                        if await resolve_user(socket, db, touch=False) is None:
+                            raise ValueError('Login sudah berakhir.')
                         stored = await db.scalar(select(InterviewSession).where(InterviewSession.uuid == sid))
                         if (not stored or stored.status != 'running'
                                 or stored.script.get('checkpoint', {}).get('phase') == 'interrupted'
@@ -214,10 +219,13 @@ async def stream_speech(kind: str, item_id: int, session=Depends(owned_session),
         raise HTTPException(404, 'Suara tidak tersedia.')
     if len(text) > 6000:
         raise HTTPException(422, 'Teks suara terlalu panjang.')
-    cache = speech.stream_cache(text, persona)
+    try:
+        cache = speech.stream_cache(text, persona, session.uuid)
+    except SessionStorageDeleted:
+        raise HTTPException(404, 'Suara tidak tersedia.')
     if settings.tts_cache and cache.exists():
-        return FileResponse(cache, media_type='audio/mpeg',headers={'Cache-Control':'private, max-age=3600'})
-    return StreamingResponse(speech.stream_audio(text, persona),media_type='audio/mpeg',
+        return FileResponse(cache, media_type='audio/mpeg',headers={'Cache-Control':'private, no-store'})
+    return StreamingResponse(speech.stream_audio(text, persona, session.uuid),media_type='audio/mpeg',
         headers={'Cache-Control':'private, no-store','X-Accel-Buffering':'no'})
 
 

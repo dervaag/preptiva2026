@@ -13,6 +13,16 @@ class Settings(BaseSettings):
     cookie_secure: bool = False
     # Exact external HTTPS origin when a tunnel rewrites the upstream Host header.
     public_origin: str = Field(default='', pattern=r'^(?:https://[A-Za-z0-9][A-Za-z0-9.-]*(?::[0-9]+)?)?$')
+    auth_login_max_attempts: int = Field(default=5, ge=1, le=100)
+    auth_login_ip_max_attempts: int = Field(default=50, ge=5, le=10000)
+    auth_login_window_seconds: int = Field(default=900, ge=30, le=86400)
+    auth_idle_seconds: int = Field(default=1800, ge=60, le=86400)
+    auth_absolute_seconds: int = Field(default=43200, ge=300, le=604800)
+    retention_audio_days: int = Field(default=7, ge=1, le=365)
+    retention_history_days: int = Field(default=90, ge=1, le=3650)
+    retention_receipt_days: int = Field(default=30, ge=1, le=365)
+    retention_enabled: bool = True
+    max_request_bytes: int = Field(default=30 * 1024 * 1024, ge=1024 * 1024, le=64 * 1024 * 1024)
     database_url: str = ''
     redis_url: str = ''
     ai_mock: bool = False
@@ -52,6 +62,8 @@ class Settings(BaseSettings):
 
     @model_validator(mode='after')
     def validate_runtime(self):
+        if self.auth_idle_seconds > self.auth_absolute_seconds:
+            raise ValueError('Auth idle timeout must not exceed the absolute session lifetime.')
         if self.ai_mock:
             raise ValueError('AI_MOCK must be false; tests inject provider dependencies.')
         if self.app_env == 'production' and (len(self.secret_key) < 32 or self.secret_key.startswith('dev-') or not self.cookie_secure):

@@ -8,6 +8,11 @@ async function api(path, options = {}) {
     if (response.status === 401 && !path.includes('/auth/')) location.assign('/login');
     let error = data.detail || 'Permintaan gagal.';
     if (Array.isArray(error)) error = error.map(e => `${e.loc.at(-1)}: ${e.msg}`).join('\n');
+    const retryAfter = Number(response.headers.get('Retry-After'));
+    if (response.status === 429 && Number.isFinite(retryAfter) && retryAfter > 0 && retryAfter <= 86400) {
+      error += window.PreptivaI18n?.language === 'en'
+        ? ` Try again in ${Math.ceil(retryAfter)} seconds.` : ` Coba lagi dalam ${Math.ceil(retryAfter)} detik.`;
+    }
     throw new Error(error);
   }
   return data;

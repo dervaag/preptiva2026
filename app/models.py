@@ -15,6 +15,7 @@ class Base(DeclarativeBase):
 
 class User(Base):
     __tablename__ = 'users'
+    __table_args__ = {'sqlite_autoincrement': True}
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(190), unique=True)
     password_hash: Mapped[str] = mapped_column(String(255))
@@ -27,7 +28,7 @@ class User(Base):
 
 class InterviewSession(Base):
     __tablename__ = 'interview_sessions'
-    __table_args__ = (Index('idx_user_finished', 'user_id', 'status', 'finished_at'),)
+    __table_args__ = (Index('idx_user_finished', 'user_id', 'status', 'finished_at'), {'sqlite_autoincrement': True})
     id: Mapped[int] = mapped_column(primary_key=True)
     uuid: Mapped[str] = mapped_column(String(36), unique=True, default=lambda: str(uuid4()))
     user_id: Mapped[int] = mapped_column(ForeignKey('users.id', ondelete='CASCADE'))
@@ -68,6 +69,7 @@ class SessionCompetency(Base):
 
 class InterviewQuestion(Base):
     __tablename__ = 'interview_questions'
+    __table_args__ = {'sqlite_autoincrement': True}
     id: Mapped[int] = mapped_column(primary_key=True)
     session_id: Mapped[int] = mapped_column(ForeignKey('interview_sessions.id', ondelete='CASCADE'), index=True)
     kind: Mapped[str] = mapped_column(String(20), default='main')
@@ -83,6 +85,7 @@ class InterviewQuestion(Base):
 
 class InterviewAnswer(Base):
     __tablename__ = 'interview_answers'
+    __table_args__ = {'sqlite_autoincrement': True}
     id: Mapped[int] = mapped_column(primary_key=True)
     question_id: Mapped[int] = mapped_column(ForeignKey('interview_questions.id', ondelete='CASCADE'), unique=True)
     transcript: Mapped[str] = mapped_column(Text)
@@ -103,7 +106,7 @@ class InterviewAnswer(Base):
 
 class InterviewEvent(Base):
     __tablename__ = 'interview_events'
-    __table_args__ = (UniqueConstraint('session_id', 'event_key'),)
+    __table_args__ = (UniqueConstraint('session_id', 'event_key'), {'sqlite_autoincrement': True})
     id: Mapped[int] = mapped_column(primary_key=True)
     session_id: Mapped[int] = mapped_column(ForeignKey('interview_sessions.id', ondelete='CASCADE'), index=True)
     event_key: Mapped[str] = mapped_column(String(100))
@@ -115,7 +118,7 @@ class InterviewEvent(Base):
 class GraphTurnInput(Base):
     """Accepted transcript for a graph attempt, separate from completed answers."""
     __tablename__ = 'graph_turn_inputs'
-    __table_args__ = (UniqueConstraint('question_id', 'attempt'),)
+    __table_args__ = (UniqueConstraint('question_id', 'attempt'), {'sqlite_autoincrement': True})
     id: Mapped[int] = mapped_column(primary_key=True)
     session_id: Mapped[int] = mapped_column(ForeignKey('interview_sessions.id', ondelete='CASCADE'), index=True)
     question_id: Mapped[int] = mapped_column(ForeignKey('interview_questions.id', ondelete='CASCADE'))

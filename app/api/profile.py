@@ -1,13 +1,15 @@
 import asyncio
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from pydantic import EmailStr
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Request
+from pydantic import EmailStr, BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 
 from app.db import get_db
 from app.deps import current_user
 from app.services.text import extract_pdf, validate_text
+from app.services.auth_sessions import require_password, lock_credentials
+from app.services.privacy import delete_saved_cv
 
 router = APIRouter()
 
@@ -23,9 +25,10 @@ async def get_profile(user=Depends(current_user)):
 
 
 @router.patch('/api/profile')
-async def update_profile(name: Optional[str] = Form(None, min_length=2, max_length=120),
+async def update_profile(request: Request, name: Optional[str] = Form(None, min_length=2, max_length=120),
     email: Optional[EmailStr] = Form(None), gender: Optional[Literal['male', 'female']] = Form(None),
     age: Optional[int] = Form(None, ge=15, le=80), cv_text: Optional[str] = Form(None, max_length=60000),
+    current_password: Optional[str] = Form(None, max_length=72),
     cv_pdf: Optional[UploadFile] = File(None), user=Depends(current_user), db=Depends(get_db)):
     changes = {}
     if name is not None:
@@ -36,6 +39,9 @@ async def update_profile(name: Optional[str] = Form(None, min_length=2, max_leng
         address = str(email).strip().lower()
         if len(address) > 190:
             raise HTTPException(422, 'Email maksimal 190 karakter.')
+        if address != user.email:
+            await require_password(request, user, current_password or '', db)
+            await lock_credentials(db, user)
         changes['email'] = address
     if gender is not None:
         changes['gender'] = gender
@@ -58,8 +64,13 @@ async def update_profile(name: Optional[str] = Form(None, min_length=2, max_leng
     return profile_data(user)
 
 
+class DeleteSavedCV(BaseModel):
+    password: str = Field(min_length=1, max_length=72)
+    confirmation: Literal['HAPUS CV']
+
+
 @router.delete('/api/profile/cv')
-async def delete_cv(user=Depends(current_user), db=Depends(get_db)):
-    user.last_cv_text = None
-    await db.commit()
-    return profile_data(user)
+async def delete_cv(data: DeleteSavedCV, request: Request, user=Depends(current_user), db=Depends(get_db)):
+    await require_password(request, user, data.password, db)
+    receipt = await delete_saved_cv(db, user)
+    return {**profile_data(user), 'receipt': receipt}

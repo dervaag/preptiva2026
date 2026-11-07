@@ -82,6 +82,22 @@ Setelah mengubah kode atau `.env`, jalankan `up` lagi agar image/container diper
 
 ## Operasional
 
+Pembaruan keamanan menolak login browser kedua dan meminta semua pengguna login kembali sekali. Worker menjalankan retensi audio 7 hari serta riwayat 90 hari saat startup dan setiap jam; CV profil tidak kedaluwarsa otomatis. Pratinjau hitungan tanpa menghapus data:
+
+```sh
+docker --context kiri exec preptiva-worker-1 python -m app.scripts.retention
+```
+
+Pengujian keamanan pada URL aktif tersedia terpisah dan membuat akun sintetis sementara yang dihapus setelah pemeriksaan. Jangan memakai akun nyata untuk mencoba pembatasan login:
+
+```sh
+python tests/security_deployment_smoke.py \
+  --base-url https://buoy-s5yqbu.runkiri.cloud \
+  --output artifacts/security-deployment-smoke.json --run
+```
+
+Tanpa `--run`, skrip tidak mengirim permintaan. Bukti ini tidak memakai API AI dan tidak menggantikan pengujian penetrasi. Cakupan penghapusan, tanda terima dan pengaturan ada di [keamanan dan privasi](security-and-privacy.md).
+
 ```sh
 # Status dan health seluruh service
 sh deploy/kiri.sh ps

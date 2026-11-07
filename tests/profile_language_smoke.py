@@ -114,6 +114,7 @@ def main():
             email = 'profile-language@example.com'
             page.locator('#profile-name').fill(markup_name)
             page.locator('#profile-email').fill(email)
+            page.locator('#profile-email-password').fill('demo1234')
             save_personal()
             names_equal(markup_name)
             assert page.locator('[data-account-name] img').count() == 0
@@ -194,6 +195,8 @@ def main():
             expect(page.locator('#profile-delete-dialog')).not_to_be_visible()
             assert profile()['cv_text'] == cv
             page.locator('#profile-delete-cv').click()
+            page.locator('#profile-delete-dialog [name=password]').fill('demo1234')
+            page.locator('#profile-delete-dialog [name=confirmation]').fill('HAPUS CV')
             with page.expect_response(lambda response: response.url.endswith('/api/profile/cv')
                                       and response.request.method == 'DELETE') as response:
                 page.locator('#profile-confirm-delete').click()

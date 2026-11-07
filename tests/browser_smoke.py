@@ -31,6 +31,11 @@ from app.models import User
 from app.security import hash_password
 from app.ai import speech, orchestrator
 from app.storage import audio_dir
+from app import storage
+
+# Every consumer of this fixture, including profile/privacy-only smoke scripts,
+# must keep filesystem cleanup away from development recordings and caches.
+storage.ROOT = Path(temporary.name)
 
 
 def wav(seconds):

@@ -201,6 +201,50 @@
     'Kamera dan mikrofon':'Camera and microphone', 'Akhiri sesi':'End session', 'Batalkan':'Cancel',
     'Siapkan perangkat sebelum mulai.':'Check your devices before starting.', 'Penjelasan indikator penilaian':'Assessment indicator details'
   });
+  Object.assign(dictionary, {
+    'Keamanan akun':'Account security', 'Privasi dan data':'Privacy and data',
+    'Password saat ini':'Current password', 'Password baru':'New password', 'Konfirmasi password baru':'Confirm new password',
+    'Masukkan password saat ini untuk mengganti email login.':'Enter your current password to change your sign-in email.',
+    'Satu akun hanya dapat memiliki satu sesi login aktif.':'Each account can have only one active sign-in session.',
+    'Terlalu banyak percobaan. Tunggu sebentar lalu coba kembali.':'Too many attempts. Wait a moment and try again.',
+    'Kata sandi saat ini tidak sesuai.':'Your current password is incorrect.', 'Password saat ini tidak sesuai.':'Your current password is incorrect.',
+    'Kredensial akun sudah berubah. Silakan masuk kembali.':'Your account credentials have changed. Please sign in again.',
+    'Silakan masuk terlebih dahulu.':'Please sign in first.',
+    'Login dari browser atau perangkat lain ditolak selama sesi ini aktif. Keluar terlebih dahulu jika ingin berpindah perangkat.':'Sign-in from another browser or device is blocked while this session is active. Sign out first to switch devices.',
+    'Memuat informasi sesi…':'Loading session details…', 'Informasi sesi belum dapat dimuat.':'Session details could not be loaded.',
+    'Setelah password berubah, sesi ini berakhir dan Anda perlu masuk kembali.':'Changing your password ends this session. You will need to sign in again.',
+    'Ganti password':'Change password', 'Password minimal 8 karakter, berisi huruf dan angka, maksimal 72 byte.':'Use at least 8 characters, including letters and numbers, and no more than 72 bytes.',
+    'Atur penyimpanan dan lihat bukti penghapusan data Anda.':'Manage storage and review your data deletion receipts.',
+    'Memuat kebijakan retensi…':'Loading retention policy…', 'Memuat tanda terima…':'Loading receipts…',
+    'Kelola dan hapus riwayat latihan':'Manage and delete practice history', 'Bukti penghapusan':'Deletion receipts',
+    'Hapus akun':'Delete account', 'Hapus akun saya':'Delete my account', 'Hapus akun permanen':'Permanently delete account',
+    'Hapus akun, CV, seluruh riwayat, jawaban, hasil, dan berkas audio dalam aplikasi.':'Delete your account, CV, all history, answers, results, and audio files in the app.',
+    'Tindakan ini tidak dapat dibatalkan. Sesi login akan langsung berakhir.':'This cannot be undone. Your sign-in session will end immediately.',
+    'Akun sudah dihapus.':'Your account has been deleted.',
+    'Sesi login sudah berakhir. Simpan tanda terima sebelum meninggalkan halaman ini.':'Your sign-in session has ended. Save your receipt before leaving this page.',
+    'Kembali ke halaman masuk':'Back to sign in', 'Hapus akun secara permanen?':'Permanently delete your account?',
+    'Akun, CV, seluruh riwayat, transkrip, hasil, dan audio dalam aplikasi akan dihapus. Tindakan ini tidak dapat dibatalkan.':'Your account, CV, all history, transcripts, results, and audio in the app will be deleted. This cannot be undone.',
+    'Ketik teks konfirmasi':'Type the confirmation text', 'Teks konfirmasi belum sesuai.':'The confirmation text does not match.',
+    'Konfirmasi hapus CV':'Confirm CV deletion', 'Konfirmasi hapus akun':'Confirm account deletion', 'Konfirmasi hapus riwayat':'Confirm history deletion',
+    'Menghapus CV tersimpan tidak menghapus salinan dalam sesi lama. Hapus riwayat terkait untuk menghapus salinan tersebut.':'Removing your saved CV does not remove copies in past sessions. Delete the relevant history to remove those copies.',
+    'Penghapusan selesai.':'Deletion complete.', 'Penghapusan berkas masih diproses.':'File deletion is still in progress.',
+    'Tanda terima ini mencatat data yang telah dihapus dari aplikasi.':'This receipt records the data deleted from the app.',
+    'Data dalam database sudah dihapus. Pembersihan berkas akan dicoba kembali secara otomatis.':'Database data has been deleted. File cleanup will be retried automatically.',
+    'ID tanda terima':'Receipt ID', 'Sesi':'Sessions', 'Berkas':'Files', 'Unduh tanda terima':'Download receipt', 'Unduh':'Download',
+    'Audio yang disimpan':'Stored audio', 'Riwayat, transkrip, dan hasil':'History, transcripts, and results', 'Tanda terima penghapusan':'Deletion receipts',
+    'Sampai Anda menghapus CV atau akun.':'Until you delete your CV or account.', 'Pembersihan otomatis berjalan secara berkala.':'Automatic cleanup runs periodically.',
+    'Pembersihan otomatis belum diaktifkan oleh pengelola.':'Automatic cleanup has not been enabled by the administrator.',
+    'Salinan pada provider AI dan backup dikelola terpisah; tanda terima ini tidak menyatakan penghapusan dari layanan tersebut.':'Copies held by AI providers and backups are managed separately; this receipt does not confirm deletion from those services.',
+    'Kebijakan retensi belum dapat dimuat. Coba muat ulang halaman.':'The retention policy could not be loaded. Reload this page to try again.',
+    'Belum ada tanda terima penghapusan.':'No deletion receipts yet.', 'Berkas menunggu pembersihan':'File cleanup pending',
+    'Retensi otomatis':'Automatic retention', 'Penghapusan data':'Data deletion', 'Akun':'Account',
+    'Tanda terima belum dapat dimuat. Coba muat ulang halaman.':'Receipts could not be loaded. Reload this page to try again.',
+    'Anda dapat menghapus satu sesi atau seluruh riwayat secara permanen.':'You can permanently delete a single session or your entire history.',
+    'Hapus semua riwayat':'Delete all history', 'Penyimpanan data latihan':'Practice data storage', 'Lihat bukti penghapusan':'View deletion receipts',
+    'Hapus sesi':'Delete session', 'Hapus sesi ini?':'Delete this session?', 'Hapus seluruh riwayat?':'Delete all history?', 'Hapus permanen':'Delete permanently',
+    'Pertanyaan, jawaban, transkrip, hasil, salinan CV dalam sesi, dan audio akan dihapus. Tindakan ini tidak dapat dibatalkan.':'Questions, answers, transcripts, results, CV copies in this session, and audio will be deleted. This cannot be undone.',
+    'Semua sesi Anda akan dihapus, termasuk yang tidak terlihat karena filter. CV yang tersimpan di profil tetap ada. Tindakan ini tidak dapat dibatalkan.':'All your sessions will be deleted, including those hidden by filters. The CV saved in your profile will remain. This cannot be undone.'
+  });
   const aliases = {'Not Ready':'Belum siap','Needs Work':'Perlu latihan','Ready':'Siap'};
   Object.assign(dictionary, {'Belum siap':'Not Ready','Perlu latihan':'Needs Work','Siap':'Ready'});
   const reverse = new Map(Object.entries(dictionary).filter(([, en]) => en).map(([id, en]) => [en, id]));
@@ -208,6 +252,9 @@
   const texts = new WeakMap(), attributes = new WeakMap();
   const excluded = 'script,style,textarea,code,pre,[data-ui-content],.brand-name,.setup-account-name,.setup-preview-name,#setup-preview-name,#interviewer-name,.chat-message--interviewer .chat-message-author,.chat-message--interviewer .chat-message-body,.chat-message--candidate .chat-message-body,#question-text,#transcript,#stage-caption,#interviewer-response,.ws-session-main strong,.ws-session-main small,.result-summary-text,.result-feedback-list,.result-answer-heading > strong,.transcript,blockquote,.result-answer-tip p,.result-next-list h3,.result-next-list p,.evidence-detail > p,.indicator-evidence > strong';
   const patterns = [
+    [/^(\d+) hari$/, (_, n) => `${n} days`],
+    [/^Akun masih aktif di browser atau perangkat lain\. Keluar dari sesi tersebut, atau tunggu (\d+) menit tanpa aktivitas sebelum masuk kembali\.$/, (_, minutes) => `Your account is active in another browser or device. Sign out of that session, or wait for ${minutes} minutes of inactivity before signing in again.`],
+    [/^Sesi berakhir setelah (\d+) menit tanpa aktivitas atau maksimal (\d+) jam\.$/, (_, idle, absolute) => `Your session ends after ${idle} minutes of inactivity or after ${absolute} hours at most.`],
     [/^Halo, (.+)$/, (_, name) => `Hello, ${name}`],
     [/^Latihan (.+)$/, (_, role) => `Practice for ${role}`],
     [/^Panel (\d+) pewawancara$/, (_, n) => `Panel of ${n} interviewers`],

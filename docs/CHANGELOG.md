@@ -1,5 +1,15 @@
 # Log perubahan
 
+## 2026-11-07 — Keamanan akun, penghapusan dan retensi
+
+- Membatasi percobaan login per akun dan peer IP dengan penghitung database atomik, respons 429 dan `Retry-After`. Satu akun memiliki satu token aktif; browser kedua ditolak 409. Logout/password baru mencabut token, dengan kedaluwarsa idle 30 menit dan mutlak 12 jam.
+- Menambahkan konfirmasi password untuk perubahan email/password dan penghapusan CV, satu/seluruh riwayat serta akun. Antarmuka ID/EN menyediakan konfirmasi tertulis dan unduhan tanda terima setelah penghapusan, termasuk saat akun sudah tidak ada.
+- Menambahkan jurnal pembersihan berkas, status `pending_files` yang jujur, retry worker serta retensi audio 7 hari, riwayat/transkrip/hasil 90 hari dan receipt selesai 30 hari. CV profil bertahan sampai dihapus; salinan dalam riwayat ikut penghapusan riwayat/akun.
+- Memisahkan cache TTS per sesi dan mengunci penulisan/penghapusan lintas proses. Penanda penghapusan mencegah respons provider terlambat menghidupkan kembali berkas. Cache global lama dibersihkan karena tidak memiliki indeks kepemilikan.
+- Memperketat origin HTTP/WebSocket, cache halaman privat, batas total request dan redaksi error. Cookie pada pemeriksaan pasif tidak ditulis ulang agar respons yang terlambat tidak menimpa login baru. Pengguna perlu login kembali setelah pembaruan token sesi ini.
+- Mencegah penggunaan ulang ID SQLite setelah penghapusan, termasuk peningkatan transaksional database lama. Permintaan lama tidak dapat membaca data akun baru yang kebetulan mendapatkan ID sama. PostgreSQL tetap memakai sequence.
+- Bukti regresi, PostgreSQL terisolasi dan Chrome tercatat dalam `artifacts/security-privacy-evidence.json`. Panduan dan batas cakupan: [keamanan dan privasi](security-and-privacy.md). Tidak mengklaim penghapusan backup/provider, sertifikasi keamanan, atau validasi rubrik oleh manusia.
+
 ## 2026-11-07 — Pemulihan validasi jawaban dan diagnostik error
 
 - Memperbaiki aturan kutipan yang sebelumnya mustahil dipenuhi jawaban pendek seperti “Belum.”: kutipan pendek harus merupakan seluruh jawaban asli, bukan potongan jawaban panjang. Aturan bukti untuk skor kompetensi tetap sama.
